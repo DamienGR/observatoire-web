@@ -1,6 +1,6 @@
 # observatoire-web.fr — Brief projet
 
-**Version** 1.0 — 4 août 2026
+**Version** 1.1 — 4 août 2026
 **Porteur** StudioMaestro (Damien)
 **Domaine** observatoire-web.fr
 **Dépôt** `observatoire-web` (public)
@@ -124,7 +124,12 @@ Cette règle règle simultanément trois problèmes : le coût d'hébergement, l
 
 ### Stack
 
-- **Front / rendu** : framework à rendu serveur avec cache edge (Astro ou Next).
+- **Front / rendu** : **Astro** en rendu serveur, avec cache edge et îlots limités aux endroits
+  qui en ont besoin. Retenu contre Next pour un site de données à nombreuses pages : très peu de
+  JavaScript envoyé au client, donc un budget Lighthouse tenable sur un site qui mesure celui
+  des autres.
+- **Hébergement** : **Netlify**, adaptateur `@astrojs/netlify`. Voir le point de vigilance sur
+  le modèle de crédits en §7.
 - **Base** : Postgres serverless (Neon), migrations versionnées via Drizzle.
 - **Ordonnancement** : routine planifiée ou cron GitHub Actions, découpé en lots.
 - **Observabilité** : Sentry dès le premier jour — c'est le seul moyen de diagnostiquer la production sans terminal.
@@ -160,7 +165,9 @@ Deux décisions à ne pas rater, très coûteuses à rattraper ensuite :
 | GitHub Actions | 0 € | Dépôt public |
 | Sentry | 0 € | Palier gratuit |
 
-**Point de vigilance — l'hébergement.** Sur les comptes Netlify créés après septembre 2025, le plan gratuit fonctionne en crédits : 300 par mois, 15 par déploiement de production, soit une vingtaine de déploiements. Sur un projet en développement actif, la marge disparaît vite. Deux atténuations : les deploy previews et branch deploys sont gratuits (seuls les déploiements de production réussis consomment), donc on regroupe les merges ; et un compte antérieur à septembre 2025 reste sur l'ancien modèle, plus confortable. Cloudflare est une alternative objectivement mieux adaptée à un site de données à nombreuses pages.
+**Point de vigilance — l'hébergement.** Netlify est retenu (§5). Sur les comptes créés après septembre 2025, le plan gratuit fonctionne en crédits : 300 par mois, 15 par déploiement de production, soit une vingtaine de déploiements. Sur un projet en développement actif, la marge disparaît vite. Deux atténuations : les deploy previews et branch deploys sont gratuits (seuls les déploiements de production réussis consomment), donc **on regroupe les merges** — règle reprise dans le `CLAUDE.md` ; et un compte antérieur à septembre 2025 reste sur l'ancien modèle, plus confortable.
+
+Cloudflare reste objectivement mieux adapté à un site de données à nombreuses pages, et demeure le plan de repli si le plafond de crédits devient contraignant. Ce basculement serait en lui-même une épreuve intéressante pour l'expérimentation — changer d'hébergeur sans terminal — et non un échec. À réévaluer au jalon 4, quand le cache edge et la purge ciblée seront réellement exercés.
 
 **Volumétrie v1 :** 1 commune = 1 URL (page d'accueil), 1 stratégie (mobile), soit ~1 000 mesures par passage hebdomadaire. L'extension à 3 URLs par commune est un jalon à part entière.
 
@@ -214,11 +221,15 @@ Le lien vers StudioMaestro se limite à une page assumant la limite de la mesure
 
 ## 11. Décisions encore ouvertes
 
-- Framework de rendu : Astro ou Next
-- Hébergeur : Netlify (modèle de crédits à vérifier selon l'ancienneté du compte) ou Cloudflare
 - Formule exacte du score composite et pondération des signaux complémentaires
 - Politique de rétention de l'historique au-delà de 12 mois
 - Fréquence définitive des scans (hebdomadaire en hypothèse de travail)
+
+Ces décisions ne doivent pas être tranchées implicitement dans du code : on les arbitre
+explicitement, on met ce fichier à jour, et on consigne le changement dans le changelog.
+
+**Décisions tranchées** — voir le changelog pour la date et la justification : framework de
+rendu (Astro, v1.1), hébergeur (Netlify, v1.1).
 
 ---
 
@@ -227,3 +238,35 @@ Le lien vers StudioMaestro se limite à une page assumant la limite de la mesure
 - Dépôt : `observatoire-web` · Package : `observatoire-web` · Environnement cloud Claude Code : `observatoire-web`
 - Branches : `feat/`, `fix/`, `chore/`
 - Le `CLAUDE.md` du dépôt reprend la stack, les commandes exactes, les conventions, la definition of done et les interdits. Chaque session cloud repart d'un contexte neuf : ce fichier est le contrat.
+
+---
+
+## Changelog
+
+Ce brief porte l'**intention** du projet ; le `CLAUDE.md` porte les **règles de mise en œuvre**.
+Toute décision structurante — un arbitrage du §11, un changement de périmètre, une révision de
+la méthodologie — est reportée ici avec sa date et sa justification, dans la PR qui l'applique.
+Sans cette trace, une session future ne peut pas distinguer un choix délibéré d'un défaut hérité.
+
+Format : versions par ordre décroissant, la plus récente en tête. Les corrections de forme ne
+justifient pas d'entrée ; les changements de fond, toujours.
+
+### 1.1 — 4 août 2026
+
+Deux décisions du §11 tranchées, à l'occasion de la rédaction du `CLAUDE.md` : le contrat de
+dépôt devait nommer une stack pour pouvoir fixer des commandes exactes.
+
+- **Framework de rendu : Astro** (§5), contre Next. Le site est un site de données à nombreuses
+  pages, majoritairement en lecture. Astro envoie très peu de JavaScript au client, ce qui rend
+  le budget Lighthouse tenable — exigence non négociable pour un site qui publie le score des
+  autres. Next offrait une purge par tag plus ergonomique (`revalidateTag`), avantage jugé
+  insuffisant face au coût en poids client et à la couche d'adaptateur à maintenir hors Vercel.
+- **Hébergeur : Netlify** (§5, §7), contre Cloudflare. Cloudflare reste techniquement mieux
+  adapté et devient le plan de repli si le plafond de crédits devient contraignant. Le point de
+  vigilance du §7 est donc maintenu, pas résolu, et à réévaluer au jalon 4.
+- §11 allégé de ces deux lignes ; trois décisions y restent ouvertes.
+
+### 1.0 — 4 août 2026
+
+Version initiale. Objectifs, règles de l'expérimentation, périmètre produit, méthodologie de
+mesure, architecture, modèle de données, coûts, feuille de route, cadre juridique.

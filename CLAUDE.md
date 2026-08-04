@@ -51,7 +51,8 @@ Conséquences pratiques :
 
 Décisions encore ouvertes (cf. `docs/brief.md` §11) : formule du score composite, rétention de
 l'historique au-delà de 12 mois, fréquence définitive des scans. **Ne pas les trancher
-implicitement dans du code** — ouvrir une discussion et mettre à jour le brief.
+implicitement dans du code** — ouvrir une discussion, puis mettre à jour le brief **et son
+changelog** dans la PR qui applique la décision.
 
 ---
 
