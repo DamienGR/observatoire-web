@@ -6,6 +6,8 @@ les garde-fous et les interdits.
 
 Le **brief projet** est dans [`docs/brief.md`](docs/brief.md) : objectifs, méthodologie de mesure,
 modèle de données, feuille de route. Le lire avant toute décision structurante.
+L'**état d'avancement** est dans [`docs/roadmap.md`](docs/roadmap.md) : ce qui est fait, en
+cours, bloqué, et par quoi. Le consulter avant de choisir sur quoi travailler.
 Le **journal de frictions** est dans `docs/journal.md` : c'est le livrable réel de l'expérimentation.
 
 ---
@@ -108,9 +110,10 @@ Actions déclenchable manuellement (`workflow_dispatch`).
   `chore:`, `docs:`, `refactor:`, `test:`, `ci:`, `perf:`). Le message explique le *pourquoi*.
 - `main` est protégée : PR obligatoire, checks requis, pas de push direct, historique linéaire.
 - Ne jamais `--force` sur `main`. Sur une branche de PR, `--force-with-lease` uniquement.
-- **Regrouper les merges** : sur Netlify, seuls les déploiements de production réussis
-  consomment des crédits (~15 par déploiement, 300/mois). Les deploy previews sont gratuits.
-  Itérer sur la preview, merger une fois.
+- **Regrouper les merges est une préférence, pas une contrainte.** Le compte Netlify est sur un
+  plan *legacy* antérieur au modèle de crédits de septembre 2025 : les déploiements de production
+  ne sont pas plafonnés. On itère quand même sur la deploy preview plutôt que d'enchaîner les
+  merges, pour la lisibilité de l'historique — pas pour un quota.
 
 ### Langue
 
@@ -262,9 +265,11 @@ Une PR n'est mergeable que si **tous** ces points sont vrais :
 7. Les variables d'environnement nouvelles sont documentées dans `.env.example` (sans valeur)
    et dans §9 de ce fichier.
 8. La documentation impactée est à jour dans la même PR (`docs/`, ce fichier, page méthodologie).
-9. `docs/journal.md` est mis à jour si la PR a rencontré une friction liée au travail cloud-only
-   — un contournement, un outil manquant, une limite atteinte. **C'est le livrable réel.**
-10. La description de PR indique quoi, pourquoi, et comment ça a été vérifié.
+9. `docs/roadmap.md` reflète l'état réel : la tâche traitée y change de statut **dans cette PR**,
+   et toute tâche qu'elle débloque aussi. Un suivi mis à jour séparément dérive et devient faux.
+10. `docs/journal.md` est mis à jour si la PR a rencontré une friction liée au travail cloud-only
+    — un contournement, un outil manquant, une limite atteinte. **C'est le livrable réel.**
+11. La description de PR indique quoi, pourquoi, et comment ça a été vérifié.
 
 ---
 
@@ -438,6 +443,9 @@ préfixer une valeur sensible. Vérifier ce point dans toute revue touchant à l
 
 - Commencer par lire `docs/brief.md` et `docs/journal.md`. Ils portent l'intention ; ce fichier
   ne porte que les règles.
+- Choisir sa tâche dans `docs/roadmap.md`, et n'y prendre qu'une tâche `à faire` : une tâche
+  `bloqué` ne peut pas être terminée dans la session, et une tâche `[humain]` n'est pas
+  réalisable depuis une session cloud.
 - Une session = un ticket = une PR. Pas de session fourre-tout. Si le périmètre dérive en cours
   de route, ouvrir une issue plutôt que de l'absorber dans la PR courante.
 - En cas de contradiction entre ce fichier et le brief, **le brief l'emporte** sur l'intention,
