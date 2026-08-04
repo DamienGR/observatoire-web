@@ -1,6 +1,6 @@
 # observatoire-web.fr — Brief projet
 
-**Version** 1.1 — 4 août 2026
+**Version** 1.2 — 4 août 2026
 **Porteur** StudioMaestro (Damien)
 **Domaine** observatoire-web.fr
 **Dépôt** `observatoire-web` (public)
@@ -165,9 +165,9 @@ Deux décisions à ne pas rater, très coûteuses à rattraper ensuite :
 | GitHub Actions | 0 € | Dépôt public |
 | Sentry | 0 € | Palier gratuit |
 
-**Point de vigilance — l'hébergement.** Netlify est retenu (§5). Sur les comptes créés après septembre 2025, le plan gratuit fonctionne en crédits : 300 par mois, 15 par déploiement de production, soit une vingtaine de déploiements. Sur un projet en développement actif, la marge disparaît vite. Deux atténuations : les deploy previews et branch deploys sont gratuits (seuls les déploiements de production réussis consomment), donc **on regroupe les merges** — règle reprise dans le `CLAUDE.md` ; et un compte antérieur à septembre 2025 reste sur l'ancien modèle, plus confortable.
+**L'hébergement — point de vigilance levé.** Netlify est retenu (§5). Sur les comptes créés après septembre 2025, le plan gratuit fonctionne en crédits : 300 par mois, 15 par déploiement de production, soit une vingtaine de déploiements — de quoi étrangler un projet en développement actif. **Le compte utilisé ici est antérieur à cette date et reste sur le plan *legacy*, sans plafond de déploiements.** La contrainte ne s'applique donc pas, et la discipline de regroupement des merges n'est plus qu'une préférence d'hygiène d'historique.
 
-Cloudflare reste objectivement mieux adapté à un site de données à nombreuses pages, et demeure le plan de repli si le plafond de crédits devient contraignant. Ce basculement serait en lui-même une épreuve intéressante pour l'expérimentation — changer d'hébergeur sans terminal — et non un échec. À réévaluer au jalon 4, quand le cache edge et la purge ciblée seront réellement exercés.
+Cloudflare reste objectivement mieux adapté à un site de données à nombreuses pages et demeure un plan de repli crédible, mais l'argument économique qui le renforçait a disparu. À réévaluer au jalon 4 sur le seul terrain technique, quand le cache edge et la purge ciblée seront réellement exercés.
 
 **Volumétrie v1 :** 1 commune = 1 URL (page d'accueil), 1 stratégie (mobile), soit ~1 000 mesures par passage hebdomadaire. L'extension à 3 URLs par commune est un jalon à part entière.
 
@@ -250,6 +250,18 @@ Sans cette trace, une session future ne peut pas distinguer un choix délibéré
 
 Format : versions par ordre décroissant, la plus récente en tête. Les corrections de forme ne
 justifient pas d'entrée ; les changements de fond, toujours.
+
+### 1.2 — 4 août 2026
+
+Le compte Netlify utilisé est sur un plan *legacy* antérieur à septembre 2025 : **le modèle de
+crédits ne s'applique pas**, les déploiements de production ne sont pas plafonnés.
+
+- §7 : point de vigilance sur l'hébergement levé, et non plus seulement atténué.
+- Conséquence sur le choix d'hébergeur (§5) : Cloudflare reste un repli technique, mais
+  l'argument économique qui le renforçait disparaît. La réévaluation du jalon 4 se fera sur le
+  seul terrain technique.
+- Conséquence dans `CLAUDE.md` §4 : le regroupement des merges devient une préférence d'hygiène
+  d'historique, plus une contrainte de quota.
 
 ### 1.1 — 4 août 2026
 

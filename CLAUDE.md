@@ -110,9 +110,10 @@ Actions déclenchable manuellement (`workflow_dispatch`).
   `chore:`, `docs:`, `refactor:`, `test:`, `ci:`, `perf:`). Le message explique le *pourquoi*.
 - `main` est protégée : PR obligatoire, checks requis, pas de push direct, historique linéaire.
 - Ne jamais `--force` sur `main`. Sur une branche de PR, `--force-with-lease` uniquement.
-- **Regrouper les merges** : sur Netlify, seuls les déploiements de production réussis
-  consomment des crédits (~15 par déploiement, 300/mois). Les deploy previews sont gratuits.
-  Itérer sur la preview, merger une fois.
+- **Regrouper les merges est une préférence, pas une contrainte.** Le compte Netlify est sur un
+  plan *legacy* antérieur au modèle de crédits de septembre 2025 : les déploiements de production
+  ne sont pas plafonnés. On itère quand même sur la deploy preview plutôt que d'enchaîner les
+  merges, pour la lisibilité de l'historique — pas pour un quota.
 
 ### Langue
 

@@ -65,8 +65,8 @@ Les tâches marquées **[humain]** ne sont pas réalisables depuis une session c
 disjoints et ne se gênent pas. Toutes les dépendances sont installées dès J1-04 pour qu'aucune
 branche parallèle n'ait à toucher `pnpm-lock.yaml` — c'est le conflit le plus pénible à résoudre.
 
-**Attention aux crédits Netlify** (§4 de `CLAUDE.md`) : itérer sur les previews, merger en lot.
-Cinq PR mergées séparément coûtent ~75 crédits sur les 300 mensuels.
+Le compte Netlify étant sur un plan *legacy*, le nombre de déploiements de production n'est pas
+plafonné : on peut merger les PR au fil de l'eau sans surveiller un quota.
 
 ---
 
