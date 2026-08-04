@@ -44,8 +44,9 @@ Conséquences pratiques :
 | Validation | Zod | Toute donnée externe est parsée, jamais castée |
 | Hébergement | Netlify | Cache edge + purge par tag |
 | Observabilité | Sentry (dès le jour 1) | Front, endpoints SSR et jobs |
-| Tests unitaires | Vitest | |
-| Tests E2E | Playwright | Exécutés contre l'URL de deploy preview |
+| Tests unitaires et d'intégration | Vitest (`projects` séparés) | Aucune I/O dans le projet unitaire |
+| Tests E2E et accessibilité | Playwright + axe-core | Exécutés contre l'URL de deploy preview |
+| Tests de mutation | Stryker | Restreint à `src/lib/`, hors du chemin des PR |
 | Lint / format | ESLint (flat config) + Prettier | `eslint-plugin-astro`, `prettier-plugin-astro` |
 | CI/CD | GitHub Actions | Dépôt public, Actions gratuit |
 
@@ -72,9 +73,11 @@ pnpm lint                        # ESLint, zéro warning (--max-warnings=0)
 pnpm format                      # Prettier --write
 pnpm format:check                # Prettier --check (utilisé en CI)
 
-pnpm test                        # Vitest, une passe
-pnpm test:watch                  # Vitest en watch
-pnpm test:e2e                    # Playwright (BASE_URL requis)
+pnpm test                        # Vitest, projet unitaire seul — zéro I/O, budget < 30 s
+pnpm test:watch                  # Vitest en watch (unitaire)
+pnpm test:integration            # Vitest, projet intégration (DATABASE_URL requis)
+pnpm test:e2e                    # Playwright + axe-core (BASE_URL requis)
+pnpm test:mutation               # Stryker sur src/lib/ — hors du chemin des PR
 
 pnpm db:generate                 # Génère une migration depuis le schéma Drizzle
 pnpm db:migrate                  # Applique les migrations (DATABASE_URL requis)
@@ -85,10 +88,13 @@ pnpm verify                      # typecheck + lint + format:check + test + buil
 ```
 
 `pnpm verify` est la porte d'entrée : **le lancer avant tout commit**. Ce qu'il valide doit
-correspondre exactement à ce que valide la CI ; toute divergence est un bug à corriger.
+correspondre exactement à ce que valide le job rapide de la CI ; toute divergence est un bug à
+corriger. Il n'inclut **délibérément pas** `test:integration`, `test:e2e` ni `test:mutation` :
+ces couches ont leur propre place dans le pipeline (§5) et alourdiraient une commande dont tout
+l'intérêt est d'être exécutable à chaque commit sans y penser.
 
 **Pas de shell en production.** Il n'existe aucune commande à lancer « sur le serveur ».
-Toute opération sur les données passe par la surface d'ops (§7) ou par un workflow GitHub
+Toute opération sur les données passe par la surface d'ops (§8) ou par un workflow GitHub
 Actions déclenchable manuellement (`workflow_dispatch`).
 
 ---
@@ -140,28 +146,129 @@ Un site qui mesure l'accessibilité des autres doit être exemplaire. Non négoc
 
 ---
 
-## 5. Definition of Done
+## 5. Stratégie de tests
+
+La CI est le seul juge : aucune vérification manuelle ne rattrapera un test manquant. Cela tire
+dans deux directions opposées — **plus** de tests que la normale parce qu'aucun autre filet
+n'existe, et des tests **plus rapides** que la normale parce que chaque aller-retour CI coûte un
+cycle de session. On résout la tension par la séparation stricte des couches, jamais en
+renonçant à l'une des deux exigences.
+
+### Doctrine : TDD conditionnel
+
+Le test-first est **obligatoire** dans deux cas, et dans deux cas seulement :
+
+1. **Toute correction de bug** — on commence par un test qui échoue et reproduit le défaut.
+2. **Toute logique pure dans `src/lib/`** — scoring, machine à états de résolution d'URL,
+   agrégations, parsers. Là, la spécification est connaissable avant le code.
+
+La raison est propre à ce projet : chaque session repart d'un contexte neuf, donc **le test est
+le seul endroit où la spécification survit**. Une intention non écrite en test est perdue à la
+session suivante.
+
+Partout ailleurs — endpoints, jobs, intégrations — le test vient après le code mais **avant le
+merge**. Pour tout ce qui touche une API externe, la démarche est inversée et assumée : on
+observe le comportement réel, puis on **fige l'observation en fixture et en test de contrat**.
+On n'écrit pas le test d'abord quand la spécification est « ce que PSI fait vraiment sous
+charge ».
+
+### Couches et budget de temps
+
+Le budget est **contractuel et mesuré**, pas aspirationnel. Un budget qu'on ne mesure pas dérive
+sans que personne ne le remarque, et c'est ainsi qu'on se retrouve avec une CI de trente minutes.
+
+| Couche | Périmètre | Budget | Quand |
+|---|---|---|---|
+| Unitaire (Vitest, zéro I/O) | `src/lib/` — l'essentiel des tests | **< 30 s**, échec de CI au-delà de 60 s | Chaque push |
+| Intégration (branche Neon éphémère, transport HTTP intercepté) | `src/db/`, jobs, endpoints, migrations en dry-run | **< 4 min** | Chaque push |
+| E2E et accessibilité (Playwright sur la deploy preview) | 5 à 8 parcours, un par gabarit de page | **< 6 min** | Chaque PR |
+| Mutation, Lighthouse complet, contrats API réels | voir plus bas | non borné | Planifié |
+
+**Cible globale : moins de 10 minutes** du push au verdict, alerte à 15. Les jobs unitaire et
+intégration tournent en parallèle ; l'E2E attend la preview. Le temps total est celui du plus
+lent, pas la somme.
+
+La pyramide est **volontairement large au milieu**. Les bugs intéressants de ce projet ne sont
+pas dans les fonctions pures mais aux frontières : reprise d'un scan interrompu, tagging du
+cache, migration sur données réelles. Le branching Neon rend les tests d'intégration assez peu
+coûteux pour qu'on en fasse un usage franc.
+
+### Règles inviolables
+
+- **Aucun test sur le chemin d'une PR ne fait de requête réseau réelle.** Ni PSI, ni
+  `geo.api.gouv.fr`, ni DILA. De tels tests seraient lents, instables, consommeraient du quota
+  et échoueraient pour des raisons étrangères au diff — c'est-à-dire qu'ils apprendraient à tout
+  le monde à ignorer un échec de CI. Dans un projet où la CI est le seul juge, **une CI qu'on
+  apprend à ignorer est la panne la plus grave possible.**
+- **Aucune I/O dans le projet unitaire**, imposé par le code : un garde en `setup` lève une
+  exception si `fetch` ou le client Postgres est appelé. C'est ce qui empêche la dérive sur deux
+  ans — pas la bonne volonté.
+- **Un parcours E2E par gabarit de page, pas un par commune.** C'est la couche qui grossit sans
+  qu'on s'en aperçoive.
+
+### Ce qui doit être testé en priorité
+
+Par ratio valeur/coût :
+
+1. **Le scoring, figé par `methodology_version`.** Un jeu de fixtures par version, à sortie
+   épinglée. Quand la méthodologie v2 arrivera, le test v1 doit **toujours passer sur les
+   données v1**. C'est le garde-fou du jalon 5 (migration non destructive) et il ne coûte
+   presque rien tant que l'historique est court.
+2. **Le garde-fou SSRF** (§7) : test tabulaire des plages rejetées, **y compris après
+   redirection** — c'est le contournement classique, et c'est de la logique pure.
+3. **L'idempotence et la reprise d'un scan** : lancer, interrompre en cours, reprendre, vérifier
+   qu'aucune commune n'est ni dupliquée ni perdue. C'est la propriété dont dépend toute la
+   surface d'ops.
+4. **Les parsers Zod contre fixtures gelées**, plus un **test de contrat planifié** qui
+   interroge les vraies API en cron et échoue bruyamment quand la forme dérive en amont.
+5. **Les en-têtes de cache** : énumérer les routes, échouer si l'une ne déclare pas sa politique
+   (§10).
+6. **L'authentification de la surface d'ops** : jeton absent ou faux rejeté, `GET` mutant
+   impossible.
+7. **L'accessibilité** : axe-core sur un exemplaire de chaque gabarit.
+
+### Couverture et mutation
+
+La couverture est un **diagnostic** — « qu'ai-je oublié ? ». Le score de mutation est la
+**mesure de qualité** — « mes tests détecteraient-ils une régression ? ». On ne confond pas les
+deux, et on ne pilote pas le projet à la couverture.
+
+- `src/lib/` : **≥ 90 % de branches**, bloquant.
+- `src/pages/`, `src/components/` : **non mesurés et non bloquants**. Ils sont couverts par
+  l'E2E, où la couverture ligne n'a pas de sens.
+- Pas de seuil global en pourcentage : il se contourne et produit des tests de complaisance.
+- **Mutation (Stryker)** : restreint à `src/lib/`, hebdomadaire en cron plus `workflow_dispatch`
+  à la demande, **jamais sur le chemin d'une PR**. Informatif jusqu'au jalon 3 ; **bloquant sur
+  le module de scoring à partir du jalon 5**, quand la méthodologie v2 rendra le sujet vital.
+  Seuil de départ : **80 %** sur le scoring, à confirmer après la première exécution réelle —
+  annoncer un chiffre avant d'avoir mesuré serait arbitraire.
+
+---
+
+## 6. Definition of Done
 
 Une PR n'est mergeable que si **tous** ces points sont vrais :
 
 1. `pnpm verify` passe localement (dans la session cloud) **et** en CI.
-2. Les nouveaux comportements sont couverts par des tests. Une correction de bug commence par
-   un test qui échoue.
-3. Aucune régression d'accessibilité : E2E Playwright verts, budget Lighthouse tenu.
-4. Toute migration de schéma est **versionnée, committée, réversible ou explicitement
+2. Les nouveaux comportements sont couverts par des tests, à la couche prévue par la stratégie
+   (§5). Une correction de bug commence par un test qui échoue.
+3. Les budgets de temps du §5 sont tenus. Une couche qui dépasse son budget est un problème à
+   traiter dans la PR, pas un seuil à relever.
+4. Aucune régression d'accessibilité : E2E Playwright verts, budget Lighthouse tenu.
+5. Toute migration de schéma est **versionnée, committée, réversible ou explicitement
    documentée comme non réversible**, et validée en dry-run sur une branche Neon éphémère.
-5. Aucun secret, aucune URL de base, aucun jeton dans le diff — y compris dans les tests,
+6. Aucun secret, aucune URL de base, aucun jeton dans le diff — y compris dans les tests,
    les fixtures et les snapshots.
-6. Les variables d'environnement nouvelles sont documentées dans `.env.example` (sans valeur)
-   et dans §8 de ce fichier.
-7. La documentation impactée est à jour dans la même PR (`docs/`, ce fichier, page méthodologie).
-8. `docs/journal.md` est mis à jour si la PR a rencontré une friction liée au travail cloud-only
+7. Les variables d'environnement nouvelles sont documentées dans `.env.example` (sans valeur)
+   et dans §9 de ce fichier.
+8. La documentation impactée est à jour dans la même PR (`docs/`, ce fichier, page méthodologie).
+9. `docs/journal.md` est mis à jour si la PR a rencontré une friction liée au travail cloud-only
    — un contournement, un outil manquant, une limite atteinte. **C'est le livrable réel.**
-9. La description de PR indique quoi, pourquoi, et comment ça a été vérifié.
+10. La description de PR indique quoi, pourquoi, et comment ça a été vérifié.
 
 ---
 
-## 6. Sécurité
+## 7. Sécurité
 
 Le dépôt est **public** et le site interroge des sites tiers. Les règles ci-dessous ne sont pas
 des recommandations.
@@ -232,7 +339,7 @@ dédié de `src/lib/fetch/`, qui impose :
 
 ---
 
-## 7. Exploitation sans shell
+## 8. Exploitation sans shell
 
 À partir du jalon 2, le projet expose une **surface d'ops authentifiée** permettant de :
 déclencher un scan complet ou partiel, reprendre un scan interrompu, rejouer une commune isolée,
@@ -261,7 +368,7 @@ Règles de cette surface :
 
 ---
 
-## 8. Variables d'environnement
+## 9. Variables d'environnement
 
 Documenter toute nouvelle variable ici **et** dans `.env.example`.
 
@@ -283,7 +390,7 @@ préfixer une valeur sensible. Vérifier ce point dans toute revue touchant à l
 
 ---
 
-## 9. Cache et déploiement
+## 10. Cache et déploiement
 
 **Règle non négociable : un rafraîchissement de données ne déclenche jamais un redéploiement.**
 
@@ -299,7 +406,7 @@ préfixer une valeur sensible. Vérifier ce point dans toute revue touchant à l
 
 ---
 
-## 10. Interdits
+## 11. Interdits
 
 À ne jamais faire, quelle que soit l'urgence apparente :
 
@@ -307,8 +414,8 @@ préfixer une valeur sensible. Vérifier ce point dans toute revue touchant à l
    métriques et on jette le reste. Sans cette règle, le stockage explose en trois semaines.
 2. **Écrire une mesure sans `methodology_version`.** Sans elle, impossible de faire évoluer le
    scoring sans trahir l'historique — et cette évolution est un jalon explicite.
-3. **Déclencher un déploiement pour rafraîchir des données** (§9).
-4. **Redémarrer un scan de zéro** au lieu de le reprendre (§7).
+3. **Déclencher un déploiement pour rafraîchir des données** (§10).
+4. **Redémarrer un scan de zéro** au lieu de le reprendre (§8).
 5. **Employer un vocabulaire non factuel.** On écrit « score de conformité technique
    automatisée ». Jamais « site conforme » / « non conforme au RGAA », jamais de qualification
    juridique, jamais de « palmarès des pires ». Un audit automatisé ne couvre qu'une fraction
@@ -327,7 +434,7 @@ préfixer une valeur sensible. Vérifier ce point dans toute revue touchant à l
 
 ---
 
-## 11. Travailler dans ce dépôt
+## 12. Travailler dans ce dépôt
 
 - Commencer par lire `docs/brief.md` et `docs/journal.md`. Ils portent l'intention ; ce fichier
   ne porte que les règles.
