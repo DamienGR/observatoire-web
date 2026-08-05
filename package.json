@@ -33,7 +33,7 @@
     "@neondatabase/serverless": "^1.0.2",
     "@sentry/astro": "^10.19.0",
     "astro": "^5.14.5",
-    "drizzle-orm": "^0.44.6",
+    "drizzle-orm": "^0.45.2",
     "zod": "^4.1.12"
   },
   "devDependencies": {
