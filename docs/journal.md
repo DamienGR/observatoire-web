@@ -776,9 +776,31 @@ L'override touchant un paquet du chemin Netlify (`ipx`), la deploy preview a ét
 constater qu'elle servait toujours quelque chose. Elle répond **404**.
 
 Vérification immédiate avant d'accuser le diff : la production et les previews des PR #10, #18 et
-#19 répondent **404 elles aussi**. Le défaut est donc pré-existant et sans rapport. Netlify sert
-sa propre page 404 statique depuis le cache edge (`cache-status: "Netlify Edge"; hit`) — la
-fonction SSR n'est jamais invoquée.
+#19 répondent **404 elles aussi**. Le défaut est pré-existant et sans rapport.
+
+Première hypothèse : « la fonction SSR n'est pas invoquée ». Juste, mais c'est le symptôme. La
+cause se lit en demandant au site autre chose que `/` :
+
+| Chemin | Réponse |
+|---|---|
+| `/` | 404 |
+| `/package.json` | **200**, notre vrai `package.json` |
+| `/CLAUDE.md`, `/docs/brief.md`, `/src/pages/index.astro` | **200** |
+| `/README.md` | 404 — fichier absent du dépôt |
+
+La correspondance est exacte : **Netlify publie l'arborescence Git en statique.** Le build n'est
+jamais exécuté, la fonction SSR jamais déployée, et `/` échoue faute d'`index.html` à la racine.
+Il n'existe aucun `netlify.toml` dans le dépôt, et les réglages du site n'ont ni commande de build
+ni répertoire de publication.
+
+Deux conséquences que le symptôme seul ne laissait pas voir : **aucun en-tête de sécurité du §7
+n'a jamais été en vigueur** (seul `Strict-Transport-Security`, que Netlify ajoute de lui-même), et
+J1-12 était bloquée sur une preview qui ne sert rien.
+
+La leçon de méthode est la même qu'aux entrées 005 à 007 : la première explication plausible
+n'était pas fausse, elle était **trop haut placée**. Ce qui a fait apparaître la cause est d'avoir
+demandé au système quelque chose qu'on ne cherchait pas — ici, un chemin autre que celui qui
+échouait.
 
 C'est le cas que le §1 décrit mot pour mot : *si la CI est verte et que le produit est cassé,
 c'est la CI qu'il faut corriger.* Quatre PR ont été mergées aujourd'hui avec un check `verify`
