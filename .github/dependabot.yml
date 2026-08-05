@@ -1,0 +1,51 @@
+# Version updates. Alerts and security updates are enabled separately, in the
+# repository settings — this file only governs the scheduled bumps.
+#
+# CLAUDE.md §7 asks for npm and github-actions, reviewed weekly as a group. The
+# grouping is the load-bearing part: ungrouped, this produces a dozen isolated
+# pull requests every Monday, and a review queue nobody reads is worse than no
+# review at all.
+version: 2
+
+updates:
+  - package-ecosystem: npm # reads pnpm-lock.yaml
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Paris
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    groups:
+      # Minor and patch bumps travel together: they are read as a batch, and
+      # CI is what actually decides whether they are safe.
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+      production-minor-patch:
+        dependency-type: production
+        update-types: [minor, patch]
+    # Majors are deliberately left ungrouped. They carry breaking changes and
+    # have to be read one at a time.
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Paris
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']
+    # This is what keeps SHA pinning honest over time. Dependabot rewrites both
+    # the pinned SHA and the trailing `# v6.1.0` comment. Without it those SHAs
+    # freeze and the comment quietly becomes a claim nobody can check — a
+    # session cannot resolve a tag to a SHA from inside the container
+    # (docs/journal.md 002).
