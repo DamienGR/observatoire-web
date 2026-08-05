@@ -32,7 +32,7 @@
     "@astrojs/netlify": "^6.5.14",
     "@neondatabase/serverless": "^1.0.2",
     "@sentry/astro": "^10.19.0",
-    "astro": "^5.14.5",
+    "astro": "^7.1.1",
     "drizzle-orm": "^0.44.6",
     "zod": "^4.1.12"
   },
