@@ -438,7 +438,7 @@ préfixer une valeur sensible. Vérifier ce point dans toute revue touchant à l
    juridique, jamais de « palmarès des pires ». Un audit automatisé ne couvre qu'une fraction
    des critères RGAA, et le site le dit.
 6. **Laisser croire à une origine publique.** Mention « initiative indépendante » en pied de
-   page, mentions légales nommant StudioMaestro sans ambiguïté, droit de réponse visible avec
+   page, mentions légales nommant DG-Tech (dg-tech.dev) sans ambiguïté, droit de réponse visible avec
    re-mesure sous 48 h.
 7. **Contourner la CI** : `--no-verify`, désactivation d'un check, `skip ci`, test mis en
    `.skip` pour faire passer une PR. Un test qui gêne est un test à corriger ou à supprimer

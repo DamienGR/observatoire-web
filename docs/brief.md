@@ -1,7 +1,7 @@
 # observatoire-web.fr — Brief projet
 
-**Version** 1.2 — 4 août 2026
-**Porteur** StudioMaestro (Damien)
+**Version** 1.3 — 5 août 2026
+**Porteur** DG-Tech (Damien) — dg-tech.dev
 **Domaine** observatoire-web.fr
 **Dépôt** `observatoire-web` (public)
 
@@ -39,7 +39,7 @@ Le site doit être réellement en ligne, réellement à jour, et défendable pub
 3. **Journal de frictions** (`docs/journal.md`) mis à jour à chaque jalon. Sans lui, il ne restera qu'un site et un souvenir vague au lieu d'une conclusion.
 4. **`main` protégée** dès le premier commit : PR obligatoire, checks requis, pas de push direct.
 5. **Une session cloud = un ticket = une PR.** Pas de session fourre-tout.
-6. **Dépôt public.** Actions gratuit, et l'historique des PR devient lui-même une démonstration exploitable par StudioMaestro.
+6. **Dépôt public.** Actions gratuit, et l'historique des PR devient lui-même une démonstration exploitable par DG-Tech.
 
 ---
 
@@ -199,7 +199,7 @@ Le site publie des mesures nominatives sur des organismes publics. Quatre garde-
 1. **Méthodologie publique et reproductible**, accessible depuis chaque fiche.
 2. **Vocabulaire strictement factuel.** Aucune qualification juridique, aucun jugement de valeur. Pas de « palmarès des pires ».
 3. **Droit de réponse** avec procédure de re-mesure sous 48 h, visible et facile à activer.
-4. **Indépendance affichée.** Mention « initiative indépendante » en pied de page, mentions légales nommant StudioMaestro sans ambiguïté. Le nom « observatoire » sonne institutionnel : le risque qu'on prenne le site pour une émanation publique est l'angle d'attaque le plus probable, et il se neutralise gratuitement dès le départ.
+4. **Indépendance affichée.** Mention « initiative indépendante » en pied de page, mentions légales nommant DG-Tech sans ambiguïté. Le nom « observatoire » sonne institutionnel : le risque qu'on prenne le site pour une émanation publique est l'angle d'attaque le plus probable, et il se neutralise gratuitement dès le départ.
 
 **Collisions de nom connues**, aucune bloquante : Médiamétrie commercialise une étude « Web Observatoire » (termes inversés, marché différent) ; il existe par ailleurs un « Observatoire de la compublique numérique ». Ces termes étant descriptifs, aucun dépôt de marque n'est envisagé, mais le positionnement doit être distinct dès la page d'accueil.
 
@@ -215,7 +215,7 @@ Le site publie des mesures nominatives sur des organismes publics. Quatre garde-
 - Mesure par navigateur headless
 - Toute monétisation
 
-Le lien vers StudioMaestro se limite à une page assumant la limite de la mesure automatique et proposant un audit réel.
+Le lien vers DG-Tech se limite à une page assumant la limite de la mesure automatique et proposant un audit réel.
 
 ---
 
@@ -250,6 +250,21 @@ Sans cette trace, une session future ne peut pas distinguer un choix délibéré
 
 Format : versions par ordre décroissant, la plus récente en tête. Les corrections de forme ne
 justifient pas d'entrée ; les changements de fond, toujours.
+
+### 1.3 — 5 août 2026
+
+**Correction d'attribution.** Le porteur du projet est **DG-Tech** (dg-tech.dev), pas
+StudioMaestro. Les deux sont portés par la même personne, mais StudioMaestro est une offre
+commerciale de construction de sites à bas coût, sans rapport avec cet outil.
+
+L'erreur n'était pas cosmétique : le §9 fait de l'identification sans ambiguïté de l'éditeur une
+contre-mesure au risque principal du projet — qu'on prenne « observatoire » pour une émanation
+publique. Nommer la mauvaise entité affaiblit exactement la protection qu'on croyait avoir, et la
+mention était déjà servie en production.
+
+- §9 et `CLAUDE.md` §11 : les mentions légales nomment DG-Tech.
+- §2 et §10 : la démonstration et le lien commercial se rattachent à DG-Tech.
+- `src/pages/index.astro` : pied de page corrigé.
 
 ### 1.2 — 4 août 2026
 

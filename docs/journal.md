@@ -831,3 +831,40 @@ Dernière remarque, pour le fil de la journée : trois des quatre déclarations 
 aujourd'hui l'ont été en interrogeant un outil. Celle-ci a été trouvée en interrogeant le
 **produit**, et par accident, à l'occasion d'une vérification faite pour une autre raison. C'est
 un argument pour que la vérification du produit soit un check, pas une curiosité.
+
+---
+
+## 009 — La sixième déclaration fausse, et la seule qu'aucun outil ne pouvait trouver
+
+**5 août 2026** · jalon 1 · branche `claude/dependabot-updates-vgavfn`
+
+Entrée courte, mais elle clôt le motif de la journée.
+
+Le dépôt nommait **StudioMaestro** comme porteur du projet, en pied de page, dans les mentions
+légales prévues et dans le brief. C'est faux : le porteur est **DG-Tech** (dg-tech.dev).
+StudioMaestro est une offre commerciale de construction de sites à bas coût, portée par la même
+personne mais sans rapport avec cet outil. Signalé par le porteur, corrigé, brief passé en 1.3.
+
+Ce n'était pas une coquille. Le §9 fait de l'identification sans ambiguïté de l'éditeur une
+**contre-mesure** au risque principal du projet : qu'on prenne « observatoire » pour une émanation
+publique. Nommer la mauvaise entité n'affaiblit pas seulement la mention, elle affaiblit la
+protection — et le §11 de `CLAUDE.md` en fait un interdit explicite. La mention était servie en
+production depuis la réparation du déploiement de l'entrée 008.
+
+C'est la sixième déclaration fausse trouvée aujourd'hui. Les cinq premières se laissaient
+attraper en interrogeant un outil (`git ls-remote`, `eslint --print-config`, un test rouge) ou le
+produit (`curl` sur la preview). **Celle-ci, aucune interrogation n'aurait pu la trouver.** Le
+dépôt était cohérent avec lui-même : le brief, le contrat et la page disaient tous la même chose,
+et tous se trompaient ensemble. Il n'existe aucune source de vérité dans le dépôt contre laquelle
+la vérifier.
+
+La limite est structurelle et vaut d'être écrite noir sur blanc : **une session ne peut vérifier
+que ce qui est vérifiable depuis le dépôt et le réseau.** Les faits qui ne vivent que chez le
+porteur — qui édite, quelle entité juridique, quel domaine commercial — ne sont contrôlables par
+personne d'autre que lui. Ils appartiennent à la même famille que les réglages de console de
+l'entrée 003 : ni la CI ni une session ne les couvrent, et les traiter comme acquis parce qu'ils
+sont écrits est précisément l'erreur.
+
+Corollaire pratique : les affirmations sur le **monde** (identité, mentions légales, domaines,
+comptes) méritent une relecture humaine explicite au moins une fois, au même titre qu'une
+migration de schéma. Les affirmations sur le **code** ont la CI ; celles-là n'ont personne.
