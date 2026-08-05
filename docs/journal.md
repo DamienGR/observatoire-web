@@ -100,3 +100,106 @@ l'endroit où il se manifestait.
 
 `main` était déjà protégée au premier commit, sans intervention : la règle 4 du §2 du brief est
 satisfaite dès le départ.
+
+---
+
+## 002 — Le bootstrap passe, mais trois outils sur quatre échouent d'abord en silence
+
+**5 août 2026** · jalon 1 · branche `claude/phase-bootstrap-scm7na` · tâche J1-04
+
+### Contexte
+
+Première session de code : `package.json`, Astro SSR, TypeScript strict, ESLint/Prettier, Vitest
+à deux projets avec garde anti-I/O, `.env.example`, et le job CI rapide. Rien de conceptuellement
+difficile — le contrat du dépôt dit exactement quoi construire. Tout le coût réel a été dans des
+frictions d'outillage, dont aucune n'était visible avant d'avoir lancé la commande.
+
+Le fil conducteur de cette session : **la seule chose qui a fonctionné, c'est d'exécuter
+`pnpm verify` dans le conteneur avant de pousser.** Trois des quatre problèmes ci-dessous
+auraient produit une CI rouge — ou pire, une CI bloquée — si on s'était contenté de lire le code.
+
+### Friction 1 — `astro check` attend une réponse interactive
+
+`pnpm typecheck` lance `astro check`, qui constate que `@astrojs/check` n'est pas installé et
+**ouvre un prompt** : `Continue? › (Y/n)`. En local, on tape `y` sans y penser. En CI, il n'y a
+personne pour répondre : le job aurait attendu jusqu'au timeout de dix minutes, et le message
+d'échec aurait parlé de durée, pas de dépendance manquante.
+
+C'est le pire profil de panne pour ce projet : *lent, muet, et diagnostiqué de travers.* Corrigé
+en installant `@astrojs/check` explicitement en dépendance de développement, et en fixant
+`ASTRO_TELEMETRY_DISABLED: '1'` au niveau du workflow — Astro pose une seconde question, sur la
+télémétrie, à la première exécution.
+
+**À retenir :** toute commande du §3 doit être lancée au moins une fois dans une session neuve,
+pas seulement écrite. Un outil qui pose une question est un outil qui bloque la CI.
+
+### Friction 2 — épingler les actions par SHA se heurte au périmètre GitHub de la session
+
+Le §7 impose d'épingler les actions tierces par SHA de commit. Encore faut-il obtenir le SHA
+correspondant à `v6.1.0` de `actions/checkout`. Les outils GitHub de la session refusent :
+
+```
+Access denied: repository "actions/checkout" is not configured for this session.
+Allowed repositories: damiengr/observatoire-web
+```
+
+Le cloisonnement est parfaitement légitime — la session ne doit voir que le dépôt du projet. Mais
+il rend inaccessible une **information publique** dont une règle du dépôt dépend. Contournement :
+`git ls-remote --tags https://github.com/actions/checkout`, qui passe par le proxy HTTPS et
+fonctionne sans autorisation particulière.
+
+Piège au passage : le premier `ls-remote` filtré sur `refs/tags/vN^{}` n'a renvoyé que `v1`. Les
+entrées `^{}` (« tag pelé ») n'existent que pour les tags *annotés* ; les versions récentes de ces
+dépôts utilisent des tags légers, dont le SHA est directement celui du commit. Deux minutes
+perdues à croire que les tags récents n'existaient pas.
+
+**Reste ouvert :** aucun moyen, depuis la session, de vérifier qu'un SHA épinglé correspond
+toujours au tag annoncé. Le commentaire `# v6.1.0` en fin de ligne est une déclaration
+d'intention, pas une preuve. C'est Dependabot (J1-03) qui devra tenir cette cohérence.
+
+### Friction 3 — Prettier réécrit la documentation française
+
+`pnpm format` a touché 121 lignes de `CLAUDE.md`, `brief.md`, `roadmap.md` et `journal.md` sans
+qu'aucun de ces fichiers ait été modifié : Prettier repadde les cellules des tableaux Markdown et
+convertit `*italique*` en `_italique_`.
+
+Le résultat n'est pas faux, il est *nuisible* : dans un dépôt où la trace du raisonnement est le
+livrable, un tableau repaddé transforme la correction d'un mot en diff de cinquante lignes, et
+noie la modification réelle. Le Markdown est donc sorti du périmètre de Prettier
+(`.prettierignore`), avec la raison écrite sur place.
+
+**Hypothèse fausse au passage :** `proseWrap: "preserve"` semblait suffire à protéger les
+documents. Il ne préserve que les retours à la ligne du texte courant, pas l'alignement des
+tableaux ni le style d'emphase.
+
+### Friction 4 — un avertissement pnpm qu'aucune configuration ne fait taire
+
+pnpm 10 bloque par défaut les scripts d'installation des dépendances, ce qui est exactement le
+comportement voulu (§7). Il le signale à chaque `pnpm install` en invitant à lancer
+`pnpm approve-builds`. Déclarer `onlyBuiltDependencies: []` et `ignoredBuiltDependencies` — dans
+`package.json` d'abord, puis dans `pnpm-workspace.yaml`, emplacement canonique en v10 — **n'a rien
+changé à l'affichage**. L'installation réussit, aucun script ne s'exécute, la politique est bien
+appliquée et versionnée ; seul l'avertissement persiste.
+
+Coût réel : faible, mais il illustre un risque propre au cloud-only. Un avertissement permanent
+et non actionnable dans les logs de CI est précisément ce qui entraîne à ne plus les lire.
+Consigné en dette plutôt que résolu par un contournement.
+
+### Ce qui a marché du premier coup
+
+- Le push, sans aucune manipulation : le blocage de l'entrée 001 était bien définitif.
+- L'installation complète des dépendances — Astro, Drizzle, Playwright, Stryker, Sentry — en
+  17 secondes, sans conflit de résolution.
+- Le garde anti-I/O. Bloquer `fetch` **et** `net.Socket.prototype.connect` couvre tout ce qu'un
+  test unitaire pourrait atteindre : `node:http`, `node:https` et `node:tls` passent tous par ce
+  même point de passage. Les six tests du garde sont verts sans ajustement.
+- TypeScript en `erasableSyntaxOnly` a immédiatement rejeté les propriétés de paramètre de
+  constructeur (`constructor(readonly issues: string[])`). Contrariant sur le moment, correct sur
+  le fond.
+
+### Une note sur la convention de branches
+
+Le §4 impose `feat/`, `fix/`, `chore/`. Cette session travaille sur `claude/phase-bootstrap-scm7na`,
+nom imposé par l'environnement d'exécution et non choisi. La convention du dépôt et la
+plateforme se contredisent sans que la session puisse arbitrer. Signalé ici plutôt que résolu en
+silence : c'est au §4 d'accepter le préfixe `claude/` ou à la plateforme de laisser choisir.
