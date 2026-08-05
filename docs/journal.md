@@ -769,3 +769,22 @@ justement l'exécution de scripts d'installation.
 `pnpm audit` : **0 haute, 2 modérées** (`esbuild`, `qs`), contre 4 hautes / 7 modérées / 4 basses
 sur `main` ce matin. Une seule copie de `sharp` dans l'arbre, plus aucune référence aux binaires
 0.34 dans le lockfile.
+
+### Post-scriptum — la vérification qui a trouvé autre chose
+
+L'override touchant un paquet du chemin Netlify (`ipx`), la deploy preview a été interrogée pour
+constater qu'elle servait toujours quelque chose. Elle répond **404**.
+
+Vérification immédiate avant d'accuser le diff : la production et les previews des PR #10, #18 et
+#19 répondent **404 elles aussi**. Le défaut est donc pré-existant et sans rapport. Netlify sert
+sa propre page 404 statique depuis le cache edge (`cache-status: "Netlify Edge"; hit`) — la
+fonction SSR n'est jamais invoquée.
+
+C'est le cas que le §1 décrit mot pour mot : *si la CI est verte et que le produit est cassé,
+c'est la CI qu'il faut corriger.* Quatre PR ont été mergées aujourd'hui avec un check `verify`
+vert et un statut « Deploy Preview ready! », sans que rien ne regarde jamais **ce que la preview
+sert**. Le seul juge du projet ne juge que le build.
+
+Non corrigé ici (§12 : on n'absorbe pas), inscrit en dette avec la contrainte qui manque — un
+check qui exige un 200 et le `<h1>` attendu. C'est la découverte la plus importante de la journée,
+et elle vient d'une vérification faite pour une tout autre raison.
