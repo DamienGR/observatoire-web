@@ -9,9 +9,11 @@ on:
     branches: [main]
 
 # CI is the only judge of quality here (CLAUDE.md §1), so it must never be able
-# to write anything.
+# to write anything. `statuses: read` is what lets the deploy job find the URL
+# Netlify published; it grants no write of any kind.
 permissions:
   contents: read
+  statuses: read
 
 env:
   # Astro prompts for a telemetry decision on first run; CI has no one to ask.
@@ -63,3 +65,38 @@ jobs:
           path: coverage/
           retention-days: 7
           if-no-files-found: warn
+
+  # `verify` proves the build compiles. It says nothing about what the deployed
+  # site actually serves — and for a while it served nothing: Netlify published
+  # the Git tree, `/` answered 404, and four pull requests were merged green
+  # (docs/journal.md 008). This job is the missing half.
+  #
+  # It is separate from `verify` on purpose: it depends on a third party, so a
+  # Netlify outage must not be able to mask a real `verify` failure.
+  deploy:
+    name: deploy (the preview serves the application)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The deploy URL is read from the commit status Netlify publishes, never
+      # written down here: §6 forbids a base URL in the diff, and a hardcoded
+      # host would also be wrong on every branch but one.
+      #
+      # The prefix match covers both contexts Netlify uses — deploy-preview on
+      # a pull request, and the production deploy on a push to main.
+      - name: Resolve the Netlify deploy URL
+        id: netlify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          REPO: ${{ github.repository }}
+        run: node scripts/resolve-netlify-url.mjs
+
+      - name: Check the deployment
+        run: node scripts/check-deploy.mjs "${{ steps.netlify.outputs.url }}"

@@ -868,3 +868,82 @@ sont écrits est précisément l'erreur.
 Corollaire pratique : les affirmations sur le **monde** (identité, mentions légales, domaines,
 comptes) méritent une relecture humaine explicite au moins une fois, au même titre qu'une
 migration de schéma. Les affirmations sur le **code** ont la CI ; celles-là n'ont personne.
+
+---
+
+## 010 — Le check qui manquait : ce qu'on assère, et ce qu'on refuse d'asserer
+
+**5 août 2026** · jalon 1 · branche `claude/dependabot-updates-vgavfn`
+
+L'entrée 008 réparait le déploiement et laissait la garde ouverte. La voici.
+
+### L'assertion qui compte n'est pas celle qu'on croit
+
+Le réflexe est de vérifier que `/` répond 200. C'est nécessaire et **insuffisant pour la panne
+qu'on vient de vivre** : un site qui publie la racine du dépôt répond bel et bien 404 sur `/`,
+faute d'`index.html`. Un check limité à la page d'accueil aurait viré au rouge, oui — mais en
+désignant un problème de routage, pas la mauvaise configuration qu'il s'agissait de nommer.
+
+L'assertion qui décrit vraiment le défaut est l'inverse d'une disponibilité :
+
+```
+/package.json          ne doit PAS être servi
+/CLAUDE.md             ne doit PAS être servi
+/src/pages/index.astro ne doit PAS être servi
+```
+
+Un 200 sur l'un de ces chemins signifie une seule chose, sans ambiguïté possible : c'est le dépôt
+qui est publié, pas le build. Le message d'échec le dit en toutes lettres, pour que la prochaine
+lecture n'ait pas à refaire le diagnostic de l'entrée 008.
+
+### Ce qu'on a refusé d'asserer, et c'est le point intéressant
+
+La tentation était forte de vérifier que la fonction SSR rend bien à chaque requête — c'est ce qui
+avait servi de preuve en 008, en comparant deux horodatages. **Écarté délibérément.**
+
+Le §10 prévoit un cache edge long avec purge par tag. Le jour où il arrive, deux requêtes
+renverront légitimement le même horodatage, et l'assertion virerait au rouge sur un comportement
+correct. Un check qu'il faut supprimer pour livrer une fonctionnalité prévue est un check qu'on
+apprend à ignorer — exactement ce que le §5 range parmi les pannes les plus graves.
+
+La règle qu'on en tire : **une assertion doit rester vraie sur toute la trajectoire prévue du
+produit, pas seulement aujourd'hui.** Une assertion à durée de vie limitée coûte plus cher que
+l'absence d'assertion, parce qu'elle érode la confiance dans toutes les autres.
+
+### Découverte de l'URL plutôt que configuration
+
+Le §6 interdit une URL de base dans le diff, et un hôte écrit en dur serait faux sur toutes les
+branches sauf une. `scripts/resolve-netlify-url.mjs` lit donc l'URL du **statut de commit** que
+Netlify publie — `deploy-preview-<n>--<site>` sur une PR, l'hôte de production sur un push. La
+correspondance par préfixe `netlify/` couvre les deux sans les nommer.
+
+Le job tourne en `contents: read` + `statuses: read`, sans aucun secret : c'est ce qui le rend sûr
+sur une PR, y compris de fork, sans jamais approcher `pull_request_target` (§7). Aucune action
+tierce n'est ajoutée — un script maison évite une dépendance de chaîne d'approvisionnement de
+plus, et il est plus court que la configuration qu'il aurait fallu écrire pour une action.
+
+Détail appris en écrivant : un statut Netlify en `error` ou `failure` doit être traité comme un
+**échec immédiat**, pas comme « pas encore prêt ». Sinon on attend les cinq minutes du délai
+d'attente pour finir par rapporter un timeout à la place de la vraie cause.
+
+### Éprouvé dans les deux sens
+
+Le chemin vert sur la preview réelle, le chemin rouge sur un déploiement inexistant :
+
+```
+ok    GET / returns 200                    FAIL  GET / returns HTTP 404, expected 200
+ok    GET / is text/html                   FAIL  GET / content-type is "absent"
+ok    GET / renders the expected heading   FAIL  GET / does not contain <h1>…</h1>
+```
+
+La première rédaction rapportait « returns no response (HTTP 404) » — deux affirmations
+contradictoires dans la même ligne, parce que le statut réel était perdu à la dernière tentative.
+Corrigé : un message d'échec qui envoie chercher une panne réseau inexistante coûte plus cher que
+pas de message.
+
+### Ce qui reste **[humain]**
+
+Le job existe et tourne, mais **rien n'empêche de merger malgré son échec** tant qu'il n'est pas
+ajouté aux checks requis de `main` — réglage de console qu'une session ne peut ni faire ni
+constater (même limite que J1-13 et l'entrée 003). Inscrit comme tel : un check non requis est un
+avis, pas une garde.
