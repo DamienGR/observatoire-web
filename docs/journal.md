@@ -639,3 +639,60 @@ nécessairement un dépôt à jour.
 - Les sondes jetables (`__probe.astro`, `__probe.ts`, créées, exécutées, supprimées) : c'est le
   moyen le plus court trouvé jusqu'ici pour vérifier ce que fait réellement un outil dans une
   session sans terminal interactif.
+
+---
+
+## 007 — L'alias `~` : la correction évidente ne corrigeait rien
+
+**5 août 2026** · jalon 1 · branche `claude/dependabot-updates-vgavfn`
+
+### Contexte
+
+Dette ouverte par l'entrée 006 : `tsconfig.json` et `astro.config.mjs` déclaraient l'alias `~`,
+`vitest.config.ts` non. Aucun fichier ne l'utilisant encore, la brèche était latente — mais J1-06,
+J1-07 et J1-08 écrivent toutes dans `src/lib/` et l'emploieraient naturellement.
+
+### La friction
+
+La correction paraissait tenir en trois lignes :
+
+```ts
+export default defineConfig({
+  resolve: { alias: { '~': new URL('./src/', import.meta.url).pathname } },
+  test: { projects: [ /* … */ ] },
+});
+```
+
+**Elle ne fonctionne pas.** Le test écrit d'abord — rouge sur `Cannot find module '~/lib/fetch'`
+— est resté rouge après cette correction. Un `resolve.alias` posé à la racine du fichier n'est
+**pas hérité** par les entrées `projects` : chaque projet est une configuration Vite complète et
+indépendante. L'alias doit être déclaré dans chacune.
+
+Le détail qui rend la chose vicieuse : la version racine ne produit **aucun avertissement**. Elle
+a l'air d'une déclaration correcte, elle est syntaxiquement valide, et elle ne résout rien.
+
+C'est le troisième cas de la journée après le pin de tag annoté (005) et le parser inerte (006).
+Trois configurations différentes, une seule et même forme : *quelque chose qui a l'air déclaré ne
+l'est pas.* La différence ici est que le TDD imposé par le §5 l'a attrapé **avant** le commit,
+parce que le test existait déjà et refusait de virer au vert. Sans lui, la correction aurait été
+poussée, mergée, et la panne serait apparue trois sessions plus tard dans une PR qui n'aurait rien
+à voir — au moment précis où quelqu'un écrit son premier `import … from '~/lib/…'`.
+
+### Le test, et pourquoi il n'assère pas la résolution
+
+```ts
+expect(viaAlias).toBe(viaRelative);
+```
+
+Un test qui se contenterait d'importer via l'alias passerait sur une configuration qui le résout
+vers une **seconde copie** du module — cas où l'état de niveau module se dédouble silencieusement.
+Comparer les deux liaisons ferme les deux pannes d'un coup : non résolu, et résolu ailleurs.
+
+Le projet `integration` a été vérifié de la même façon, par sonde jetable, puisqu'il n'a encore
+aucun test à porter la garantie (`--passWithNoTests`, cf. dette).
+
+### Ce que ça ajoute au contrat
+
+Le §5 justifie le test-first par « le test est le seul endroit où la spécification survit ». Cette
+entrée en montre un second usage, plus immédiat : **le test-first est aussi ce qui distingue une
+correction d'une correction apparente.** Les deux se ressemblent beaucoup dans un diff.
