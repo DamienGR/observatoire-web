@@ -11,9 +11,14 @@
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
     "types": ["node", "vitest/globals"],
-    "baseUrl": ".",
+    // No `baseUrl`: TypeScript 6 deprecates it and TypeScript 7 drops it.
+    // Without it, `paths` resolve relative to this file, which is what we
+    // wanted anyway. Note this only teaches `tsc` to resolve `~/`:
+    // astro.config.mjs carries the matching Vite alias, but vitest.config.ts
+    // does not, so a `~/` import would typecheck and fail under test. Mirror
+    // it there before the first such import (docs/roadmap.md).
     "paths": {
-      "~/*": ["src/*"]
+      "~/*": ["./src/*"]
     }
   },
   "include": [".astro/types.d.ts", "**/*.ts", "**/*.astro", "**/*.mjs"],
