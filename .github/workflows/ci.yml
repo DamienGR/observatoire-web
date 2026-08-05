@@ -1,0 +1,65 @@
+name: CI
+
+# The fast gate. It runs exactly what `pnpm verify` runs — CLAUDE.md §3 makes
+# any divergence between the two a bug to fix, so this workflow deliberately
+# invokes the single script rather than restating its steps.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# CI is the only judge of quality here (CLAUDE.md §1), so it must never be able
+# to write anything.
+permissions:
+  contents: read
+
+env:
+  # Astro prompts for a telemetry decision on first run; CI has no one to ask.
+  ASTRO_TELEMETRY_DISABLED: '1'
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify (typecheck, lint, format, unit tests, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # Third-party actions are pinned by commit SHA, never by moving tag
+      # (CLAUDE.md §7). The trailing comment records which tag the SHA was.
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      # pnpm comes from the `packageManager` field, so its version is pinned by
+      # the repository rather than by the workflow. Corepack must run before
+      # setup-node, which needs the pnpm binary to resolve its cache.
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify
+        run: pnpm verify
+
+      # Artefacts are the only way to see anything from a cloud session
+      # (CLAUDE.md §1), so the coverage report is uploaded even on failure.
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: warn
