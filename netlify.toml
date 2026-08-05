@@ -1,0 +1,33 @@
+# Deployment configuration, versioned rather than set in the Netlify UI.
+#
+# It is not decoration: without this file the site had no build command and no
+# publish directory, so Netlify fell back to publishing the Git tree verbatim.
+# `/package.json` and `/CLAUDE.md` were served with their real content while `/`
+# returned 404 for want of an index.html at the repo root — the SSR function was
+# never deployed, and none of §7's security headers were ever in effect. See
+# docs/journal.md 008.
+#
+# UI settings override this file. If a deploy preview still fails to serve `/`
+# after this lands, the site's build settings have to be cleared in the console
+# — the one part of the fix a session cannot perform.
+
+[build]
+  # `pnpm build` rather than `astro build`: the script name is contractual
+  # (CLAUDE.md §3) and the indirection is what keeps this file honest when the
+  # build gains a step.
+  command = "pnpm build"
+
+  # Static assets only. The SSR entrypoint is not here: @astrojs/netlify writes
+  # it to .netlify/v1/functions/ssr/ and declares it through Netlify's
+  # Frameworks API (.netlify/v1/config.json), which Netlify discovers on its
+  # own. Both directories are gitignored and produced by the build.
+  publish = "dist"
+
+# Node version deliberately absent: .nvmrc is the single source and Netlify
+# reads it. Declaring it twice is how the `engines` floor drifted out of sync
+# with reality once already (docs/journal.md 005).
+#
+# The install command is likewise absent — Netlify does not take one from this
+# file, and it does not need to: it sets CI=true, under which pnpm defaults
+# `frozen-lockfile` to true. §3's "always --frozen-lockfile in CI" therefore
+# holds by pnpm's own default rather than by an instruction nobody can check.

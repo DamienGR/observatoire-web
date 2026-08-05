@@ -810,3 +810,24 @@ sert**. Le seul juge du projet ne juge que le build.
 Non corrigé ici (§12 : on n'absorbe pas), inscrit en dette avec la contrainte qui manque — un
 check qui exige un 200 et le `<h1>` attendu. C'est la découverte la plus importante de la journée,
 et elle vient d'une vérification faite pour une tout autre raison.
+
+### Épilogue — la cause était versionnable
+
+Le correctif tient en un `netlify.toml` de deux directives : `command = "pnpm build"`,
+`publish = "dist"`. Il n'existait aucun fichier de configuration de déploiement dans le dépôt.
+
+On redoutait que les réglages d'interface écrasent le fichier — auquel cas la réparation aurait
+exigé une intervention **[humain]** en console. Ce n'était pas le cas : la deploy preview de la
+PR #21 répond **200** sur `/` avec le `<h1>` attendu, `/package.json` et `/CLAUDE.md` répondent
+enfin 404, et l'horodatage rendu par `index.astro` change entre deux requêtes
+(`cache-status: fwd=miss`) — c'est bien la fonction SSR qui répond, pas un fichier statique.
+
+Ce qui reste à faire n'est pas la réparation mais **la garde**. Quatre PR ont été mergées ce jour
+avec un check `verify` vert et un statut « Deploy Preview ready! » pendant que le site servait
+404. Rien ne regardait ce que la preview *sert*. Tant que ce check n'existe pas, la panne peut
+revenir à l'identique et personne ne le saura — et c'est exactement ce que le §1 refuse.
+
+Dernière remarque, pour le fil de la journée : trois des quatre déclarations fausses trouvées
+aujourd'hui l'ont été en interrogeant un outil. Celle-ci a été trouvée en interrogeant le
+**produit**, et par accident, à l'occasion d'une vérification faite pour une autre raison. C'est
+un argument pour que la vérification du produit soit un check, pas une curiosité.
