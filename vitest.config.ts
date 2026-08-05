@@ -8,11 +8,27 @@ import { defineConfig } from 'vitest/config';
  *
  * The budgets are enforced by `scripts/budget.mjs`, wired into the npm scripts.
  */
+
+/**
+ * Mirrors the `~/*` paths entry in tsconfig.json and the Vite alias in
+ * astro.config.mjs. It is declared per project on purpose: a `resolve.alias` at
+ * the root of this file is NOT inherited by `projects` entries — each project is
+ * its own Vite config — so the root-level version resolves nothing while looking
+ * exactly like a working declaration. tests/unit/path-alias.test.ts is what
+ * keeps that from being rediscovered the hard way.
+ */
+const resolve = {
+  alias: {
+    '~': new URL('./src/', import.meta.url).pathname,
+  },
+};
+
 export default defineConfig({
   test: {
     globals: true,
     projects: [
       {
+        resolve,
         test: {
           name: 'unit',
           environment: 'node',
@@ -22,6 +38,7 @@ export default defineConfig({
         },
       },
       {
+        resolve,
         test: {
           name: 'integration',
           environment: 'node',
