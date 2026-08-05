@@ -328,3 +328,108 @@ Ce n'est plus un incident, c'est une propriété du dispositif : **la posture de
 projet cloud-only n'est pas auditable depuis le projet.** À terme, le seul contrôle honnête est
 comportemental — une PR Dependabot qui arrive le lundi prouve la configuration bien mieux qu'une
 case cochée.
+
+---
+
+## 004 — Le garde SSRF : le TDD paie, et deux règles de lint s'annulent
+
+**5 août 2026** · jalon 1 · tâche J1-05
+
+### Contexte
+
+Première tâche de logique pure du projet, et la priorité 2 du §5 : le garde SSRF de
+`src/lib/fetch/`. TDD strict imposé par la doctrine. Résultat : 166 tests, 93,9 % de branches,
+2,1 s pour la couche unitaire.
+
+### Ce que le TDD a réellement apporté ici
+
+La table des plages rejetées a été écrite **avant** toute implémentation — une entrée par bloc
+qu'on a déjà vu servir à pivoter vers un réseau interne, avec la raison en troisième colonne.
+
+Puis l'implémentation a été **entièrement réécrite** en cours de route (voir plus bas). La table
+n'a pas bougé d'une ligne, et elle a validé la seconde implémentation exactement comme la
+première.
+
+C'est la démonstration la plus nette qu'on ait eue jusqu'ici du raisonnement du §5 : *le test est
+le seul endroit où la spécification survit*. Une session future qui voudra ajouter une plage n'a
+pas besoin de comprendre l'implémentation ; elle ajoute une ligne à la table. Et si la
+représentation interne change encore, la spécification, elle, ne bouge pas.
+
+### Friction 1 — deux règles ESLint qui s'excluent mutuellement
+
+Le code de parsing indexait des tableaux d'octets. Sous `noUncheckedIndexedAccess`, `bytes[i]`
+vaut `number | undefined`, ce qui a déclenché deux règles de `strictTypeChecked` **en
+contradiction directe** :
+
+| Règle | Exige |
+|---|---|
+| `@typescript-eslint/non-nullable-type-assertion-style` | remplacer `bytes[i] as number` par `bytes[i]!` |
+| `@typescript-eslint/no-non-null-assertion` | interdire `bytes[i]!` |
+
+Aucune écriture ne satisfait les deux. Les sorties évidentes étaient mauvaises : désactiver une
+règle de sûreté dans un garde SSRF, ou ajouter des `if (x === undefined) return null` que
+TypeScript prouve inatteignables.
+
+**La bonne sortie était de changer la représentation des données, pas la configuration.** Les
+adresses sont devenues des `bigint`, et les plages sont déclarées en notation CIDR
+(`'169.254.169.254/32'`, `'fc00::/7'`), analysées au chargement du module par le même parseur que
+le garde utilise. Plus aucune indexation, plus aucune assertion, plus aucune branche morte.
+
+Le conflit de lint a donc produit un meilleur code que celui qu'on aurait écrit sans lui — et il
+a fait apparaître un **bug latent** : la plage IPv6 `100::/64` était comparée sur 16 bits au lieu
+de 64, parce que l'ancien code bornait sa boucle à la longueur du préfixe écrit à la main. En
+CIDR, la longueur est dans la notation : l'erreur devient impossible à écrire.
+
+### Ce que ça dit du contrat lui-même
+
+Deux exigences du dépôt tirent en sens inverse, et il vaut mieux l'écrire :
+`noUncheckedIndexedAccess` **pousse à écrire des gardes défensifs**, et le seuil de 90 % de
+branches **interdit de les laisser non couverts**. Quand un garde porte sur un cas que le
+compilateur prouve impossible, aucun test ne peut l'atteindre.
+
+La règle qu'on en tire, appliquée trois fois dans cette PR : **une branche que TypeScript prouve
+inatteignable est supprimée, pas testée.** Un `if` qui ne peut pas être faux n'est pas une
+défense, c'est une fausse assurance — et il coûte du taux de couverture qu'on serait tenté de
+racheter par un test de complaisance. Trois branches ont été retirées ainsi, chacune avec le
+commentaire disant pourquoi elle n'est pas là.
+
+### Friction 2 — une apostrophe typographique dans le User-Agent
+
+Le `User-Agent` par défaut avait été écrit en français, avec une apostrophe typographique (`’`,
+U+2019). Quatorze tests ont échoué d'un coup sur :
+
+```
+Cannot convert argument to a ByteString because the character at index 42
+has a value of 8217 which is greater than 255.
+```
+
+Une valeur d'en-tête HTTP est une `ByteString` : aucun point de code au-dessus de 255. Le §4 dit
+déjà que le code et les identifiants sont en anglais ; cette panne montre que la règle n'est pas
+qu'une convention de lisibilité, elle a des effets à l'exécution.
+
+Détail plus intéressant que la panne : le premier test écrit pour l'empêcher de revenir vérifiait
+les points de code par une expression régulière — et ESLint l'a refusée (`no-control-regex`). Le
+test a été réécrit en `expect(() => new Headers({ 'user-agent': UA })).not.toThrow()`, c'est-à-dire
+**en interrogeant l'API qui impose réellement la contrainte** au lieu d'en réimplémenter une
+approximation. La seconde version est plus courte et plus juste. Le refus du linter a, là encore,
+amélioré le test.
+
+### Ce qui n'est pas couvert, et pourquoi c'est écrit
+
+**Le rebinding DNS reste ouvert.** Le garde résout le nom, juge les adresses, puis rend le **nom
+d'hôte** à `fetch`, qui résout à nouveau. Un enregistrement dont le TTL expire entre les deux
+réponses peut présenter une adresse publique au garde et une adresse privée à la connexion.
+
+Fermer la brèche demande de composer directement l'IP vérifiée avec un en-tête `Host` épinglé et
+un dispatcher HTTP dédié. C'est faisable, mais c'est une autre tâche. Le résidu est écrit dans le
+module, dans la roadmap et ici, plutôt que corrigé à moitié : **une atténuation partielle qui a
+l'air complète est pire qu'une brèche documentée.**
+
+### Ce qui a marché du premier coup
+
+- L'injection de `resolve` et `fetch` en dépendances. Le garde anti-I/O de l'entrée 002 rendait le
+  test du client impossible autrement — et c'est le module où « on n'a pas pu le tester » aurait
+  été une réponse inacceptable. La contrainte a dicté l'architecture, dans le bon sens.
+- Les 79 tests de la table de plages, verts à la première exécution après implémentation.
+- Le parcours des bornes (`9.255.255.255` autorisée, `10.0.0.0` refusée, et ainsi de suite pour
+  chaque bloc) : aucun décalage d'un bit.
