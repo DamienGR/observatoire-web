@@ -31,6 +31,15 @@ updates:
         update-types: [minor, patch]
     # Majors are deliberately left ungrouped. They carry breaking changes and
     # have to be read one at a time.
+    ignore:
+      # `@types/node` describes a Node major; it is not an ordinary dependency
+      # whose latest version is the best one. The runtime is pinned to Node 22
+      # LTS by `.nvmrc` and by `engines` (CLAUDE.md §2), so types for a later
+      # major would let `tsc` accept APIs that do not exist at run time — a
+      # green CI proving nothing. This is a follower, not a decision: raise it
+      # in the same change that moves the runtime, never on its own.
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /

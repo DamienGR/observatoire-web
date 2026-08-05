@@ -6,7 +6,7 @@
   "description": "Mesures automatisées de qualité et d'accessibilité technique des sites des communes françaises",
   "license": "UNLICENSED",
   "engines": {
-    "node": ">=22.0.0 <23"
+    "node": ">=22.12.0 <23"
   },
   "packageManager": "pnpm@10.33.0",
   "scripts": {
@@ -29,11 +29,11 @@
     "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build"
   },
   "dependencies": {
-    "@astrojs/netlify": "^6.5.14",
+    "@astrojs/netlify": "^8.1.3",
     "@neondatabase/serverless": "^1.0.2",
     "@sentry/astro": "^10.19.0",
-    "astro": "^5.14.5",
-    "drizzle-orm": "^0.44.6",
+    "astro": "^7.1.6",
+    "drizzle-orm": "^0.45.2",
     "zod": "^4.1.12"
   },
   "devDependencies": {
