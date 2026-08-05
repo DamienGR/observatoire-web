@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+.astro/
+.netlify/
+
+# Test and coverage output
+coverage/
+test-results/
+playwright-report/
+blob-report/
+reports/
+.stryker-tmp/
+
+# Environment — only .env.example is committed (CLAUDE.md §7)
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.DS_Store
+*.log

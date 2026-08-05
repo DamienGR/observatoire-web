@@ -1,0 +1,9 @@
+# pnpm 10 reads dependency-build policy from here, not from package.json.
+# Supply chain (CLAUDE.md §7): no dependency is allowed to run an install
+# script. The ignored list is explicit so that a new entry is a reviewable
+# decision rather than a silent one.
+onlyBuiltDependencies: []
+ignoredBuiltDependencies:
+  - '@sentry/cli'
+  - esbuild
+  - sharp
