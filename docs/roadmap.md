@@ -55,14 +55,14 @@ que sa moitié versionnée était réalisable depuis le premier jour.
 | J1-02 | **[humain]** Provisionnement Neon, Netlify, Sentry, clé PSI | `terminé` | — | Secrets en place |
 | J1-03 | Durcissement du dépôt : secret scanning, push protection, Dependabot, CodeQL | `terminé` | — | Moitié console **[humain]** faite le 5/8 ; moitié versionnée (`dependabot.yml`, `codeql.yml`) dans la même journée. La marque **[humain]** était trop large : cf. dette |
 | J1-04 | Bootstrap : `package.json`, Astro, TS strict, ESLint/Prettier, Vitest (2 projects + garde anti-I/O), `.env.example`, job CI rapide | `terminé` | — | Toutes les dépendances des tâches parallèles sont installées |
-| J1-05 | Garde SSRF — `src/lib/fetch/` | `à faire` | J1-04 | TDD strict. Priorité 2 du §5 |
+| J1-05 | Garde SSRF — `src/lib/fetch/` | `terminé` | J1-04 | TDD strict tenu : la table de plages a été écrite avant le code et n'a pas bougé. Résidu de rebinding DNS en dette |
 | J1-06 | Machine à états de résolution d'URL — `src/lib/` | `à faire` | J1-04 | TDD strict |
 | J1-07 | Parsers Zod + fixtures gelées (`geo.api.gouv.fr`, DILA) | `à faire` | J1-04 | Capture des fixtures à faire une fois |
 | J1-08 | Schéma Drizzle (5 tables du §6 du brief) + 1re migration | `à faire` | J1-04 | |
 | J1-09 | Coquille du site : layout accessible, en-têtes de sécurité, pages légales et méthodologie | `à faire` | J1-04 | §9 du brief |
 | J1-10 | **[humain]** Environment GitHub `production` + politique de branche `main` | `reporté` | — | Décidé le 4/8 : à faire avant J1-11 |
 | J1-11 | Job CI d'intégration + branche Neon éphémère + migration en dry-run | `bloqué` | J1-04, J1-08, J1-10 | Seul job de PR utilisant un secret |
-| J1-12 | Job CI E2E : Playwright + axe-core sur deploy preview, upload d'artefacts | `bloqué` | J1-04, J1-09, Netlify lié au dépôt | |
+| J1-12 | Job CI E2E : Playwright + axe-core sur deploy preview, upload d'artefacts | `bloqué` | J1-09 | Netlify est lié : la PR #4 a produit une deploy preview. Ne dépend plus que de J1-09 |
 | J1-13 | **[humain]** Protection de `main` : checks requis, merge linéaire | `terminé` | J1-04 | Check `verify` exigé et historique linéaire activés le 5/8. Statut **déclaré par le porteur** : une session ne peut pas le constater (cf. dette) |
 | J1-14 | Job d'ingestion du référentiel des communes | `bloqué` | J1-05, J1-07, J1-08 | |
 | J1-15 | Page `/stats` minimale sur données réelles | `bloqué` | J1-14 | |
@@ -109,3 +109,6 @@ Ce qu'on a laissé volontairement de côté, pour ne pas l'oublier.
 | Sentry non câblé | 5/8 | La dépendance `@sentry/astro` est installée mais l'intégration n'est pas branchée. Le brief exige Sentry « dès le jour 1 » : à faire dans J1-09 |
 | `pnpm approve-builds` non silencieux | 5/8 | `onlyBuiltDependencies: []` déclaré dans `pnpm-workspace.yaml`, mais pnpm 10.33 affiche quand même l'avertissement à chaque installation. Cosmétique, à revoir sur une version ultérieure |
 | Écriture des tests E2E | 5/8 | `playwright.config.ts` existe, `tests/e2e/` est vide. Les parcours arrivent avec J1-12 |
+| Rebinding DNS non couvert | 5/8 | Le garde résout, juge, puis rend le **nom d'hôte** à `fetch`, qui résout à nouveau. Un enregistrement dont le TTL expire entre les deux réponses peut donner une adresse publique au garde et une adresse privée à la connexion. Fermer la brèche exige de composer l'IP vérifiée avec un `Host` épinglé et un dispatcher dédié. Documenté plutôt qu'à moitié corrigé |
+| Ports non restreints par le garde SSRF | 5/8 | Le garde n'impose ni 80 ni 443. Une fois les plages privées bloquées, le risque résiduel porte sur des services publics exotiques ; à réévaluer si le scan sort de la page d'accueil |
+| Branches défensives et couverture | 5/8 | `noUncheckedIndexedAccess` pousse à écrire des gardes que TypeScript prouve inatteignables, et le seuil de 90 % de branches interdit de les laisser non couvertes. Les deux exigences tirent en sens inverse : la sortie est de changer la représentation des données, pas d'ajouter un test factice. Cf. journal 004 |
