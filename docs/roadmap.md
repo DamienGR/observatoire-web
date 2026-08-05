@@ -48,7 +48,7 @@ Les tâches marquées **[humain]** ne sont pas réalisables depuis une session c
 | J1-01 | Documentation socle : `CLAUDE.md`, journal, brief v1.1 | `terminé` | — | PR #1 |
 | J1-02 | **[humain]** Provisionnement Neon, Netlify, Sentry, clé PSI | `terminé` | — | Secrets en place |
 | J1-03 | **[humain]** Durcissement du dépôt : secret scanning, push protection, Dependabot, CodeQL | `à faire` | — | §7 de `CLAUDE.md` |
-| J1-04 | Bootstrap : `package.json`, Astro, TS strict, ESLint/Prettier, Vitest (2 projects + garde anti-I/O), `.env.example`, job CI rapide | `à faire` | — | Point de sérialisation : tout en dépend |
+| J1-04 | Bootstrap : `package.json`, Astro, TS strict, ESLint/Prettier, Vitest (2 projects + garde anti-I/O), `.env.example`, job CI rapide | `terminé` | — | Toutes les dépendances des tâches parallèles sont installées |
 | J1-05 | Garde SSRF — `src/lib/fetch/` | `à faire` | J1-04 | TDD strict. Priorité 2 du §5 |
 | J1-06 | Machine à états de résolution d'URL — `src/lib/` | `à faire` | J1-04 | TDD strict |
 | J1-07 | Parsers Zod + fixtures gelées (`geo.api.gouv.fr`, DILA) | `à faire` | J1-04 | Capture des fixtures à faire une fois |
@@ -57,7 +57,7 @@ Les tâches marquées **[humain]** ne sont pas réalisables depuis une session c
 | J1-10 | **[humain]** Environment GitHub `production` + politique de branche `main` | `reporté` | — | Décidé le 4/8 : à faire avant J1-11 |
 | J1-11 | Job CI d'intégration + branche Neon éphémère + migration en dry-run | `bloqué` | J1-04, J1-08, J1-10 | Seul job de PR utilisant un secret |
 | J1-12 | Job CI E2E : Playwright + axe-core sur deploy preview, upload d'artefacts | `bloqué` | J1-04, J1-09, Netlify lié au dépôt | |
-| J1-13 | **[humain]** Protection de `main` : checks requis, merge linéaire | `bloqué` | J1-04 | Les checks ne sont sélectionnables qu'après leur 1re exécution |
+| J1-13 | **[humain]** Protection de `main` : checks requis, merge linéaire | `à faire` | J1-04 | Débloqué : le check `verify` existe et s'est exécuté, il est donc sélectionnable |
 | J1-14 | Job d'ingestion du référentiel des communes | `bloqué` | J1-05, J1-07, J1-08 | |
 | J1-15 | Page `/stats` minimale sur données réelles | `bloqué` | J1-14 | |
 
@@ -96,3 +96,7 @@ Ce qu'on a laissé volontairement de côté, pour ne pas l'oublier.
 | Historique non linéaire | 4/8 | PR #1 mergée par commit de merge, alors que le §4 exige un historique linéaire. Régler le mode de merge du dépôt |
 | Langue des descriptions de PR | 4/8 | Le §4 ne tranche pas ; la PR #1 était en anglais |
 | Décisions ouvertes du brief §11 | — | Score composite, rétention au-delà de 12 mois, fréquence des scans |
+| Suites de tests vides qui passent | 5/8 | `test:integration` et `test:e2e` tournent avec `--passWithNoTests` faute de tests existants. **À retirer dès la première PR qui en ajoute** : une suite vide qui passe est exactement la CI qu'on apprend à ignorer (§5 de `CLAUDE.md`) |
+| Sentry non câblé | 5/8 | La dépendance `@sentry/astro` est installée mais l'intégration n'est pas branchée. Le brief exige Sentry « dès le jour 1 » : à faire dans J1-09 |
+| `pnpm approve-builds` non silencieux | 5/8 | `onlyBuiltDependencies: []` déclaré dans `pnpm-workspace.yaml`, mais pnpm 10.33 affiche quand même l'avertissement à chaque installation. Cosmétique, à revoir sur une version ultérieure |
+| Écriture des tests E2E | 5/8 | `playwright.config.ts` existe, `tests/e2e/` est vide. Les parcours arrivent avec J1-12 |

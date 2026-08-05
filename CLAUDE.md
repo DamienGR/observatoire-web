@@ -135,6 +135,13 @@ Actions déclenchable manuellement (`workflow_dispatch`).
 - Pas de `console.log` en dehors des scripts de développement — utiliser le logger applicatif.
 - Les dates sont stockées et manipulées en UTC (`timestamptz`), formatées en `Europe/Paris`
   uniquement à l'affichage.
+- **Les variables d'environnement se lisent par `src/lib/env`, jamais par `process.env` en
+  direct** — règle appliquée par ESLint. Ce module déclare le schéma Zod du §9, traite une chaîne
+  vide comme une variable absente, et sépare les variables `PUBLIC_` des variables serveur. C'est
+  le seul endroit où la discipline du préfixe `PUBLIC_` peut être vérifiée plutôt que supposée.
+- Prettier ne formate pas le Markdown (`.prettierignore`). Les tableaux de `docs/` sont écrits et
+  alignés à la main : le repadding automatique transforme une correction d'un mot en diff de
+  cinquante lignes, alors que dans ce dépôt le diff *est* la trace.
 
 ### Accessibilité
 
@@ -190,6 +197,11 @@ sans que personne ne le remarque, et c'est ainsi qu'on se retrouve avec une CI d
 **Cible globale : moins de 10 minutes** du push au verdict, alerte à 15. Les jobs unitaire et
 intégration tournent en parallèle ; l'E2E attend la preview. Le temps total est celui du plus
 lent, pas la somme.
+
+Le budget est appliqué par `scripts/budget.mjs`, qui enveloppe chaque couche de test : au-delà de
+la durée allouée, le processus est tué et la commande échoue. C'est ce qui rend le budget
+*mesuré* et non aspirationnel. Relever un plafond est une décision qui se discute dans la PR,
+pas un chiffre qu'on ajuste en passant.
 
 La pyramide est **volontairement large au milieu**. Les bugs intéressants de ce projet ne sont
 pas dans les fonctions pures mais aux frontières : reprise d'un scan interrompu, tagging du
