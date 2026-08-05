@@ -433,3 +433,108 @@ l'air complète est pire qu'une brèche documentée.**
 - Les 79 tests de la table de plages, verts à la première exécution après implémentation.
 - Le parcours des bornes (`9.255.255.255` autorisée, `10.0.0.0` refusée, et ainsi de suite pour
   chaque bloc) : aucun décalage d'un bit.
+
+---
+
+## 005 — Six PR Dependabot : l'intérêt était dans celle qu'on refuse
+
+**5 août 2026** · jalon 1 · branche `claude/dependabot-updates-vgavfn`
+
+### Contexte
+
+Première récolte de Dependabot après J1-03 : six PR ouvertes d'un coup — deux majeures Astro
+(`5 → 7`) et `@astrojs/netlify` (`6 → 8`), une PR combinant les deux, `drizzle-orm` en mineure,
+`@types/node` (`22 → 26`), et le groupe `github-actions` avec cinq actions.
+
+### Friction 1 — le groupement produit quand même des PR redondantes
+
+Le `dependabot.yml` laisse les majeures **délibérément non groupées** (« elles portent des
+ruptures, on les lit une par une »). Résultat : Astro seul (#9), `@astrojs/netlify` seul (#7),
+**et** les deux ensemble (#10) — parce que l'adaptateur a une plage de pair sur Astro et que
+Dependabot ouvre alors la PR combinée en plus des deux isolées. Trois PR pour deux paquets, dont
+deux qui ne peuvent pas être mergées seules.
+
+Ce n'est pas un défaut de configuration à corriger : la PR combinée est la seule mergeable, et
+les deux autres sont le prix à payer pour lire les majeures séparément. Le noter suffit —
+**la règle à retenir est de chercher la PR combinée avant de regarder les isolées**, pas
+l'inverse.
+
+Autre effet du plafond : `open-pull-requests-limit: 5` était atteint sur npm. Le groupe
+`dev-dependencies` (mineur/correctif) n'a produit **aucune PR** — non pas parce qu'il n'y avait
+rien, mais parce qu'il n'y avait plus de place. Un plafond atteint est silencieux : rien ne
+distingue « à jour » de « masqué ».
+
+### Friction 2 — `@types/node` : la seule PR à refuser, et la CI ne l'aurait pas dit
+
+`@types/node` passait de 22 à 26. La CI serait probablement **verte** : les types de Node 26
+décrivent un sur-ensemble d'API, `tsc` n'a aucune raison de se plaindre.
+
+C'est précisément ce qui la rend dangereuse. Le moteur est épinglé sur Node 22 LTS
+(`.nvmrc`, `engines`). Des types en avance de quatre majeures autorisent le code à appeler des
+API qui n'existent pas à l'exécution, et le seul juge du projet (§5 de `CLAUDE.md`) ne verra
+rien. **`@types/node` n'est pas une dépendance ordinaire dont la dernière version est la
+meilleure : c'est un suiveur du moteur.** Refusée, et la règle est écrite dans `dependabot.yml`
+plutôt que laissée à la mémoire d'une session future — une décision non versionnée ne survit pas
+au changement de contexte.
+
+### Ce que la majeure Astro a révélé sur nos propres déclarations
+
+Astro 6 relève le plancher à **Node 22.12.0**. Nos `engines` déclaraient `>=22.0.0 <23`.
+
+Le plancher déclaré était donc devenu **faux**, et rien ne l'aurait signalé : la CI installe
+depuis `.nvmrc` (`22`), qui flotte vers la dernière 22.x et satisfait le vrai plancher par
+accident. `engines` resserré à `>=22.12.0 <23` dans la même PR. La leçon est générale — **une
+majeure d'un cadre applicatif déplace des contraintes que le dépôt a recopiées ailleurs**, et
+ces copies ne sont vérifiées par personne.
+
+Deux autres points relevés en lisant les guides de migration, sans effet ici mais notés :
+
+- Astro 7 **réserve `src/fetch.ts`** comme point d'entrée de routage avancé. J1-05 vient de créer
+  `src/lib/fetch/` — hors du chemin réservé, donc rien à faire. À un répertoire près, la PR
+  précédente aurait transformé le garde SSRF en route.
+- `compressHTML` passe par défaut de `true` à `'jsx'`. Changement silencieux d'espacement, sans
+  conséquence tant que le site est une page de bootstrap ; à revoir dans J1-09.
+
+### Friction 3 — un pin d'action qui n'était pas un commit
+
+Le §7 exige les actions tierces épinglées **par SHA de commit**. Le groupe `github-actions`
+proposait pour `github/codeql-action` un nouveau SHA… avec le **même** commentaire de version
+(`# v4.37.6`). Une mise à jour qui ne met rien à jour : suspect.
+
+Vérification :
+
+```
+git ls-remote --tags https://github.com/github/codeql-action
+9e3211c9a3b9311dfe05da2ed48eea3386f042dd  refs/tags/v4.37.6
+5595ccaf912efad79be6eef63a5619ff05969be3  refs/tags/v4.37.6^{}
+```
+
+L'ancien pin était l'**objet tag annoté**, pas le commit. GitHub Actions l'accepte et l'analyse
+tournait, mais le dépôt croyait appliquer une règle qu'il n'appliquait qu'à moitié. Dependabot a
+corrigé le type d'objet, pas la version. Les trois autres actions (`checkout` v7.0.1,
+`setup-node` v7.0.0, `upload-artifact` v7.0.1) ont été vérifiées de la même façon : SHA conformes
+aux étiquettes annoncées.
+
+### Une friction de l'entrée 002 qui n'en est plus une
+
+L'entrée 002 affirmait qu'« une session ne peut pas résoudre une étiquette en SHA depuis le
+conteneur ». **C'est faux** : `git ls-remote --tags <url>` fonctionne, sans authentification,
+depuis le conteneur. La vérification ci-dessus en dépend entièrement.
+
+L'hypothèse d'origine venait d'un échec de l'API REST GitHub et avait été généralisée à tort à
+tout accès sortant. On ne réécrit pas 002 (le journal s'ajoute, il ne se corrige pas), mais la
+correction vaut d'être écrite : **une capacité déclarée absente sans avoir été testée devient un
+contournement permanent.** C'est le mode de panne le plus coûteux d'un journal — il fige une
+limite imaginaire.
+
+### Ce qui a marché du premier coup
+
+- Le saut de deux majeures d'Astro (`5.18.2 → 7.1.6`) et de deux de l'adaptateur Netlify
+  (`6.6.5 → 8.1.3`) : `pnpm verify` vert sans **aucune** modification de code. Le mérite en
+  revient à la date plus qu'à l'architecture — le site est une page de bootstrap, la surface
+  d'API exposée se résume à `defineConfig`. Le même saut dans six mois coûtera davantage, et
+  c'est un argument pour ne pas laisser les majeures s'accumuler.
+- La consolidation des quatre PR npm en une seule branche : `pnpm-lock.yaml` n'a été résolu
+  qu'une fois. Merger les PR l'une après l'autre aurait imposé trois rebases Dependabot et trois
+  cycles de CI pour le même résultat — la roadmap prévenait déjà que ce fichier est « le conflit
+  le plus pénible à résoudre ».
