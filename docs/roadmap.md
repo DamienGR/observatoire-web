@@ -57,7 +57,7 @@ Les tâches marquées **[humain]** ne sont pas réalisables depuis une session c
 | J1-10 | **[humain]** Environment GitHub `production` + politique de branche `main` | `reporté` | — | Décidé le 4/8 : à faire avant J1-11 |
 | J1-11 | Job CI d'intégration + branche Neon éphémère + migration en dry-run | `bloqué` | J1-04, J1-08, J1-10 | Seul job de PR utilisant un secret |
 | J1-12 | Job CI E2E : Playwright + axe-core sur deploy preview, upload d'artefacts | `bloqué` | J1-04, J1-09, Netlify lié au dépôt | |
-| J1-13 | **[humain]** Protection de `main` : checks requis, merge linéaire | `à faire` | J1-04 | Check `verify` exigé depuis le 5/8. **Reste l'historique linéaire** — cf. dette |
+| J1-13 | **[humain]** Protection de `main` : checks requis, merge linéaire | `terminé` | J1-04 | Check `verify` exigé et historique linéaire activés le 5/8. Statut **déclaré par le porteur** : une session ne peut pas le constater (cf. dette) |
 | J1-14 | Job d'ingestion du référentiel des communes | `bloqué` | J1-05, J1-07, J1-08 | |
 | J1-15 | Page `/stats` minimale sur données réelles | `bloqué` | J1-14 | |
 
@@ -93,9 +93,9 @@ Ce qu'on a laissé volontairement de côté, pour ne pas l'oublier.
 | Sujet | Origine | Notes |
 |---|---|---|
 | Portée de `NEON_API_KEY` | 4/8 | Vérifier qu'il s'agit d'une clé scopée au projet et non au compte |
-| Historique non linéaire | 4/8 | PR #1 mergée par commit de merge, alors que le §4 exige un historique linéaire. Reste ouvert au 5/8 : le check requis est en place, pas le mode de merge. **Porté par J1-13**, pas par une ligne de dette autonome |
+| ~~Historique non linéaire~~ | 4/8 → soldé le 5/8 | L'historique linéaire est exigé sur `main` (J1-13). Le commit de merge de la PR #1 reste dans l'historique : on ne réécrit pas `main` pour l'effacer |
 | État de la protection de `main` illisible depuis une session | 5/8 | `GET /branches/main/protection` répond `403 Resource not accessible by integration`. Une session ne peut pas vérifier une règle de son propre contrat (§4) : elle doit croire ce qu'on lui dit. Cf. journal 002 |
-| Langue des descriptions de PR | 4/8 | Le §4 ne tranche pas ; la PR #1 était en anglais |
+| Langue des descriptions de PR | 4/8 | Le §4 ne tranche pas, et la pratique a déjà divergé : PR #1 en anglais, PR #3 en français. À arbitrer dans le §4 avant que le corpus ne devienne illisible |
 | Décisions ouvertes du brief §11 | — | Score composite, rétention au-delà de 12 mois, fréquence des scans |
 | Suites de tests vides qui passent | 5/8 | `test:integration` et `test:e2e` tournent avec `--passWithNoTests` faute de tests existants. **À retirer dès la première PR qui en ajoute** : une suite vide qui passe est exactement la CI qu'on apprend à ignorer (§5 de `CLAUDE.md`) |
 | Sentry non câblé | 5/8 | La dépendance `@sentry/astro` est installée mais l'intégration n'est pas branchée. Le brief exige Sentry « dès le jour 1 » : à faire dans J1-09 |
