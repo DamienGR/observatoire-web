@@ -43,7 +43,7 @@
     "@playwright/test": "^1.56.1",
     "@stryker-mutator/core": "^9.2.0",
     "@stryker-mutator/vitest-runner": "^9.2.0",
-    "@types/node": "^22.18.10",
+    "@types/node": "^26.1.2",
     "@vitest/coverage-v8": "^3.2.4",
     "astro-eslint-parser": "^1.2.2",
     "drizzle-kit": "^0.31.6",
