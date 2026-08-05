@@ -696,3 +696,117 @@ aucun test à porter la garantie (`--passWithNoTests`, cf. dette).
 Le §5 justifie le test-first par « le test est le seul endroit où la spécification survit ». Cette
 entrée en montre un second usage, plus immédiat : **le test-first est aussi ce qui distingue une
 correction d'une correction apparente.** Les deux se ressemblent beaucoup dans un diff.
+
+---
+
+## 008 — `sharp` : l'override était moins risqué que ma propre note ne le disait
+
+**5 août 2026** · jalon 1 · branche `claude/dependabot-updates-vgavfn`
+
+### Contexte
+
+Dernière advisory haute après la récolte de l'entrée 005 : `sharp@0.34.5` hérite de quatre CVE
+libvips (GHSA-f88m-g3jw-g9cj). Le correctif n'existe qu'en `>=0.35.0` — aucun rétroportage en
+0.34.x — donc aucune plage directe ne peut l'atteindre. Il fallait un `overrides` pnpm.
+
+### La friction : ma propre note de dette était fausse
+
+L'entrée écrite en 005 disait qu'un override reviendrait à « imposer à Astro une version qu'il
+n'a pas testée ». Vérification faite au moment de l'appliquer :
+
+```
+astro@7.1.6  → sharp: ^0.34.0 || ^0.35.0   (optionnelle)
+ipx@3.1.1    → sharp: ^0.34.3
+```
+
+**Astro accepte déjà 0.35.** Le paquet qui plafonnait la résolution était `ipx`, tiré par
+`@netlify/images ← @netlify/dev ← @netlify/vite-plugin ← @astrojs/netlify`. Le risque réel
+n'était donc pas là où la note le plaçait, et il est nettement plus étroit : le chemin d'image
+CDN de Netlify, que ce site n'emprunte pas puisqu'il ne sert aucune image.
+
+C'est la quatrième fois de la journée qu'une affirmation écrite se révèle inexacte à la
+vérification — après le pin de tag annoté (005), le parser inerte (006) et l'alias Vitest (007).
+Les trois premières venaient d'outils tiers. **Celle-ci venait de moi**, écrite quelques heures
+plus tôt dans ce même dépôt, avec l'assurance d'un constat alors que c'était une supposition.
+
+La leçon est désolante de simplicité et vaut d'être écrite : *une note de dette est une
+hypothèse, pas un fait.* Elle est rédigée au moment où l'on quitte le sujet, c'est-à-dire au
+moment où l'on en sait le moins. La relire en la vérifiant coûte quelques minutes ; la croire
+coûte une décision prise sur un risque mal situé.
+
+### Ce que l'override déclare, et ce qu'il tait
+
+Un `overrides` est une affirmation : *nous savons mieux que la plage déclarée par ce paquet.*
+Écrit sans justification, il devient exactement ce que ce dépôt combat depuis trois entrées — une
+déclaration que personne ne peut vérifier. L'entrée porte donc, en commentaire dans
+`pnpm-workspace.yaml` : la référence de l'advisory, pourquoi la plage ne suffit pas, quel paquet
+est réellement dépassé, quel risque est accepté, et **la condition de retrait** (le jour où `ipx`
+accepte 0.35).
+
+pnpm 10 lit `overrides` depuis `pnpm-workspace.yaml`, au même endroit que la politique de scripts
+d'installation déjà présente — vérifié, pas supposé : le lockfile en porte la trace en tête de
+fichier.
+
+### La vérification qui manquait
+
+`pnpm verify` vert ne prouve rien ici : le site ne sert aucune image, donc le build n'exerce
+jamais `sharp`. Un binaire libvips incompatible serait passé inaperçu jusqu'au premier usage.
+
+Sondé directement — chargement du module, création d'une image, redimensionnement, relecture des
+métadonnées :
+
+```
+sharp 0.35.3 | libvips 8.18.3
+rendu : png 16x8 (99 octets)
+```
+
+Le binaire natif fonctionne sans script d'installation, ce qui était attendu (`sharp` publie des
+binaires précompilés en dépendances optionnelles) mais méritait d'être constaté, le §7 interdisant
+justement l'exécution de scripts d'installation.
+
+### Résultat
+
+`pnpm audit` : **0 haute, 2 modérées** (`esbuild`, `qs`), contre 4 hautes / 7 modérées / 4 basses
+sur `main` ce matin. Une seule copie de `sharp` dans l'arbre, plus aucune référence aux binaires
+0.34 dans le lockfile.
+
+### Post-scriptum — la vérification qui a trouvé autre chose
+
+L'override touchant un paquet du chemin Netlify (`ipx`), la deploy preview a été interrogée pour
+constater qu'elle servait toujours quelque chose. Elle répond **404**.
+
+Vérification immédiate avant d'accuser le diff : la production et les previews des PR #10, #18 et
+#19 répondent **404 elles aussi**. Le défaut est pré-existant et sans rapport.
+
+Première hypothèse : « la fonction SSR n'est pas invoquée ». Juste, mais c'est le symptôme. La
+cause se lit en demandant au site autre chose que `/` :
+
+| Chemin | Réponse |
+|---|---|
+| `/` | 404 |
+| `/package.json` | **200**, notre vrai `package.json` |
+| `/CLAUDE.md`, `/docs/brief.md`, `/src/pages/index.astro` | **200** |
+| `/README.md` | 404 — fichier absent du dépôt |
+
+La correspondance est exacte : **Netlify publie l'arborescence Git en statique.** Le build n'est
+jamais exécuté, la fonction SSR jamais déployée, et `/` échoue faute d'`index.html` à la racine.
+Il n'existe aucun `netlify.toml` dans le dépôt, et les réglages du site n'ont ni commande de build
+ni répertoire de publication.
+
+Deux conséquences que le symptôme seul ne laissait pas voir : **aucun en-tête de sécurité du §7
+n'a jamais été en vigueur** (seul `Strict-Transport-Security`, que Netlify ajoute de lui-même), et
+J1-12 était bloquée sur une preview qui ne sert rien.
+
+La leçon de méthode est la même qu'aux entrées 005 à 007 : la première explication plausible
+n'était pas fausse, elle était **trop haut placée**. Ce qui a fait apparaître la cause est d'avoir
+demandé au système quelque chose qu'on ne cherchait pas — ici, un chemin autre que celui qui
+échouait.
+
+C'est le cas que le §1 décrit mot pour mot : *si la CI est verte et que le produit est cassé,
+c'est la CI qu'il faut corriger.* Quatre PR ont été mergées aujourd'hui avec un check `verify`
+vert et un statut « Deploy Preview ready! », sans que rien ne regarde jamais **ce que la preview
+sert**. Le seul juge du projet ne juge que le build.
+
+Non corrigé ici (§12 : on n'absorbe pas), inscrit en dette avec la contrainte qui manque — un
+check qui exige un 200 et le `<h1>` attendu. C'est la découverte la plus importante de la journée,
+et elle vient d'une vérification faite pour une tout autre raison.

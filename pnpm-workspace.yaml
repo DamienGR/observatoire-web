@@ -7,3 +7,21 @@ ignoredBuiltDependencies:
   - '@sentry/cli'
   - esbuild
   - sharp
+
+# Overrides force a transitive version the dependency graph would not pick on
+# its own. Each entry is a claim that we know better than a package's declared
+# range, so each one carries its reason and the condition for removing it.
+overrides:
+  # GHSA-f88m-g3jw-g9cj — sharp inherits four libvips CVEs (CVE-2026-33327,
+  # -33328, -35590, -35591) in every version below 0.35.0. There is no 0.34.x
+  # backport, so a range bump cannot reach the fix.
+  #
+  # astro already declares `^0.34.0 || ^0.35.0`, so this is inside what Astro
+  # supports. The package this actually overrides is `ipx@3.1.1` (pulled in by
+  # @netlify/images <- @netlify/dev <- @netlify/vite-plugin <- @astrojs/netlify),
+  # which caps sharp at `^0.34.3`. That is the risk being accepted, and it is
+  # confined to Netlify's image-CDN path — which this site does not use, since
+  # it serves no images yet.
+  #
+  # Remove this entry once ipx ships a release accepting 0.35.
+  sharp: ^0.35.3
