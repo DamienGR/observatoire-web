@@ -37,6 +37,12 @@ prenne une tâche qu'elle ne peut pas terminer.
 
 Les tâches marquées **[humain]** ne sont pas réalisables depuis une session cloud.
 
+**Ne marquer `[humain]` qu'une tâche dont *aucune* part n'est réalisable en session.** Une tâche
+mixte ainsi marquée est une tâche que personne ne prend : la session s'en écarte, et le porteur
+croit qu'elle attend la session. Si les deux natures coexistent — un réglage de console et un
+fichier versionné — on scinde en deux lignes. Constaté sur J1-03 le 5/8, resté `à faire` pendant
+que sa moitié versionnée était réalisable depuis le premier jour.
+
 ---
 
 ## Jalon 1 — Bootstrap, ingestion, CI complète
@@ -47,7 +53,7 @@ Les tâches marquées **[humain]** ne sont pas réalisables depuis une session c
 |---|---|---|---|---|
 | J1-01 | Documentation socle : `CLAUDE.md`, journal, brief v1.1 | `terminé` | — | PR #1 |
 | J1-02 | **[humain]** Provisionnement Neon, Netlify, Sentry, clé PSI | `terminé` | — | Secrets en place |
-| J1-03 | **[humain]** Durcissement du dépôt : secret scanning, push protection, Dependabot, CodeQL | `à faire` | — | §7 de `CLAUDE.md` |
+| J1-03 | Durcissement du dépôt : secret scanning, push protection, Dependabot, CodeQL | `terminé` | — | Moitié console **[humain]** faite le 5/8 ; moitié versionnée (`dependabot.yml`, `codeql.yml`) dans la même journée. La marque **[humain]** était trop large : cf. dette |
 | J1-04 | Bootstrap : `package.json`, Astro, TS strict, ESLint/Prettier, Vitest (2 projects + garde anti-I/O), `.env.example`, job CI rapide | `terminé` | — | Toutes les dépendances des tâches parallèles sont installées |
 | J1-05 | Garde SSRF — `src/lib/fetch/` | `à faire` | J1-04 | TDD strict. Priorité 2 du §5 |
 | J1-06 | Machine à états de résolution d'URL — `src/lib/` | `à faire` | J1-04 | TDD strict |
@@ -94,7 +100,9 @@ Ce qu'on a laissé volontairement de côté, pour ne pas l'oublier.
 |---|---|---|
 | Portée de `NEON_API_KEY` | 4/8 | Vérifier qu'il s'agit d'une clé scopée au projet et non au compte |
 | ~~Historique non linéaire~~ | 4/8 → soldé le 5/8 | L'historique linéaire est exigé sur `main` (J1-13). Le commit de merge de la PR #1 reste dans l'historique : on ne réécrit pas `main` pour l'effacer |
-| État de la protection de `main` illisible depuis une session | 5/8 | `GET /branches/main/protection` répond `403 Resource not accessible by integration`. Une session ne peut pas vérifier une règle de son propre contrat (§4) : elle doit croire ce qu'on lui dit. Cf. journal 002 |
+| Configuration du dépôt illisible depuis une session | 5/8 | `GET /branches/main/protection` répond `403 Resource not accessible by integration`, et il en va de même des réglages de sécurité. Une session ne peut vérifier ni le §4 ni le §7 : les statuts de J1-13 et J1-03 sont **déclaratifs**. Cf. journal 002 et 003 |
+| Granularité de la marque **[humain]** | 5/8 | J1-03 était marquée `[humain]` en bloc alors que la moitié (Dependabot, CodeQL) est faite de fichiers versionnés. Une tâche mixte marquée `[humain]` est une tâche qu'aucune session ne prend, donc une tâche qui dort. Relire les autres `[humain]` avec cette grille |
+| CodeQL : périmètre et sévérité | 5/8 | Trois choix de départ à revoir après quelques exécutions réelles : suite de requêtes par défaut plutôt que `security-extended`, check **non requis**, et **aucune analyse des fichiers `.astro`** faute d'extracteur — la couverture des gabarits repose sur ESLint et l'E2E |
 | Langue des descriptions de PR | 4/8 | Le §4 ne tranche pas, et la pratique a déjà divergé : PR #1 en anglais, PR #3 en français. À arbitrer dans le §4 avant que le corpus ne devienne illisible |
 | Décisions ouvertes du brief §11 | — | Score composite, rétention au-delà de 12 mois, fréquence des scans |
 | Suites de tests vides qui passent | 5/8 | `test:integration` et `test:e2e` tournent avec `--passWithNoTests` faute de tests existants. **À retirer dès la première PR qui en ajoute** : une suite vide qui passe est exactement la CI qu'on apprend à ignorer (§5 de `CLAUDE.md`) |

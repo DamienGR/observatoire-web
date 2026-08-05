@@ -226,3 +226,105 @@ donc écrit comme tel — check requis actif, historique linéaire encore ouvert
 consolidé en un `terminé` qui laisserait croire à une vérification qui n'a pas eu lieu. C'est
 exactement le mécanisme de dérive que la règle de mise à jour de `docs/roadmap.md` cherche à
 éviter, et il vient ici de la plateforme, pas de la négligence.
+
+---
+
+## 003 — Durcir le dépôt : trois réglages sur quatre ne se constatent pas
+
+**5 août 2026** · jalon 1 · tâche J1-03
+
+### Contexte
+
+Activation des garde-fous du §7 : secret scanning, push protection, durcissement des Actions,
+Dependabot, CodeQL. Tâche marquée `[humain]` dans la roadmap, donc jamais prise par une session
+depuis son ouverture. C'est la première leçon de l'entrée, et elle n'est pas technique.
+
+### La marque `[humain]` était trop large
+
+J1-03 mélange deux natures de travail. Secret scanning, push protection et les permissions
+Actions sont des interrupteurs de console : effectivement hors de portée d'une session. Mais
+Dependabot et CodeQL, eux, se configurent par **des fichiers versionnés** — `.github/dependabot.yml`
+et un workflow — qu'une session écrit sans difficulté.
+
+Marquée `[humain]` en bloc, la tâche est restée `à faire` alors que la moitié était réalisable
+depuis le premier jour. Le §12 de `CLAUDE.md` dit qu'une session ne doit pas prendre une tâche
+`[humain]` ; il n'avait pas prévu qu'une tâche puisse l'être à moitié. **Une tâche mixte marquée
+`[humain]` est une tâche qui dort**, et elle dort sans que personne le remarque, parce que son
+statut a l'air justifié.
+
+Inscrit en dette : relire les autres `[humain]` avec cette grille.
+
+### Friction 1 — l'option secret scanning n'existe pas, et c'est normal
+
+Recherche infructueuse de l'interrupteur « secret scanning » dans les réglages. La documentation
+GitHub explique pourquoi : **sur un dépôt public, le secret scanning tourne automatiquement et
+gratuitement**, sans réglage à activer. Idem pour push protection, désormais active par défaut
+sur les dépôts publics.
+
+La friction n'est donc pas un blocage mais un **faux négatif d'interface** : l'absence de case à
+cocher se lit spontanément comme l'absence de fonctionnalité. C'est le symétrique exact du
+piège de l'entrée 001, où la présence d'un connecteur GitHub actif faisait croire que l'accès en
+écriture était accordé. Dans les deux cas, l'interface donne un signal sur l'état du système qui
+n'en est pas un.
+
+Ce qui est réellement observable : l'onglet `Security` expose une section d'alertes de secret
+scanning. Sa présence est la preuve ; l'absence de case ne prouve rien, ni dans un sens ni dans
+l'autre.
+
+### Friction 2 — la configuration Dependabot avait atterri dans un autre dépôt
+
+Le porteur a indiqué avoir ajouté la configuration Dependabot. Avant de l'utiliser comme acquise,
+vérification depuis la session : `.github/dependabot.yml` **est absent** de `main`, de toutes les
+branches distantes et des PR ouvertes. Renseignements pris, le fichier avait été créé **sur un
+autre dépôt**.
+
+Erreur banale, mais sa forme est propre au travail cloud-only. Sans machine locale, il n'existe
+pas de répertoire courant qui ancre le contexte : le dépôt sur lequel on agit est un onglet parmi
+d'autres, et rien dans l'interface ne fait obstacle quand on se trompe de cible. Le travail
+paraît fait, il l'est même réellement — ailleurs. Aucune erreur n'est levée, puisqu'aucune règle
+n'est violée.
+
+Ce qui a rattrapé le coup n'est pas de la méfiance mais une habitude déjà notée à l'entrée 001 :
+**vérifier plutôt qu'inférer**, y compris ce qu'on nous affirme, et surtout quand c'est bon
+marché. Deux minutes ici ; sans elles, `dependabot.yml` restait absent des deux côtés — chacun le
+croyant chez l'autre — et le §7 n'était pas satisfait sans que rien ne le signale.
+
+Corollaire pour la suite : **un changement hors dépôt n'est confirmé que par une observation dans
+le dépôt.** C'est aussi la seule vérification qui restera possible pour les réglages de console
+(cf. plus bas).
+
+### Friction 3 — CodeQL ne voit pas les fichiers `.astro`
+
+Il n'existe pas d'extracteur CodeQL pour le format `.astro`. L'analyse porte sur `.ts` et `.js` ;
+les gabarits de page ne sont **pas analysés du tout**.
+
+Ça compte ici plus qu'ailleurs. Le §7 traite le HTML tiers comme donnée hostile et interdit
+`set:html` — précisément le genre d'injection qu'un scanner de code devrait attraper, et
+précisément là où il ne regardera pas. La couverture des gabarits repose donc entièrement sur
+ESLint (`eslint-plugin-astro`, règles `jsx-a11y`) et sur l'E2E.
+
+Écrit ici et en dette parce qu'**un angle mort que personne n'a nommé finit par être pris pour
+de la couverture**. Découvrir cette limite au jalon 4, en cherchant pourquoi une injection est
+passée, coûterait infiniment plus cher que ces cinq lignes.
+
+### Deux choix de départ assumés, pas tranchés
+
+- **Advanced setup plutôt que default setup.** Le default garde son workflow hors du dépôt, où
+  rien n'est relisible, épinglable ni diffable. Dans un projet dont la prémisse est que
+  l'exploitation doit être versionnée et inspectable, un workflow invisible est le mauvais
+  défaut.
+- **Suite de requêtes par défaut, et CodeQL non requis.** `security-extended` trouve plus et
+  bruite plus ; le choisir sans ligne de base serait une supposition. Ériger CodeQL en check
+  requis avant d'avoir observé quelques exécutions serait fixer un seuil sans mesure — le
+  reproche que le brief adresse ailleurs. Les deux sont à revoir sur données réelles.
+
+### Ce que ça confirme
+
+Sur cinq réglages du §7, **un seul est vérifiable depuis une session** : la présence des fichiers
+versionnés. Les quatre autres répondent `403 Resource not accessible by integration`. Après J1-13,
+c'est le second statut de roadmap qui doit être écrit comme *déclaré* et non *constaté*.
+
+Ce n'est plus un incident, c'est une propriété du dispositif : **la posture de sécurité d'un
+projet cloud-only n'est pas auditable depuis le projet.** À terme, le seul contrôle honnête est
+comportemental — une PR Dependabot qui arrive le lundi prouve la configuration bien mieux qu'une
+case cochée.
