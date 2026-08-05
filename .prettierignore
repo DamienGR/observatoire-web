@@ -1,0 +1,16 @@
+dist/
+.astro/
+.netlify/
+coverage/
+node_modules/
+playwright-report/
+test-results/
+reports/
+.stryker-tmp/
+pnpm-lock.yaml
+drizzle/
+
+# Markdown is written by hand and wrapped by hand. Prettier pads table cells,
+# which turns a one-word documentation change into a fifty-line diff — and in
+# this repository the diff *is* the record (CLAUDE.md §1).
+*.md

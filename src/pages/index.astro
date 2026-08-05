@@ -1,0 +1,35 @@
+---
+/**
+ * Placeholder home page. The real shell — accessible layout, security headers,
+ * legal and methodology pages — is J1-09; this page exists so the bootstrap has
+ * something to build and the CI has something to typecheck.
+ */
+const lastUpdated = new Date().toISOString();
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>observatoire-web.fr</title>
+  </head>
+  <body>
+    <main>
+      <h1>observatoire-web.fr</h1>
+      <p>
+        Mesures automatisées de qualité et d'accessibilité technique des sites des communes
+        françaises de plus de 10 000 habitants.
+      </p>
+      <p>Site en cours de construction. Aucune mesure n'est encore publiée.</p>
+      <p>
+        Initiative indépendante éditée par StudioMaestro. Sans lien avec une administration
+        publique.
+      </p>
+      <p>
+        <small>Page générée le <time datetime={lastUpdated}>{lastUpdated}</time>.</small>
+      </p>
+    </main>
+  </body>
+</html>
