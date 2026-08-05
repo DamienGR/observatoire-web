@@ -203,3 +203,26 @@ Le §4 impose `feat/`, `fix/`, `chore/`. Cette session travaille sur `claude/pha
 nom imposé par l'environnement d'exécution et non choisi. La convention du dépôt et la
 plateforme se contredisent sans que la session puisse arbitrer. Signalé ici plutôt que résolu en
 silence : c'est au §4 d'accepter le préfixe `claude/` ou à la plateforme de laisser choisir.
+
+### Addendum du 5 août — la session ne peut pas vérifier la protection de `main`
+
+Le check requis `verify` a été activé côté GitHub après le premier passage vert de la CI, ce qui
+achève la moitié de J1-13. La session a essayé de le confirmer par elle-même :
+
+```
+GET /repos/DamienGR/observatoire-web/branches/main/protection
+→ 403 Resource not accessible by integration
+```
+
+Troisième occurrence du même motif, après le `403` de l'entrée 001 et le cloisonnement des dépôts
+de la friction 2 : **la session est aveugle à l'état de la plateforme dont dépendent ses propres
+règles.** Le §4 exige une `main` protégée avec checks requis et historique linéaire ; aucune
+session ne peut vérifier qu'il l'est. Ce que le conteneur observe, c'est un effet indirect —
+`mergeable_state: "clean"` sur la PR — qui ne distingue pas « aucune protection » de « protection
+satisfaite ».
+
+Conséquence pratique : le statut de J1-13 dans la roadmap est **déclaratif**, pas constaté. Il est
+donc écrit comme tel — check requis actif, historique linéaire encore ouvert — plutôt que
+consolidé en un `terminé` qui laisserait croire à une vérification qui n'a pas eu lieu. C'est
+exactement le mécanisme de dérive que la règle de mise à jour de `docs/roadmap.md` cherche à
+éviter, et il vient ici de la plateforme, pas de la négligence.
