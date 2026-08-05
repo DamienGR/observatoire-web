@@ -538,3 +538,104 @@ limite imaginaire.
   qu'une fois. Merger les PR l'une après l'autre aurait imposé trois rebases Dependabot et trois
   cycles de CI pour le même résultat — la roadmap prévenait déjà que ce fichier est « le conflit
   le plus pénible à résoudre ».
+
+---
+
+## 006 — Trois majeures d'outillage : deux vraies, une qui n'existait pas
+
+**5 août 2026** · jalon 1 · branche `claude/dependabot-updates-vgavfn`
+
+### Contexte
+
+Suite immédiate de l'entrée 005. Le merge de la récolte a libéré le plafond
+`open-pull-requests-limit`, et Dependabot a aussitôt ouvert les trois PR qu'il gardait en
+réserve : `typescript` 5.9.3 → 6.0.3, `astro-eslint-parser` 1.4.0 → 3.0.0, `globals` 16 → 17.
+
+La prédiction de l'entrée 005 s'est donc vérifiée **dans la minute**. Elle mérite d'être retenue
+telle quelle : *un plafond atteint ne se distingue pas d'un dépôt à jour.* Trois majeures
+d'outillage sont restées invisibles tant que cinq PR occupaient la file.
+
+### Friction 1 — la PR qui ne changeait rien
+
+`astro-eslint-parser` était déclaré en `devDependencies` depuis le commit de bootstrap. La monter
+en 3.0.0 semblait mécanique. Deux vérifications ont montré le contraire :
+
+```
+pnpm exec eslint --print-config src/pages/index.astro   → parser: astro-eslint-parser@1.4.0
+pnpm why astro-eslint-parser                            → 2 versions installées
+```
+
+ESLint linte bien les `.astro`, mais avec la **1.4.0** — celle qu'embarque `eslint-plugin-astro`,
+dont la plage est `^1.3.0`. Le `eslint.config.js` n'importe jamais le parser directement : il
+passe par `astro.configs.recommended`. Notre dépendance directe n'a donc jamais été celle qui
+lint, et `eslint-plugin-astro@1.7.0` ne *peut pas* utiliser une 3.x.
+
+Monter la version aurait produit une deuxième copie inutilisée et, surtout, un `package.json`
+annonçant un parser que le lint n'emploie pas. **La bonne disposition n'était pas de monter la
+dépendance mais de la supprimer.** Vérifié par sonde : un `.astro` contenant un `any` et un
+`<img>` sans `alt` est toujours rejeté sur `@typescript-eslint/no-explicit-any` et
+`astro/jsx-a11y/alt-text`, à l'identique, après retrait.
+
+C'est la même erreur que le pin de tag annoté de l'entrée 005, sous un autre habit : **une
+déclaration que personne ne vérifie finit par décrire autre chose que la réalité.** La différence
+est qu'ici c'est Dependabot qui l'a rendue visible, en proposant de mettre à jour une chose
+inerte.
+
+### Friction 2 — un vert n'aurait rien prouvé
+
+Il faut le dire franchement : `pnpm verify` était **vert** avec `astro-eslint-parser@3.0.0`
+installé. La CI n'aurait rien signalé, et la PR aurait été mergée comme les autres.
+
+Ce n'est pas un défaut de la CI — aucun test raisonnable ne peut vérifier « la version déclarée
+est celle qui s'exécute » pour chaque dépendance. C'est une limite structurelle du principe
+« la CI est l'unique juge » (§1) : elle juge le **comportement**, pas la **cohérence des
+déclarations**. Les deux entrées 005 et 006 ont trouvé chacune une déclaration fausse qu'aucun
+test n'aurait attrapée. Ce qui les a trouvées, dans les deux cas, c'est d'avoir demandé à
+l'outil ce qu'il faisait vraiment (`git ls-remote`, `eslint --print-config`) au lieu de croire le
+fichier sur parole.
+
+### TypeScript 6 : la dépréciation qui arrive au bon moment
+
+`tsc` a refusé de passer sur une seule ligne :
+
+```
+tsconfig.json(14,5): error TS5101: Option 'baseUrl' is deprecated and will stop
+functioning in TypeScript 7.0.
+```
+
+Deux sorties possibles : `"ignoreDeprecations": "6.0"`, ou retirer `baseUrl`. La première n'est
+pas une correction, c'est un report — et le report expire à TS 7, **déjà publié en `latest`**.
+`baseUrl` retiré, les `paths` étant résolus relativement au `tsconfig.json` quand il est absent.
+
+Vérifié par sonde, parce que changer un mécanisme de résolution sans le prouver est exactement le
+genre de chose qui se découvre trois sessions plus tard : un fichier important `~/lib/fetch/…`
+échoue en `TS2305` (« pas d'export nommé »), **pas** en `TS2307` (« module introuvable »). Le
+module est donc bien résolu.
+
+### Pourquoi Dependabot ne propose pas la dernière version, et il a raison
+
+`npm view typescript dist-tags` donne `latest: 7.0.2`. Dependabot proposait 6.0.3. Ce n'était pas
+un retard :
+
+| Paquet | Pair `typescript` |
+|---|---|
+| `@astrojs/check@0.9.10` | `^5.0.0 \|\| ^6.0.0` |
+| `typescript-eslint@8.66.0` | `>=4.8.4 <6.1.0` |
+
+6.0.3 est la **plus haute version que la chaîne d'outils accepte**. Passer en TS 7 aurait cassé
+les deux pairs — et `pnpm` n'aurait émis qu'un avertissement, pas une erreur. Suivre `latest`
+plutôt que la proposition de Dependabot aurait été une régression déguisée en modernisation.
+
+Corollaire à retenir : les prochaines montées de TypeScript seront **plafonnées à 6.0.x** tant
+que `typescript-eslint` reste en 8.x. Une PR Dependabot qui « n'arrive pas » n'est pas
+nécessairement un dépôt à jour.
+
+### Ce qui a marché du premier coup
+
+- `globals` 16 → 17 : aucun effet, la config n'utilise que `globals.node`.
+- TypeScript 6 sur le reste du dépôt : zéro erreur sur 22 fichiers, `astro check` compris. La
+  configuration est pourtant agressive (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`,
+  `erasableSyntaxOnly`). Le mérite revient au fait que le code est jeune, pas à la config.
+- Les sondes jetables (`__probe.astro`, `__probe.ts`, créées, exécutées, supprimées) : c'est le
+  moyen le plus court trouvé jusqu'ici pour vérifier ce que fait réellement un outil dans une
+  session sans terminal interactif.
