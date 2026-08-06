@@ -1742,3 +1742,71 @@ apprend à ignorer.
 Chemins rouges éprouvés avant le push, comme l'exige l'entrée 012 : une clé ajoutée à une fixture
 et un champ retiré d'une autre font virer au rouge exactement les deux tests concernés, et eux
 seuls.
+
+---
+
+## 016 — Le juge unique n'est pas rouge, il est absent
+
+**6 août 2026** · jalon 1 · branche `claude/j1-08-937gb8`
+
+Écrit pendant que ça se produit, comme l'exige le §12 — la PR de J1-07 est ouverte, vérifiée en
+session, et **ne peut pas être mergée**.
+
+### Ce qui s'est passé
+
+La CI de la PR #30 s'est comportée bizarrement : `e2e` et CodeQL sont passés au vert, mais `verify`
+et `deploy` sont restés **treize minutes sans obtenir de runner**, dans la *même* run que l'`e2e`
+qui, lui, en avait eu un. L'API d'annulation a répondu **502**. Après relance, `verify` a démarré
+puis a été tué par son propre `timeout-minutes: 10` — onze minutes pour un job qui en prend deux.
+
+J'ai d'abord cherché la cause dans le diff, puis dans la configuration du workflow. Elle n'était ni
+dans l'un ni dans l'autre :
+
+```
+overall: Partial System Outage
+component: Actions -> major_outage
+incident: Incident with Actions | investigating | 2026-08-06T15:22:49Z
+  "Workflow runs are still failing or delayed in starting, and some queued
+   jobs may time out. Some requests to the Actions API are returning errors."
+```
+
+Vingt minutes de diagnostic qu'un coup d'œil à `githubstatus.com` aurait économisées. La leçon
+tient en une ligne : **quand plusieurs jobs indépendants échouent de plusieurs manières
+différentes, la cause commune n'est pas dans le dépôt.** Un test rouge, un job qui expire et une
+API qui renvoie 502 n'ont aucune raison d'arriver ensemble pour une raison qui vous appartient.
+
+### Pourquoi ça compte au-delà de l'incident
+
+Le §5 a longuement pensé au **rouge qu'on apprend à ignorer** — un test instable, une requête
+réseau sur le chemin d'une PR — et pas du tout à ceci : le juge n'est pas rouge, il est **absent**.
+
+Les deux se ressemblent de loin. Dans les deux cas rien ne merge. Mais ils n'appellent pas la même
+réaction, et rien dans le dépôt ne permet aujourd'hui de les distinguer : il faut aller lire un
+onglet Actions à la main, puis une page de statut d'un tiers. C'est exactement le genre de
+diagnostic que ce projet est censé rendre possible **depuis le produit**, et il ne l'est pas.
+
+C'est aussi la friction la plus purement *cloud-only* rencontrée jusqu'ici, et elle mérite d'être
+nommée sans la dramatiser. Sur un poste local, la panne serait un désagrément : on lance la suite,
+on constate qu'elle est verte, on merge. Ici, `pnpm verify` **est** vert — 338 tests, mesurés dans
+la session, y compris `pnpm test:contract` contre les vraies API — et cette information n'a aucune
+valeur institutionnelle. Le §1 dit que la CI est l'unique juge ; le corollaire, découvert
+aujourd'hui, est qu'**un juge unique est aussi un point de panne unique**, et que la règle « si la
+CI est verte et que le produit est cassé, c'est la CI qu'il faut corriger » n'a pas de symétrique
+pour « la CI ne rend pas de verdict ».
+
+Je ne propose pas de contournement, et c'est délibéré. Un `--no-verify`, un check rendu non requis
+« le temps de la panne », un merge administrateur : chacun résout l'heure qui vient et détruit la
+propriété qui fait tenir le reste. La règle du §2 du brief est de noter et de poursuivre en cloud,
+pas de basculer dès que ça résiste. On attend.
+
+### Ce qu'on en retire, quand même
+
+Une chose concrète à reprendre : `timeout-minutes: 10` sur `verify` a transformé une indisponibilité
+en **échec attribué au job**. Le statut rapporté est `cancelled`, indiscernable d'une annulation
+volontaire, sur une exécution où rien du diff n'a été mesuré. Un budget de temps sert à attraper une
+suite qui dérive ; il ne devrait pas prononcer un verdict sur du code qu'il n'a pas exécuté. Le
+distinguer demande de savoir si le job attendait un runner ou s'il travaillait — information que
+l'API expose (`started_at` du job contre `started_at` des étapes) et que personne ne lit.
+
+À reprendre quand la panne sera finie, pas pendant : corriger un timeout au milieu d'un incident,
+c'est valider une hypothèse sur un système dont on sait qu'il ment.
