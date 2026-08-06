@@ -1486,3 +1486,108 @@ zéro nouvelle tentative sur ce trajet fabriquerait des rouges étrangers au dif
 CI qu'on apprend à ignorer. Ce qu'il ne fait pas, c'est le dire fort : le job reste vert et la
 mention `1 flaky` ne vit que dans le journal d'exécution. Si le motif se répète, c'est la
 fréquence qui devra devenir visible, pas le seuil qui devra bouger.
+
+---
+
+## 014 — Le conteneur embarque Postgres 16, et une migration peut donc être éprouvée avant d'exister en base
+
+**6 août 2026** · jalon 1 · branche `claude/j1-08-937gb8`
+
+J1-08 est la tâche la plus mécanique du jalon : cinq tables décrites au §6 du brief, une migration
+générée par `drizzle-kit`. Rien à débattre, ou presque. Deux choses valent d'être écrites : ce
+qu'on a refusé de trancher, et le fait qu'une migration a pu être **exécutée** dans la session,
+alors que la validation en branche Neon éphémère est censée n'arriver qu'avec J1-11.
+
+### La friction attendue : aucun moyen d'appliquer la migration
+
+`drizzle-kit generate` ne se connecte à rien : il lit le schéma TypeScript et écrit du SQL. Il
+produit donc, sans broncher, du SQL que Postgres refusera. Or J1-11 — le job d'intégration avec sa
+branche Neon — est `bloqué` sur J1-10, un réglage de console. Livrer J1-08 revenait à committer un
+fichier `.sql` dont personne n'aurait vérifié qu'il s'applique, en pariant sur le générateur.
+
+Le doute portait sur un point précis : `drizzle-kit` écrit les contraintes `CHECK` avec des noms de
+colonnes **qualifiés par la table** — `CHECK ("commune"."population" > 0)` — et une contrainte de
+table ne référence normalement ses colonnes que par leur nom nu. C'est le genre de détail qui rend
+un fichier de migration invalide à la seule ligne qui compte.
+
+### Ce qui a débloqué : `which psql`
+
+Le conteneur de session embarque **PostgreSQL 16.13**, client *et* serveur
+(`/usr/lib/postgresql/16/bin/`). Il n'y avait donc rien à contourner :
+
+```
+initdb -D … -U postgres --auth=trust        # sous un utilisateur non root : initdb refuse root
+pg_ctl -D … -o '-p 55432 -k /home/pgtest' start
+psql … -f drizzle/0000_married_whistler.sql # les `--> statement-breakpoint` retirés au sed
+```
+
+Les 23 instructions passent. Les `CHECK` qualifiés sont acceptés — Postgres les réécrit. Le doute
+est levé par une exécution, pas par une lecture de documentation.
+
+La suite est allée plus loin que « ça s'applique ». Chaque garde-fou du schéma a été **éprouvé par
+une insertion qui doit échouer**, dans l'esprit de l'entrée 013 :
+
+| Ce qu'on tente | Ce qu'on attend | Ce qu'on observe |
+|---|---|---|
+| `code_insee` valant `1004` | refus : cinq caractères | `commune_code_insee_length` |
+| population négative | refus | `commune_population_positive` |
+| même URL proposée deux fois pour une commune | refus | `site_commune_url_key` |
+| `source` inconnue | refus | `site_source_known` |
+| run `succeeded` sans `finished_at` | refus | `scan_run_finished_at_matches_statut` |
+| deux mesures du même site dans le même run | refus | `measurement_run_site_key` |
+| `performance_score` à 101 | refus | `measurement_scores_in_range` |
+| `methodology_version` vide | refus | `measurement_methodology_version_present` |
+| `impact` hors vocabulaire axe | refus | `finding_impact_known` |
+| suppression d'un `site` mesuré | refus | `measurement_site_id_site_id_fk` (restrict) |
+| suppression d'un `scan_run` | cascade jusqu'aux `finding` | 0 mesure, 0 finding |
+
+C'est la deuxième ligne du tableau qui justifie l'exercice : une contrainte qu'on n'a jamais vue
+refuser quoi que ce soit est une contrainte qu'on **espère**.
+
+**Ce que cela ne remplace pas.** Postgres 16 dans un conteneur n'est pas Neon, et une migration sur
+base vide n'est pas une migration sur données réelles — les deux épreuves que le brief vise
+explicitement (§1, épreuves 2 et 5). La validation en branche éphémère reste le travail de J1-11 ;
+ce qui change, c'est que J1-11 n'aura plus à découvrir en même temps que le SQL est valide et que
+son job fonctionne. Et la règle du §2 du brief n'est pas entamée : rien de tout cela n'est sorti du
+cloud, c'est le conteneur de session qui portait l'outil.
+
+### Ce qu'on a refusé de trancher : la colonne de score composite
+
+Le §11 du brief laisse ouverte « la formule exacte du score composite ». La tentation, en écrivant
+une table `measurement`, est d'ajouter une colonne `score` *nullable* — elle ne coûte rien, elle
+servira bien. Elle n'a pas été ajoutée.
+
+La raison n'est pas la pureté : c'est que la colonne aurait figé la partie du problème dont
+personne ne discute (« il y a un nombre par mesure ») tout en laissant croire que la partie
+discutée restait ouverte. La table stocke donc les **signaux** — quatre scores de catégories
+Lighthouse, six métriques, huit signaux complémentaires — et pas leur pondération. La PR qui
+tranchera la formule apportera la colonne et sa migration ; c'est un jalon de plus pour l'épreuve 2,
+pas un coût.
+
+Deux autres décisions, plus petites, prises explicitement :
+
+- **`CHECK` plutôt que `enum` Postgres** pour les vocabulaires de statut. Le jalon 5 migre un
+  schéma vivant, et `ALTER TYPE … ADD VALUE` traîne des restrictions transactionnelles qu'un couple
+  `DROP CONSTRAINT` / `ADD CONSTRAINT` n'a pas. On choisit l'option ennuyeuse.
+- **`departement`, pas `dept`.** Le brief écrit `dept`, le §4 de `CLAUDE.md` liste `departement`
+  parmi le vocabulaire métier admis. Le §12 dit que le brief l'emporte sur l'intention et le
+  contrat sur la mise en œuvre : un nom de colonne est de la mise en œuvre.
+
+### Ce que la CI regarde, faute de base
+
+Deux fichiers de tests unitaires, tous deux sans I/O réseau :
+
+- `src/db/schema.test.ts` transforme les règles du contrat en assertions sur le schéma en mémoire :
+  les cinq noms de tables verbatim, `methodology_version` `not null` **et sans défaut** des deux
+  côtés, les clés d'idempotence, **aucune colonne `json`** (§11.1 — c'est par « juste pour
+  déboguer » qu'un rapport brut entre en base), et tous les horodatages en `timestamptz`.
+- `tests/unit/migration-schema-sync.test.ts` compare le schéma au dernier instantané de
+  `drizzle-kit`. Ce trou-là était réel : `pnpm typecheck` ne lit jamais `drizzle/`, et `db:check` ne
+  vérifie que la cohérence interne de l'historique. Une colonne ajoutée sans `pnpm db:generate`
+  donnait une CI verte, un déploiement vert, et un `column does not exist` en production — le seul
+  endroit où ce projet n'a pas de shell pour réparer.
+
+Les deux chemins rouges ont été éprouvés avant le push, comme l'exige l'entrée 012 : une colonne
+ajoutée au schéma sans régénérer → `declares the same columns on measurement` rouge ; une contrainte
+retirée → `declares the same constraints on finding` rouge. Le reste de la suite reste vert dans les
+deux cas, ce qui dit que le test vise bien ce qu'il prétend viser.
