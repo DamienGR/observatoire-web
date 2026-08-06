@@ -1456,3 +1456,33 @@ Enfin, une divergence assumée avec le §4 de `CLAUDE.md` : la branche s'appelle
 `claude/tache-j1-12-ia95i5` et non `feat/e2e-accessibilite`. Le nom est imposé par le harnais qui
 ouvre la session, pas choisi. Ça ne coûte rien aujourd'hui ; ça vaut d'être écrit avant qu'on
 lise l'historique en se demandant qui a ignoré la convention.
+
+### Premier passage réel en CI : vert, et un flake
+
+Ajouté après le push, parce que le job a livré des chiffres qu'aucune mesure en session ne pouvait
+donner. **22 tests, 51,2 s** contre la preview, budget de 360 s ; artefact de 60 fichiers pour
+6,9 Mo. La preview a été résolue en dix secondes, et l'ordre des étapes a payé : les installations
+de dépendances et de navigateur ont couvert l'attente du build Netlify au lieu de s'y ajouter.
+
+Un test sur vingt-deux a échoué au premier essai et passé au second :
+
+```
+palette light › /droit-de-reponse raises no axe-core violation
+  Test timeout of 30000ms exceeded.
+  Error: page.goto: net::ERR_ABORTED; maybe frame was detached?
+    - navigating to "…/droit-de-reponse", waiting until "load"
+```
+
+Une navigation avortée, sur une page qui n'a rien de particulier, dans une exécution où les cinq
+autres pages de la même palette sont passées. La cause la plus probable est la fonction SSR froide,
+sollicitée par deux workers à la fois sur un déploiement qui vient de naître — mais **je ne l'ai
+pas mesurée**, et l'entrée 012 dit assez ce que vaut ici un symptôme expliqué à l'estime. Je le
+note plutôt que de le corriger : ajouter un préchauffage ou allonger le délai serait livrer un
+remède à une cause supposée, et masquerait la seule chose qu'on sait avec certitude, à savoir que
+ça arrive.
+
+Ce que le réessai fait ici est exactement son office — la couche traverse un CDN tiers, et exiger
+zéro nouvelle tentative sur ce trajet fabriquerait des rouges étrangers au diff, c'est-à-dire la
+CI qu'on apprend à ignorer. Ce qu'il ne fait pas, c'est le dire fort : le job reste vert et la
+mention `1 flaky` ne vit que dans le journal d'exécution. Si le motif se répète, c'est la
+fréquence qui devra devenir visible, pas le seuil qui devra bouger.
