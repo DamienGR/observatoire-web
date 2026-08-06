@@ -79,6 +79,7 @@ pnpm test                        # Vitest, projet unitaire seul — zéro I/O, b
 pnpm test:watch                  # Vitest en watch (unitaire)
 pnpm test:integration            # Vitest, projet intégration (DATABASE_URL requis)
 pnpm test:e2e                    # Playwright + axe-core (BASE_URL requis)
+pnpm test:contract               # Vraies API tierces — planifié, hors du chemin des PR
 pnpm test:mutation               # Stryker sur src/lib/ — hors du chemin des PR
 
 pnpm db:generate                 # Génère une migration depuis le schéma Drizzle
@@ -91,7 +92,8 @@ pnpm verify                      # typecheck + lint + format:check + test + buil
 
 `pnpm verify` est la porte d'entrée : **le lancer avant tout commit**. Ce qu'il valide doit
 correspondre exactement à ce que valide le job rapide de la CI ; toute divergence est un bug à
-corriger. Il n'inclut **délibérément pas** `test:integration`, `test:e2e` ni `test:mutation` :
+corriger. Il n'inclut **délibérément pas** `test:integration`, `test:e2e`, `test:contract` ni
+`test:mutation` :
 ces couches ont leur propre place dans le pipeline (§5) et alourdiraient une commande dont tout
 l'intérêt est d'être exécutable à chaque commit sans y penser.
 
@@ -193,6 +195,13 @@ sans que personne ne le remarque, et c'est ainsi qu'on se retrouve avec une CI d
 | Intégration (branche Neon éphémère, transport HTTP intercepté) | `src/db/`, jobs, endpoints, migrations en dry-run | **< 4 min** | Chaque push |
 | E2E et accessibilité (Playwright sur la deploy preview) | 5 à 8 parcours, un par gabarit de page | **< 6 min** | Chaque PR |
 | Mutation, Lighthouse complet, contrats API réels | voir plus bas | non borné | Planifié |
+
+Les **contrats d'API** sont le projet Vitest `contract` (`tests/contract/`), le seul sans garde
+anti-I/O : il interroge `geo.api.gouv.fr` et l'annuaire DILA pour vérifier que les fixtures gelées
+de `tests/fixtures/` décrivent encore la réalité. Hebdomadaire, plus `workflow_dispatch`
+(`.github/workflows/contracts.yml`), **jamais sur une PR**. Il distingue explicitement une panne de
+disponibilité — l'API n'a pas répondu — d'une dérive de contrat, où la charge est arrivée et ne
+correspond plus : seule la seconde justifie de toucher un schéma.
 
 **Cible globale : moins de 10 minutes** du push au verdict, alerte à 15. Les jobs unitaire et
 intégration tournent en parallèle ; l'E2E attend la preview. Le temps total est celui du plus

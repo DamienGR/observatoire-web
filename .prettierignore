@@ -10,6 +10,11 @@ reports/
 pnpm-lock.yaml
 drizzle/
 
+# Frozen captures of third-party APIs, kept verbatim (tests/fixtures/README.md).
+# Reformatting them would make them no longer what the API sent, which is the
+# only property they have.
+tests/fixtures/
+
 # Markdown is written by hand and wrapped by hand. Prettier pads table cells,
 # which turns a one-word documentation change into a fifty-line diff — and in
 # this repository the diff *is* the record (CLAUDE.md §1).

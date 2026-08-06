@@ -1591,3 +1591,154 @@ Les deux chemins rouges ont été éprouvés avant le push, comme l'exige l'entr
 ajoutée au schéma sans régénérer → `declares the same columns on measurement` rouge ; une contrainte
 retirée → `declares the same constraints on finding` rouge. Le reste de la suite reste vert dans les
 deux cas, ce qui dit que le test vise bien ce qu'il prétend viser.
+
+---
+
+## 015 — Deux hypothèses fausses en une heure, et six communes à zéro habitant
+
+**6 août 2026** · jalon 1 · branche `claude/j1-08-937gb8`
+
+J1-07 : parser les deux référentiels et geler des fixtures. Sur le papier, la tâche la plus
+prévisible du jalon. Elle a produit deux fausses pistes de ma part, un défaut dans le schéma
+mergé le matin même, et un écart de 7 % avec un chiffre du brief.
+
+### Fausse piste 1 — j'ai inventé une sentinelle `"None"` qui n'existe pas
+
+En explorant l'annuaire DILA depuis un `python3 -c`, j'ai imprimé un enregistrement avec
+`str(v)[:200]` et lu ceci :
+
+```
+"site_internet": "None",
+```
+
+J'en ai conclu que l'API encodait l'absence par la **chaîne** `"None"` — un piège classique
+d'export Python mal sérialisé — et j'ai écrit le parser autour de cette découverte : une constante
+`ABSENT_MARKER`, un helper dédié, un commentaire de dix lignes expliquant que 13 656 enregistrements
+la portent et qu'une lecture naïve donne une commune dont le site web s'appelle `None`.
+
+C'était mon propre `str(None)`. L'API envoie `null`, comme tout le monde. Vérifié sur les octets
+bruts : **zéro occurrence** de `"None"`, 13 656 `null`.
+
+Ce qui a fait tomber le masque n'est pas une relecture, c'est un test rouge : en recapturant la
+fixture depuis le bon endpoint, le schéma a refusé `null` là où il attendait une chaîne. Sans ce
+test, je livrais une défense contre un fantôme, un commentaire affirmant une contre-vérité, et la
+session suivante l'aurait crue — c'est exactement ce que ce journal existe pour empêcher.
+
+Ce que j'en retiens, et qui vaut au-delà de ce cas : **l'outil d'inspection fait partie de
+l'observation**. Un REPL Python et un `curl | jq` ne montrent pas le même document. La règle que
+j'applique désormais est d'asserter sur les octets quand la question porte sur l'encodage — c'est
+ce que fait `tests/contract/annuaire.test.ts`, qui cherche `"None"` dans le texte brut de la
+réponse et non dans l'objet décodé.
+
+### Fausse piste 2 — l'intrus qui n'en était pas un
+
+Deuxième affirmation, écrite avec le même aplomb : la requête `where=pivot like "mairie"` est une
+recherche de sous-chaîne dans un blob JSON, donc elle laisse passer un intrus — le Conseil
+territorial de Saint-Barthélemy, dont le `pivot` vaut `cg`. J'ai écrit `isMairie()` pour l'exclure,
+et un test qui l'attendait `false`.
+
+Le test est sorti rouge. L'enregistrement porte **deux** pivots : `cg`, puis `mairie`. Saint-Barthélemy
+n'est pas un intrus, c'est une collectivité qui exerce la fonction de mairie, et l'annuaire le dit
+correctement. J'avais regardé `pivots[0]` et conclu sur l'ensemble.
+
+La fonction ne change pas — elle utilise `some()` — mais sa *justification* était fausse, et une
+justification fausse est un piège différé : la prochaine session qui optimise « puisque c'est
+toujours le premier pivot » supprime une commune du périmètre, une seule, silencieusement.
+
+Deux hypothèses, deux fois la même erreur de méthode : conclure sur l'ensemble depuis un
+échantillon de un. Les deux ont été attrapées par des tests écrits contre des captures réelles.
+Aucune ne l'aurait été par une relecture.
+
+### La vraie trouvaille : six communes à zéro habitant
+
+En vérifiant les contraintes du schéma Zod sur le référentiel **complet** plutôt que sur les trois
+premiers enregistrements, une ligne a sauté :
+
+```
+population<=0: 6
+```
+
+Beaumont-en-Verdunois, Bezonvaux, Cumières-le-Mort-Homme, Fleury-devant-Douaumont,
+Haumont-près-Samogneux, Louvemont-Côte-du-Poivre. Les six villages détruits en 1916 autour de
+Verdun, jamais reconstruits, toujours communes de plein droit, et l'INSEE leur compte **0
+habitant**.
+
+Or la migration `0000` mergée le matin même porte :
+
+```sql
+CONSTRAINT "commune_population_positive" CHECK ("commune"."population" > 0)
+```
+
+Cette contrainte est fausse. Pas approximative : fausse sur six lignes réelles du référentiel
+qu'elle est censée décrire. Je l'avais écrite depuis une intuition de ce qu'est une commune, et
+elle est passée sous les yeux de la CI, du contrôle de contraintes sur Postgres réel, et de la
+relecture — parce que **rien de tout cela ne confronte le schéma aux données**. Ce qui l'a trouvée,
+c'est d'aller chercher les cas limites dans le jeu complet pour construire une fixture.
+
+Corrigé ici : migration `0001`, `>= 0`, appliquée à la suite de `0000` sur le Postgres jetable de
+l'entrée 014, avec vérification que `0` passe et que `-1` est toujours refusé. Sans effet pratique
+aujourd'hui — le périmètre v1 s'arrête à 10 000 habitants — mais une contrainte qui affirme quelque
+chose de faux sur le domaine finit toujours par se rappeler à vous, et le jour où le périmètre
+s'élargira, elle l'aurait fait au milieu d'un batch de nuit.
+
+C'est aussi la première migration *évolutive* du projet : `DROP CONSTRAINT` puis `ADD CONSTRAINT`,
+exactement le couple que le choix `CHECK` plutôt qu'`enum` de l'entrée 014 rendait facile.
+
+### Le périmètre réel : 1 067, pas « 950 à 1 000 »
+
+Compté sur le référentiel complet : **1 067** communes de plus de 10 000 habitants, contre « de
+l'ordre de 950 à 1 000 » au §3 du brief. Sept pour cent d'écart. Le brief dit lui-même que le
+comptage exact se dérive de l'API, donc ce n'est pas une contradiction — mais c'est un chiffre qui
+finira sur une page publique, et deux sources pour un même nombre finissent toujours par diverger.
+Noté en dette plutôt que corrigé dans le brief : c'est au porteur de décider si le brief porte le
+chiffre ou si la page le dérive de l'ingestion.
+
+Au passage, deux de ces 1 067 n'ont **aucune** fiche mairie dans l'annuaire (`49126`, `98747`). La
+résolution d'URL de J1-06 devra produire quelque chose pour elles, et ce quelque chose n'est pas
+« candidat ».
+
+### Ce que les fixtures ne contiennent pas
+
+Les enregistrements de l'annuaire portent `adresse_courriel`, `telephone`, `affectation_personne` :
+des coordonnées de personnes nommées, que le §7 interdit à ce dépôt. Elles sont absentes des
+fixtures parce que la capture **ne les a jamais demandées** — la clause `select=` nomme sept champs
+et sept seulement. Ne pas demander est plus fort que filtrer après coup : il ne reste aucune étape
+où quelqu'un peut oublier.
+
+Un cas a quand même dû être écarté à la main. Parmi les cinq valeurs de `site_internet` sans schéma
+d'URL, l'une est une **adresse email personnelle** — la commune a renseigné son mail dans le champ
+site web. Le cas est intéressant pour le parser, l'adresse n'a rien à faire dans un dépôt public :
+la fixture garde `www.bajus.fr` (même cas, pas de donnée personnelle) et le test couvre l'email avec
+une valeur synthétique. C'est la seule entorse à la règle « fixture = observation verbatim », et
+elle est écrite dans `tests/fixtures/README.md` plutôt que laissée à deviner.
+
+### Une fixture sans test de contrat pourrit
+
+Le §5 range les « contrats API réels » dans les couches planifiées ; c'est resté une ligne de
+tableau jusqu'ici. Elle devient un projet Vitest `contract`, une commande `pnpm test:contract` et
+un workflow hebdomadaire. Le raisonnement tient en une phrase : une fixture gelée épingle la forme
+contre laquelle le code a été écrit, et **rien dans une fixture ne peut remarquer que l'amont a
+changé**.
+
+Deux détails de mise au point valent d'être notés.
+
+La première version du test `geo` tirait le référentiel entier — 35 000 enregistrements, 12 Mo —
+pour asserter qu'il avait « une taille plausible ». L'API a répondu **503**. Le volume n'est pas un
+contrat ; la forme d'un enregistrement en est un. La version livrée refait exactement les huit
+enregistrements de la fixture, un par un, et compare les jeux de clés.
+
+La seconde version contenait une assertion vraie et inutile : « certaines valeurs ne sont pas des
+URL parsables ». Vraie sur les 22 147 sites, invérifiable sur un échantillon de 100 — cinq cas au
+total. Le test est sorti rouge, et il avait raison : une assertion qui ne tient que par chance est
+pire que pas d'assertion. Elle est remplacée par une plus faible et honnête, avec la raison écrite
+à côté.
+
+Enfin, le suite distingue explicitement **deux rouges** : l'API n'a pas répondu après quatre
+tentatives avec backoff (panne de disponibilité, on relance), ou la charge est arrivée et ne
+correspond plus (dérive de contrat, on touche au schéma). Un test de contrat qui confond les deux
+apprend à tout le monde à ignorer son verdict — et le §5 dit assez ce que vaut ici une CI qu'on
+apprend à ignorer.
+
+Chemins rouges éprouvés avant le push, comme l'exige l'entrée 012 : une clé ajoutée à une fixture
+et un champ retiré d'une autre font virer au rouge exactement les deux tests concernés, et eux
+seuls.
