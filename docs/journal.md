@@ -1014,3 +1014,225 @@ Reste une limite que la session ne peut pas lever : `GET /actions/variables` ré
 la protection de branche. Le job échoue bruyamment si la variable est vide, mais **rien ne peut
 vérifier qu'elle pointe le bon hôte**. Troisième réglage de console dans la même famille que
 l'entrée 003, et troisième statut « déclaré par le porteur » plutôt que constaté.
+
+---
+
+## 011 — La CSP n'est pas un en-tête, c'est une contrainte sur toute la chaîne de rendu
+
+**6 août 2026** · jalon 1 · branche `claude/j1-09-u7chaw`
+
+### Contexte
+
+J1-09, la coquille du site : gabarit accessible, en-têtes de sécurité, pages légales et
+méthodologie. Sur le papier, la tâche la plus banale du jalon — écrire des pages. Dans les faits,
+c'est celle qui a produit le plus de découvertes, parce qu'elle est la première à faire se
+rencontrer des règles écrites séparément dans le contrat.
+
+### Friction 1 — le §7 décide de la configuration du build, et rien ne le dit
+
+Le §7 interdit `unsafe-inline`. Une ligne dans un document, lue vingt fois. Ce qu'elle implique
+réellement est ailleurs, dans une valeur par défaut d'Astro : `build.inlineStylesheets` vaut
+`'auto'`, ce qui **incorpore dans le HTML toute feuille de style de moins de 4 ko** sous forme de
+balise `<style>`. La coquille en fait 3,9 ko.
+
+Une CSP `style-src 'self'` sans hachage bloque cette balise. Le site serait parti en production
+avec une page sans aucun style, et — c'est le point — **rien dans le pipeline ne l'aurait dit** :
+le build réussit, le HTML est valide, la réponse est un 200 avec le bon contenu. Seul un
+navigateur refuse d'appliquer la feuille, et aucun de nos juges n'est un navigateur.
+
+La règle générale mérite d'être écrite, parce qu'elle vaut au-delà de ce cas : **une politique de
+sécurité qui n'a pas de vérificateur est une politique qui sera relâchée** — le jour où quelqu'un
+verra une page cassée, il ajoutera `unsafe-inline` et la page sera réparée. Le vérificateur est
+donc devenu une assertion de `scripts/check-deploy.mjs` sur le HTML réellement servi : aucune
+balise `<script>` en ligne, aucune balise `<style>` en ligne. Elle reste vraie tant que la
+politique l'est ; le jour où une fonctionnalité exigera un script en ligne, la CSP devra gagner un
+hachage dans la même PR, et ce check est le rappel.
+
+### Friction 2 — vérifier le rendu réel depuis une session, sans preview
+
+`astro dev` ne prouve rien de ce qui compte ici : le serveur de développement injecte ses propres
+scripts en ligne, et la fonction Netlify n'est pas celle qui répond. La preview aurait tranché,
+mais elle arrive après le push — c'est-à-dire après le moment où l'on décide quoi écrire.
+
+Le déblocage tient en une ligne : **la fonction SSR construite est un module ordinaire.**
+
+```js
+const { default: handler } = await import('.netlify/v1/functions/ssr/ssr.mjs');
+const response = await handler(new Request('https://x.netlify.app/'), {});
+```
+
+C'est exactement ce que Netlify appelle, avec le même bundle, les mêmes middlewares et les mêmes
+en-têtes. Quarante lignes de plus — un serveur HTTP qui sert `dist/` pour les chemins statiques et
+délègue le reste à ce `handler` — et `scripts/check-deploy.mjs` a pu être **éprouvé dans les deux
+sens avant le moindre push** : vert sur le build normal, rouge sur un build où le SDK Sentry est
+embarqué.
+
+Ce serveur n'est pas versionné, et c'est délibéré : il vaut pour la vérification d'une session,
+pas comme deuxième implémentation du routage de Netlify à maintenir. Il est décrit ici pour que la
+prochaine session le réécrive en deux minutes au lieu de conclure qu'il faut pousser pour voir.
+
+Friction dans la friction, purement cloud : le Chromium préinstallé de l'environnement est le
+build 1194, le Playwright du projet en veut 1234. `chromium.launch()` échoue avec « run
+`npx playwright install` » — c'est-à-dire télécharger 150 Mo pour un navigateur déjà présent.
+`executablePath: '/opt/pw-browsers/chromium'` suffit. À retenir pour J1-12 : le job de CI, lui,
+téléchargera son navigateur ; c'est la session qui doit s'adapter, pas le contraire.
+
+### Friction 3 — 48 ko de JavaScript pour surveiller zéro JavaScript
+
+Le §2 du contrat dit « Sentry, dès le jour 1 : front, endpoints SSR et jobs ». La dette de J1-04
+disait « à câbler dans J1-09 ». Les deux ont été écrits avant qu'on ait mesuré quoi que ce soit.
+
+Mesure, build avec un DSN factice : **145 ko de JavaScript, 48 ko compressés, sur chaque page.**
+En face, le site envoie aujourd'hui *zéro* octet de script au navigateur. Le SDK front ne
+surveillerait donc aucun code — un `window.onerror` sur une page qui n'exécute rien — au prix du
+poste le plus lourd du budget de performance d'un site qui publie le score de performance des
+autres.
+
+Le §12 dit quoi faire d'une contradiction : la signaler plutôt que choisir en silence. Trois
+choses ont donc été faites plutôt qu'une.
+
+1. Le SDK navigateur est **conditionné à la présence de `PUBLIC_SENTRY_DSN` au build**. La
+   variable est le seul interrupteur, et elle est visible en console : le porteur décide, pas un
+   booléen enfoui dans une configuration.
+2. `scripts/check-deploy.mjs` mesure le JavaScript servi et **échoue au-delà de 20 ko**. Si la
+   variable est définie sans que ce soit voulu, la CI le dit avec la mesure et la cause.
+3. Le §2 du contrat porte désormais le chiffre et la condition. Un contrat qui contredit une
+   mesure ne se contourne pas dans le code : il se corrige, en laissant la trace de pourquoi.
+
+Le SDK serveur, lui, est branché sans réserve : c'est celui qui répond à la question du brief —
+diagnostiquer la production sans terminal. Le scrubbing du §7 (en-tête `Authorization`, cookies,
+query strings, y compris dans les breadcrumbs) est une fonction pure testée, pas une option
+cochée : une règle d'expurgation que personne n'exerce cesse silencieusement de correspondre le
+jour où un en-tête change de nom.
+
+### Friction 4 — la dette disait « dégradé », c'était « rouge »
+
+Une ligne de dette du 5/8 : « `astro-eslint-parser` ne gère pas `projectService` et retombe sur
+`project: true`. Le lint typé des `.astro` s'exécute dans un mode dégradé, silencieusement. Sans
+conséquence visible sur une page unique. »
+
+Première page contenant un `{items.map(...)}` : `@typescript-eslint/no-unsafe-return`. Les
+expressions de template ne résolvent pas au type attendu, elles résolvent au type `error`, et la
+famille `no-unsafe-*` signale ce type comme une violation. Aucune réécriture ne satisfait une règle
+qui lit un type qu'on n'a pas su calculer.
+
+**Troisième occurrence de la même erreur de journal**, après `sharp` (008) et `SITE_URL` (010) :
+une note de dette écrite au moment où l'on quitte le sujet décrit ce qu'on suppose, pas ce qu'on a
+constaté, et prend ensuite dans le fichier l'apparence d'un fait. Ici, « sans conséquence visible »
+signifiait « je n'ai pas de page à lint ». Les nouvelles lignes de dette de cette PR distinguent
+donc explicitement **constaté** de **supposé**, comme l'entrée 010 le proposait.
+
+Le lint typé est coupé sur `**/*.astro`, explicitement et avec la raison en commentaire, plutôt
+que dégradé en silence. On ne perd presque rien : `astro check` passe le vrai serveur de langage
+sur ces mêmes fichiers, il fait partie de `pnpm verify`, et c'est lui le juge des types depuis le
+début. Tout ce qui ne demande pas de types — dont l'ensemble jsx-a11y, la raison d'être du lint sur
+ces fichiers — continue de tourner.
+
+### Friction 5 — deux formateurs, deux sémantiques de l'espace
+
+Astro 7 fait passer `compressHTML` de `true` à `'jsx'` par défaut : les retours à la ligne
+*adjacents à une balise* sont supprimés, comme en JSX. Prettier, lui, formate les `.astro` avec la
+sémantique HTML, où ce même retour à la ligne **est une espace**, et il reflow librement à cent
+colonnes.
+
+Les deux se contredisent, et la contradiction ne se voit ni au build, ni au lint, ni dans une
+revue de diff : elle se voit dans la page rendue, sous la forme d'un `méthodologiepour` fabriqué
+par une passe de formatage que personne n'a relue. `compressHTML: true` — la compression sans
+perte — remet les deux d'accord. Vérifié sur le HTML rendu après un passage de Prettier.
+
+### Ce qu'une capture d'écran a trouvé et qu'aucun test n'aurait vu
+
+La feuille de style limitait la largeur de lecture sur *chaque enfant* de `main` plutôt que sur un
+conteneur. Résultat : les blocs étroits se centraient, les larges restaient à gauche, et l'encadré
+de la page d'accueil flottait au milieu d'un texte aligné à gauche. Zéro violation axe-core, HTML
+valide, tests verts — et une page manifestement de travers.
+
+C'est l'illustration exacte du §1 : les artefacts sont le seul moyen de *voir* le produit depuis
+une session. Une capture pleine page a suffi, là où aucune assertion n'aurait été écrite parce que
+personne n'écrit un test pour un défaut qu'il n'a pas encore imaginé.
+
+### Ce qui a marché du premier coup
+
+- **Le TDD des modules purs.** Les en-têtes de sécurité, les politiques de cache et le registre de
+  routes ont été écrits en test d'abord ; aucune reprise. La spécification était connaissable —
+  c'est exactement le cas où le §5 l'exige.
+- **Le registre de routes.** `tests/unit/route-cache-policy.test.ts` compare `src/pages/` au
+  registre dans les deux sens ; il est passé au rouge dès qu'il a existé (cinq pages déclarées,
+  aucune écrite), puis au vert au fur et à mesure. Un test qui échoue pour la bonne raison avant
+  d'exister vaut mieux qu'un test écrit après.
+- **axe-core : zéro violation** sur les six gabarits, en thème clair comme en thème sombre, règles
+  `best-practice` comprises. Le lien d'évitement déplace réellement le focus — l'élément actif est
+  bien `<main>` après activation —, ce qui est le détail que tout le monde rate.
+- **Les mentions légales sans adresse inventée.** L'hébergeur est nommé, son adresse postale ne
+  l'est pas : rien dans la session ne permet de la vérifier, et une adresse plausible mais fausse
+  dans un document légal est pire qu'une adresse absente. Inscrit en dette **[humain]** plutôt
+  qu'en supposition — la leçon de l'entrée 010, appliquée avant de la répéter.
+
+### Post-scriptum — le budget a viré au rouge sur la preview, et c'était le but
+
+La PR #26 est partie avec `verify` vert et le check `deploy` **rouge**, sur une seule ligne :
+
+```
+ok    content-security-policy does not allow 'unsafe-inline'
+ok    GET / carries no inline <script>, as script-src 'self' requires
+ok    GET /methodologie, /droit-de-reponse, /mentions-legales, /accessibilite → 200
+ok    GET an unknown path returns 404
+FAIL  GET / ships 143.1 kB of JavaScript as served, over the 20.0 kB budget.
+```
+
+`PUBLIC_SENTRY_DSN` était bien définie sur Netlify, en contexte `all`. La preview embarquait donc
+le SDK navigateur, et le budget écrit quelques heures plus tôt l'a dit avec le chiffre et la cause.
+
+Deux choses méritent d'être notées, parce qu'elles se contredisent en apparence :
+
+- **Le check a fait exactement son travail.** Il a transformé une supposition de session (« il
+  faudrait vérifier en console ») en constat daté et chiffré sur le déploiement réel. Aucune autre
+  couche du pipeline ne pouvait le voir : le build réussit, les tests passent, la page s'affiche.
+- **Il a bloqué le merge.** Et c'est correct : le §11.7 interdit de contourner un check qui gêne,
+  la sortie est de traiter la cause. La variable a été retirée côté Netlify, ce qui est réversible
+  d'un clic le jour où le site aura du JavaScript client à surveiller.
+
+La question posée par le porteur mérite sa réponse écrite, parce qu'elle se reposera : **non, on
+ne peut pas « brancher Sentry » sous 20 ko — mais le budget ne concerne que le navigateur.** Le SDK
+serveur est actif, coûte zéro octet côté client, et c'est lui qui répond à l'exigence du brief.
+Couper le tracing et le replay, déjà fait, ne descend pas sous les 48 ko gz : c'est le plancher du
+paquet. Le loader CDN de Sentry ne sauverait rien non plus — ~30 ko, et servi par un domaine tiers
+que `script-src 'self'` refuse. Le jour où un îlot existera, l'arbitrage sera explicite : relever
+le budget dans une PR qui l'argumente, ou écrire un mouchard de quelques centaines d'octets.
+
+### Ce que la lecture des variables Netlify a montré au passage
+
+Retirer la variable a demandé de lister l'environnement du projet, et cette liste a appris quelque
+chose qu'aucune tâche ne cherchait : **`OPS_TOKEN` n'y est pas marqué « secret ».** Netlify renvoie
+donc sa valeur en clair à qui interroge l'API, là où `DATABASE_URL` et `PSI_API_KEY`, eux, sont
+masqués. Le §7 dit ce qu'il faut en faire — rotation à la moindre suspicion — et la valeur ayant
+transité en clair dans une session, la suspicion est acquise. Inscrit en dette **[humain]**.
+
+C'est la deuxième fois dans ce projet qu'un détour opérationnel trouve mieux que la tâche en
+cours : la première fois, c'était la vérification de `sharp` qui avait trouvé `ipx` (entrée 008).
+Il y a probablement une règle là-dedans : **une session qui va lire l'état réel d'un service en
+rapporte toujours plus que ce qu'elle était venue chercher**, et c'est un argument pour aller le
+lire plutôt que de le supposer.
+
+### Les 1,6 ko qui restent, et à qui ils appartiennent
+
+Le check repassé au vert annonce `ships 1.6 kB of JavaScript in 1 file(s)`. Zéro était attendu : le
+build local n'émet aucune balise `<script>`. Vérification plutôt que conjecture, sur les trois
+URL :
+
+| URL | Scripts servis |
+|---|---|
+| `deploy-preview-26--observatoireweb.netlify.app` | `/.netlify/scripts/cdp` |
+| `observatoireweb.netlify.app` (production) | aucun |
+| `main--observatoireweb.netlify.app` | aucun |
+
+Le fichier est le tiroir d'aperçu de Netlify (`ntl-drawer`), injecté par la plateforme sur les
+deploy previews uniquement. Trois conséquences, toutes utiles à la prochaine session :
+
+- **La production n'envoie aucun JavaScript.** La déclaration d'accessibilité du site, qui
+  l'affirme, reste exacte — elle a été vérifiée, pas supposée.
+- Le script est servi en même origine, donc `script-src 'self'` l'autorise : ce n'est pas une
+  entorse à la CSP.
+- **Le budget JS mesure des previews, et inclut donc ce que Netlify y ajoute.** Un chiffre non nul
+  dans un log vert n'est pas un début de dérive : la marge restante est de 18 ko, et le jour où
+  elle se réduira, il faudra se souvenir que 1,6 ko ne sont pas les nôtres.

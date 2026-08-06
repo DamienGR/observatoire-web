@@ -45,7 +45,7 @@ Conséquences pratiques :
 | ORM / migrations | Drizzle + drizzle-kit | Migrations SQL versionnées et committées |
 | Validation | Zod | Toute donnée externe est parsée, jamais castée |
 | Hébergement | Netlify | Cache edge + purge par tag |
-| Observabilité | Sentry (dès le jour 1) | Front, endpoints SSR et jobs |
+| Observabilité | Sentry (dès le jour 1) | Endpoints SSR et jobs. Le SDK navigateur est activé par la présence de `PUBLIC_SENTRY_DSN` au build : à laisser vide tant que le site n'envoie aucun JavaScript au client — 48 ko gz pour surveiller zéro script (journal 011) |
 | Tests unitaires et d'intégration | Vitest (`projects` séparés) | Aucune I/O dans le projet unitaire |
 | Tests E2E et accessibilité | Playwright + axe-core | Exécutés contre l'URL de deploy preview |
 | Tests de mutation | Stryker | Restreint à `src/lib/`, hors du chemin des PR |
@@ -342,6 +342,13 @@ dédié de `src/lib/fetch/`, qui impose :
 - En-têtes de sécurité sur toutes les réponses : `Content-Security-Policy` (sans `unsafe-inline`
   ni `unsafe-eval`), `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`,
   `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` restrictive.
+  Ils sont construits dans `src/lib/http/security.ts` et posés par `src/middleware.ts` pour les
+  réponses rendues ; les ressources statiques ne traversent pas Astro et tiennent leurs en-têtes
+  de `netlify.toml`.
+- **Conséquence directe du `unsafe-inline` interdit : aucun `<script>` ni `<style>` en ligne dans
+  le HTML.** C'est pourquoi `build.inlineStylesheets` vaut `'never'`. Un manquement ne se voit ni
+  au build ni dans un statut HTTP — seulement dans un navigateur —, donc
+  `scripts/check-deploy.mjs` l'assère sur le déploiement réel.
 - L'API publique est **en lecture seule**, sans authentification, avec pagination bornée et
   limitation de débit. Aucune route publique ne mute l'état.
 - Pas de donnée personnelle. Les mesures portent sur des sites d'organismes publics, jamais sur
@@ -395,9 +402,9 @@ Documenter toute nouvelle variable ici **et** dans `.env.example`.
 | `DATABASE_URL_UNPOOLED` | Actions | Connexion directe, requise pour les migrations |
 | `PSI_API_KEY` | Netlify, Actions | Clé API PageSpeed Insights |
 | `OPS_TOKEN` | Netlify, Actions | Jeton de la surface d'ops. Rotation à la moindre suspicion. |
-| `PUBLIC_SENTRY_DSN` | Netlify | DSN Sentry côté client (public par nature) |
+| `PUBLIC_SENTRY_DSN` | Netlify | DSN Sentry côté client (public par nature). Sa présence embarque le SDK navigateur — cf. §2 |
 | `SENTRY_DSN` | Netlify, Actions | DSN Sentry côté serveur |
-| `SENTRY_AUTH_TOKEN` | Actions | Upload des source maps |
+| `SENTRY_AUTH_TOKEN` | Netlify | Upload des source maps. **Sur Netlify, pas sur Actions** : le build tourne là-bas, et l'upload a lieu pendant le build |
 | `NEON_API_KEY` | Actions | Création/suppression des branches Neon éphémères |
 | `NETLIFY_AUTH_TOKEN` | Actions | Déploiement et purge de cache |
 | `SITE_URL` | Netlify, Actions | URL canonique, utilisée pour les liens absolus |
@@ -420,6 +427,14 @@ préfixer une valeur sensible. Vérifier ce point dans toute revue touchant à l
   globale. Une purge globale masque les erreurs de tagging et écroule les performances.
 - Tout endpoint est explicite sur sa politique de cache. Une réponse sans en-tête de cache
   décidé est un oubli, pas un défaut acceptable.
+- Cette exigence est **tenue par un registre, pas par la discipline** : `src/lib/http/routes.ts`
+  associe une politique et des tags de purge à chaque route, `src/middleware.ts` l'applique, et
+  `tests/unit/route-cache-policy.test.ts` compare le registre aux fichiers de `src/pages/` dans
+  les deux sens — une page non déclarée échoue, une déclaration orpheline aussi. Une route sans
+  politique déclarée n'atteint pas `main`.
+- Une route mise en cache **déclare au moins un tag de purge**. Sans tag, la seule façon de
+  l'évincer est une purge globale, que ce paragraphe interdit : `cacheHeaders` lève plutôt que
+  de servir une page qu'on ne saurait pas invalider.
 
 ---
 

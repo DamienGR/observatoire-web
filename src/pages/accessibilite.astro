@@ -1,0 +1,93 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+/**
+ * The site's own accessibility statement (CLAUDE.md §4: "Le site publie sa
+ * propre déclaration d'accessibilité et son propre score").
+ *
+ * The score is deliberately absent rather than invented: no measurement chain
+ * has run yet, and publishing a self-assessed figure would be precisely the
+ * unverifiable claim this project refuses from anyone else.
+ */
+---
+
+<BaseLayout
+  title="Déclaration d'accessibilité"
+  description="Engagements, état de l'auto-évaluation et limites connues de l'accessibilité d'observatoire-web.fr."
+>
+  <h1>Déclaration d'accessibilité</h1>
+
+  <p class="lede">
+    Ce site mesure l'accessibilité technique d'autres sites. Il se doit d'appliquer à lui-même les
+    exigences qu'il rend visibles chez les autres, et de dire où il en est réellement.
+  </p>
+
+  <h2>État actuel</h2>
+  <p>
+    <strong>Aucun audit d'accessibilité n'a été réalisé sur ce site.</strong> Ce qui suit est une auto-évaluation
+    : elle décrit des engagements tenus dans le code, pas un résultat vérifié par un tiers. Aucune déclaration
+    de conformité au RGAA n'est faite, ni totale, ni partielle.
+  </p>
+  <p>
+    Le site publiera son propre score, mesuré par la même chaîne que les autres, dès que celle-ci
+    sera en service. Il figurera ici, avec sa date et sa version de méthodologie, y compris s'il est
+    mauvais.
+  </p>
+
+  <h2>Engagements tenus dans le code</h2>
+  <ul>
+    <li>
+      Structure sémantique : un seul titre de niveau 1 par page, hiérarchie de titres sans saut.
+    </li>
+    <li>Repères de page explicites : en-tête, navigation, contenu principal, pied de page.</li>
+    <li>Lien d'évitement en début de page, qui déplace réellement le focus vers le contenu.</li>
+    <li>
+      Tout est atteignable et utilisable au clavier ; le focus est visible sur chaque élément
+      interactif, dans les deux thèmes.
+    </li>
+    <li>
+      Contraste conforme au niveau AA des WCAG 2.2 sur l'ensemble des états, en thème clair comme en
+      thème sombre.
+    </li>
+    <li>
+      Aucune information n'est portée par la couleur seule : la page courante de la navigation est
+      aussi soulignée.
+    </li>
+    <li>
+      Tableaux de données pourvus d'une légende et d'en-têtes de ligne et de colonne explicites ;
+      toute zone défilante est atteignable au clavier.
+    </li>
+    <li>
+      Aucun script n'est envoyé au navigateur pour l'affichage : les pages fonctionnent sans
+      JavaScript, et les animations respectent le réglage de réduction des mouvements.
+    </li>
+  </ul>
+
+  <h2>Limites connues</h2>
+  <ul>
+    <li>
+      L'auto-évaluation n'a pas été confrontée à un test avec des personnes utilisatrices de
+      technologies d'assistance.
+    </li>
+    <li>
+      La vérification automatisée des pages par un outil d'audit n'est pas encore branchée sur la
+      chaîne d'intégration continue du projet : elle est prévue, et cette page sera mise à jour
+      quand elle le sera.
+    </li>
+    <li>
+      Un contrôle automatisé, ici comme ailleurs, ne couvre qu'une partie des critères : voir la <a
+        href="/methodologie">méthodologie</a
+      >.
+    </li>
+  </ul>
+
+  <h2>Signaler un problème</h2>
+  <p>
+    Si une page de ce site vous est inaccessible, le signalement est utile même sans détail
+    technique : décrivez ce que vous tentiez de faire et ce qui s'est produit. Les coordonnées
+    figurent dans les <a href="/mentions-legales">mentions légales</a>. Un problème d'accessibilité
+    sur ce site est traité avec la même exigence de délai que la procédure de <a
+      href="/droit-de-reponse">droit de réponse</a
+    >.
+  </p>
+</BaseLayout>
