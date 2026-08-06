@@ -947,3 +947,45 @@ Le job existe et tourne, mais **rien n'empêche de merger malgré son échec** t
 ajouté aux checks requis de `main` — réglage de console qu'une session ne peut ni faire ni
 constater (même limite que J1-13 et l'entrée 003). Inscrit comme tel : un check non requis est un
 avis, pas une garde.
+
+### Post-scriptum — le job a échoué au premier push sur `main`, et c'était ma phrase
+
+Le job `deploy` est passé au vert sur la PR #23, puis **rouge au merge**. Le commentaire que
+j'avais écrit dans le workflow disait :
+
+> La correspondance par préfixe couvre les deux contextes que Netlify utilise — deploy-preview
+> sur une PR, et le déploiement de production sur un push vers `main`.
+
+Faux. Sur le commit de `main`, l'API GitHub renvoie **zéro** statut de commit, et le job l'a
+constaté trente fois de suite avant d'expirer :
+
+```
+attempt 29/30: no successful netlify/* status yet (0 netlify status(es) seen)
+No successful netlify/* commit status on 7e36ec2 after 300s.
+Either the site is not linked to this repository, or the deploy never started.
+```
+
+Netlify publie un statut pour les deploy previews, pas pour les déploiements de production.
+
+Il faut le dire sans détour : **c'est la septième déclaration fausse de la journée, et je l'ai
+écrite dans la PR dont le sujet était de ne pas livrer de déclarations invérifiables.** Toutes les
+autres assertions de cette PR avaient été éprouvées — les deux chemins du script, le vert et le
+rouge. Celle-là, seule, était une supposition sur le comportement d'un tiers, glissée dans un
+commentaire. Un commentaire n'a pas de chemin d'exécution : rien ne l'oblige à être vrai, et il
+échappe à la discipline qu'on applique au code juste à côté.
+
+Deux choses ont bien fonctionné, et elles valent d'être notées parce qu'elles sont ce qui a rendu
+le diagnostic immédiat :
+
+- Le compteur `0 netlify status(es) seen` désignait la cause au lieu de la masquer. Un simple
+  « timeout » aurait envoyé chercher une lenteur de déploiement.
+- Le message d'expiration nommait les deux hypothèses réelles, dont la bonne.
+
+Le job est restreint aux `pull_request`. Vérifier la production demanderait son hôte, que le §6
+garde hors du diff : cela attend `SITE_URL` en variable Actions, donc une action **[humain]**. La
+perte est faible, `main` étant protégée — tout commit y arrive par une PR que ce job a déjà
+gardée.
+
+La règle qu'on en tire : **un commentaire qui affirme un comportement externe est une assertion
+non testée.** Soit on le vérifie avant de l'écrire, soit on écrit ce qu'on a mesuré et rien de
+plus.
