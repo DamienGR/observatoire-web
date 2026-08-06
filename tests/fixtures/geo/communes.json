@@ -1,0 +1,63 @@
+[
+  {
+    "code": "01001",
+    "nom": "L'Abergement-Clémenciat",
+    "population": 860,
+    "codeDepartement": "01",
+    "codeRegion": "84",
+    "codeEpci": "200069193"
+  },
+  {
+    "code": "01004",
+    "nom": "Ambérieu-en-Bugey",
+    "population": 15934,
+    "codeDepartement": "01",
+    "codeRegion": "84",
+    "codeEpci": "240100883"
+  },
+  {
+    "code": "2A004",
+    "nom": "Ajaccio",
+    "population": 76320,
+    "codeDepartement": "2A",
+    "codeRegion": "94",
+    "codeEpci": "242010056"
+  },
+  {
+    "code": "75056",
+    "nom": "Paris",
+    "population": 2103778,
+    "codeDepartement": "75",
+    "codeRegion": "11",
+    "codeEpci": "200054781"
+  },
+  {
+    "code": "97101",
+    "nom": "Les Abymes",
+    "population": 51055,
+    "codeDepartement": "971",
+    "codeRegion": "01",
+    "codeEpci": "200018653"
+  },
+  {
+    "code": "22016",
+    "nom": "Île-de-Bréhat",
+    "population": 429,
+    "codeDepartement": "22",
+    "codeRegion": "53"
+  },
+  {
+    "code": "55039",
+    "nom": "Beaumont-en-Verdunois",
+    "population": 0,
+    "codeDepartement": "55",
+    "codeRegion": "44",
+    "codeEpci": "200049187"
+  },
+  {
+    "code": "98411",
+    "nom": "Îles Saint-Paul et Nouvelle-Amsterdam",
+    "codeDepartement": "984",
+    "codeRegion": "984"
+  }
+]

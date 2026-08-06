@@ -1591,3 +1591,222 @@ Les deux chemins rouges ont été éprouvés avant le push, comme l'exige l'entr
 ajoutée au schéma sans régénérer → `declares the same columns on measurement` rouge ; une contrainte
 retirée → `declares the same constraints on finding` rouge. Le reste de la suite reste vert dans les
 deux cas, ce qui dit que le test vise bien ce qu'il prétend viser.
+
+---
+
+## 015 — Deux hypothèses fausses en une heure, et six communes à zéro habitant
+
+**6 août 2026** · jalon 1 · branche `claude/j1-08-937gb8`
+
+J1-07 : parser les deux référentiels et geler des fixtures. Sur le papier, la tâche la plus
+prévisible du jalon. Elle a produit deux fausses pistes de ma part, un défaut dans le schéma
+mergé le matin même, et un écart de 7 % avec un chiffre du brief.
+
+### Fausse piste 1 — j'ai inventé une sentinelle `"None"` qui n'existe pas
+
+En explorant l'annuaire DILA depuis un `python3 -c`, j'ai imprimé un enregistrement avec
+`str(v)[:200]` et lu ceci :
+
+```
+"site_internet": "None",
+```
+
+J'en ai conclu que l'API encodait l'absence par la **chaîne** `"None"` — un piège classique
+d'export Python mal sérialisé — et j'ai écrit le parser autour de cette découverte : une constante
+`ABSENT_MARKER`, un helper dédié, un commentaire de dix lignes expliquant que 13 656 enregistrements
+la portent et qu'une lecture naïve donne une commune dont le site web s'appelle `None`.
+
+C'était mon propre `str(None)`. L'API envoie `null`, comme tout le monde. Vérifié sur les octets
+bruts : **zéro occurrence** de `"None"`, 13 656 `null`.
+
+Ce qui a fait tomber le masque n'est pas une relecture, c'est un test rouge : en recapturant la
+fixture depuis le bon endpoint, le schéma a refusé `null` là où il attendait une chaîne. Sans ce
+test, je livrais une défense contre un fantôme, un commentaire affirmant une contre-vérité, et la
+session suivante l'aurait crue — c'est exactement ce que ce journal existe pour empêcher.
+
+Ce que j'en retiens, et qui vaut au-delà de ce cas : **l'outil d'inspection fait partie de
+l'observation**. Un REPL Python et un `curl | jq` ne montrent pas le même document. La règle que
+j'applique désormais est d'asserter sur les octets quand la question porte sur l'encodage — c'est
+ce que fait `tests/contract/annuaire.test.ts`, qui cherche `"None"` dans le texte brut de la
+réponse et non dans l'objet décodé.
+
+### Fausse piste 2 — l'intrus qui n'en était pas un
+
+Deuxième affirmation, écrite avec le même aplomb : la requête `where=pivot like "mairie"` est une
+recherche de sous-chaîne dans un blob JSON, donc elle laisse passer un intrus — le Conseil
+territorial de Saint-Barthélemy, dont le `pivot` vaut `cg`. J'ai écrit `isMairie()` pour l'exclure,
+et un test qui l'attendait `false`.
+
+Le test est sorti rouge. L'enregistrement porte **deux** pivots : `cg`, puis `mairie`. Saint-Barthélemy
+n'est pas un intrus, c'est une collectivité qui exerce la fonction de mairie, et l'annuaire le dit
+correctement. J'avais regardé `pivots[0]` et conclu sur l'ensemble.
+
+La fonction ne change pas — elle utilise `some()` — mais sa *justification* était fausse, et une
+justification fausse est un piège différé : la prochaine session qui optimise « puisque c'est
+toujours le premier pivot » supprime une commune du périmètre, une seule, silencieusement.
+
+Deux hypothèses, deux fois la même erreur de méthode : conclure sur l'ensemble depuis un
+échantillon de un. Les deux ont été attrapées par des tests écrits contre des captures réelles.
+Aucune ne l'aurait été par une relecture.
+
+### La vraie trouvaille : six communes à zéro habitant
+
+En vérifiant les contraintes du schéma Zod sur le référentiel **complet** plutôt que sur les trois
+premiers enregistrements, une ligne a sauté :
+
+```
+population<=0: 6
+```
+
+Beaumont-en-Verdunois, Bezonvaux, Cumières-le-Mort-Homme, Fleury-devant-Douaumont,
+Haumont-près-Samogneux, Louvemont-Côte-du-Poivre. Les six villages détruits en 1916 autour de
+Verdun, jamais reconstruits, toujours communes de plein droit, et l'INSEE leur compte **0
+habitant**.
+
+Or la migration `0000` mergée le matin même porte :
+
+```sql
+CONSTRAINT "commune_population_positive" CHECK ("commune"."population" > 0)
+```
+
+Cette contrainte est fausse. Pas approximative : fausse sur six lignes réelles du référentiel
+qu'elle est censée décrire. Je l'avais écrite depuis une intuition de ce qu'est une commune, et
+elle est passée sous les yeux de la CI, du contrôle de contraintes sur Postgres réel, et de la
+relecture — parce que **rien de tout cela ne confronte le schéma aux données**. Ce qui l'a trouvée,
+c'est d'aller chercher les cas limites dans le jeu complet pour construire une fixture.
+
+Corrigé ici : migration `0001`, `>= 0`, appliquée à la suite de `0000` sur le Postgres jetable de
+l'entrée 014, avec vérification que `0` passe et que `-1` est toujours refusé. Sans effet pratique
+aujourd'hui — le périmètre v1 s'arrête à 10 000 habitants — mais une contrainte qui affirme quelque
+chose de faux sur le domaine finit toujours par se rappeler à vous, et le jour où le périmètre
+s'élargira, elle l'aurait fait au milieu d'un batch de nuit.
+
+C'est aussi la première migration *évolutive* du projet : `DROP CONSTRAINT` puis `ADD CONSTRAINT`,
+exactement le couple que le choix `CHECK` plutôt qu'`enum` de l'entrée 014 rendait facile.
+
+### Le périmètre réel : 1 067, pas « 950 à 1 000 »
+
+Compté sur le référentiel complet : **1 067** communes de plus de 10 000 habitants, contre « de
+l'ordre de 950 à 1 000 » au §3 du brief. Sept pour cent d'écart. Le brief dit lui-même que le
+comptage exact se dérive de l'API, donc ce n'est pas une contradiction — mais c'est un chiffre qui
+finira sur une page publique, et deux sources pour un même nombre finissent toujours par diverger.
+Noté en dette plutôt que corrigé dans le brief : c'est au porteur de décider si le brief porte le
+chiffre ou si la page le dérive de l'ingestion.
+
+Au passage, deux de ces 1 067 n'ont **aucune** fiche mairie dans l'annuaire (`49126`, `98747`). La
+résolution d'URL de J1-06 devra produire quelque chose pour elles, et ce quelque chose n'est pas
+« candidat ».
+
+### Ce que les fixtures ne contiennent pas
+
+Les enregistrements de l'annuaire portent `adresse_courriel`, `telephone`, `affectation_personne` :
+des coordonnées de personnes nommées, que le §7 interdit à ce dépôt. Elles sont absentes des
+fixtures parce que la capture **ne les a jamais demandées** — la clause `select=` nomme sept champs
+et sept seulement. Ne pas demander est plus fort que filtrer après coup : il ne reste aucune étape
+où quelqu'un peut oublier.
+
+Un cas a quand même dû être écarté à la main. Parmi les cinq valeurs de `site_internet` sans schéma
+d'URL, l'une est une **adresse email personnelle** — la commune a renseigné son mail dans le champ
+site web. Le cas est intéressant pour le parser, l'adresse n'a rien à faire dans un dépôt public :
+la fixture garde `www.bajus.fr` (même cas, pas de donnée personnelle) et le test couvre l'email avec
+une valeur synthétique. C'est la seule entorse à la règle « fixture = observation verbatim », et
+elle est écrite dans `tests/fixtures/README.md` plutôt que laissée à deviner.
+
+### Une fixture sans test de contrat pourrit
+
+Le §5 range les « contrats API réels » dans les couches planifiées ; c'est resté une ligne de
+tableau jusqu'ici. Elle devient un projet Vitest `contract`, une commande `pnpm test:contract` et
+un workflow hebdomadaire. Le raisonnement tient en une phrase : une fixture gelée épingle la forme
+contre laquelle le code a été écrit, et **rien dans une fixture ne peut remarquer que l'amont a
+changé**.
+
+Deux détails de mise au point valent d'être notés.
+
+La première version du test `geo` tirait le référentiel entier — 35 000 enregistrements, 12 Mo —
+pour asserter qu'il avait « une taille plausible ». L'API a répondu **503**. Le volume n'est pas un
+contrat ; la forme d'un enregistrement en est un. La version livrée refait exactement les huit
+enregistrements de la fixture, un par un, et compare les jeux de clés.
+
+La seconde version contenait une assertion vraie et inutile : « certaines valeurs ne sont pas des
+URL parsables ». Vraie sur les 22 147 sites, invérifiable sur un échantillon de 100 — cinq cas au
+total. Le test est sorti rouge, et il avait raison : une assertion qui ne tient que par chance est
+pire que pas d'assertion. Elle est remplacée par une plus faible et honnête, avec la raison écrite
+à côté.
+
+Enfin, le suite distingue explicitement **deux rouges** : l'API n'a pas répondu après quatre
+tentatives avec backoff (panne de disponibilité, on relance), ou la charge est arrivée et ne
+correspond plus (dérive de contrat, on touche au schéma). Un test de contrat qui confond les deux
+apprend à tout le monde à ignorer son verdict — et le §5 dit assez ce que vaut ici une CI qu'on
+apprend à ignorer.
+
+Chemins rouges éprouvés avant le push, comme l'exige l'entrée 012 : une clé ajoutée à une fixture
+et un champ retiré d'une autre font virer au rouge exactement les deux tests concernés, et eux
+seuls.
+
+---
+
+## 016 — Le juge unique n'est pas rouge, il est absent
+
+**6 août 2026** · jalon 1 · branche `claude/j1-08-937gb8`
+
+Écrit pendant que ça se produit, comme l'exige le §12 — la PR de J1-07 est ouverte, vérifiée en
+session, et **ne peut pas être mergée**.
+
+### Ce qui s'est passé
+
+La CI de la PR #30 s'est comportée bizarrement : `e2e` et CodeQL sont passés au vert, mais `verify`
+et `deploy` sont restés **treize minutes sans obtenir de runner**, dans la *même* run que l'`e2e`
+qui, lui, en avait eu un. L'API d'annulation a répondu **502**. Après relance, `verify` a démarré
+puis a été tué par son propre `timeout-minutes: 10` — onze minutes pour un job qui en prend deux.
+
+J'ai d'abord cherché la cause dans le diff, puis dans la configuration du workflow. Elle n'était ni
+dans l'un ni dans l'autre :
+
+```
+overall: Partial System Outage
+component: Actions -> major_outage
+incident: Incident with Actions | investigating | 2026-08-06T15:22:49Z
+  "Workflow runs are still failing or delayed in starting, and some queued
+   jobs may time out. Some requests to the Actions API are returning errors."
+```
+
+Vingt minutes de diagnostic qu'un coup d'œil à `githubstatus.com` aurait économisées. La leçon
+tient en une ligne : **quand plusieurs jobs indépendants échouent de plusieurs manières
+différentes, la cause commune n'est pas dans le dépôt.** Un test rouge, un job qui expire et une
+API qui renvoie 502 n'ont aucune raison d'arriver ensemble pour une raison qui vous appartient.
+
+### Pourquoi ça compte au-delà de l'incident
+
+Le §5 a longuement pensé au **rouge qu'on apprend à ignorer** — un test instable, une requête
+réseau sur le chemin d'une PR — et pas du tout à ceci : le juge n'est pas rouge, il est **absent**.
+
+Les deux se ressemblent de loin. Dans les deux cas rien ne merge. Mais ils n'appellent pas la même
+réaction, et rien dans le dépôt ne permet aujourd'hui de les distinguer : il faut aller lire un
+onglet Actions à la main, puis une page de statut d'un tiers. C'est exactement le genre de
+diagnostic que ce projet est censé rendre possible **depuis le produit**, et il ne l'est pas.
+
+C'est aussi la friction la plus purement *cloud-only* rencontrée jusqu'ici, et elle mérite d'être
+nommée sans la dramatiser. Sur un poste local, la panne serait un désagrément : on lance la suite,
+on constate qu'elle est verte, on merge. Ici, `pnpm verify` **est** vert — 338 tests, mesurés dans
+la session, y compris `pnpm test:contract` contre les vraies API — et cette information n'a aucune
+valeur institutionnelle. Le §1 dit que la CI est l'unique juge ; le corollaire, découvert
+aujourd'hui, est qu'**un juge unique est aussi un point de panne unique**, et que la règle « si la
+CI est verte et que le produit est cassé, c'est la CI qu'il faut corriger » n'a pas de symétrique
+pour « la CI ne rend pas de verdict ».
+
+Je ne propose pas de contournement, et c'est délibéré. Un `--no-verify`, un check rendu non requis
+« le temps de la panne », un merge administrateur : chacun résout l'heure qui vient et détruit la
+propriété qui fait tenir le reste. La règle du §2 du brief est de noter et de poursuivre en cloud,
+pas de basculer dès que ça résiste. On attend.
+
+### Ce qu'on en retire, quand même
+
+Une chose concrète à reprendre : `timeout-minutes: 10` sur `verify` a transformé une indisponibilité
+en **échec attribué au job**. Le statut rapporté est `cancelled`, indiscernable d'une annulation
+volontaire, sur une exécution où rien du diff n'a été mesuré. Un budget de temps sert à attraper une
+suite qui dérive ; il ne devrait pas prononcer un verdict sur du code qu'il n'a pas exécuté. Le
+distinguer demande de savoir si le job attendait un runner ou s'il travaillait — information que
+l'API expose (`started_at` du job contre `started_at` des étapes) et que personne ne lit.
+
+À reprendre quand la panne sera finie, pas pendant : corriger un timeout au milieu d'un incident,
+c'est valider une hypothèse sur un système dont on sait qu'il ment.

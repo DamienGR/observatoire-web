@@ -5,8 +5,12 @@ import { defineConfig } from 'vitest/config';
  *
  * - `unit`   — zero I/O, enforced by a setup guard, budget < 30 s.
  * - `integration` — ephemeral Neon branch, needs DATABASE_URL, budget < 4 min.
+ * - `contract` — the real third-party APIs. Scheduled, never on a PR.
  *
  * The budgets are enforced by `scripts/budget.mjs`, wired into the npm scripts.
+ * `contract` has none: §5 lists it as unbounded, and a wall-clock kill on a job
+ * whose whole purpose is to observe a third party would report our impatience
+ * as their drift.
  */
 
 /**
@@ -46,6 +50,22 @@ export default defineConfig({
           include: ['tests/integration/**/*.test.ts'],
           setupFiles: ['tests/setup/integration-env.ts'],
           testTimeout: 30_000,
+        },
+      },
+      {
+        resolve,
+        test: {
+          name: 'contract',
+          environment: 'node',
+          globals: true,
+          include: ['tests/contract/**/*.test.ts'],
+          // The only project with no anti-I/O guard: reaching the real APIs is
+          // the entire point. It runs on a schedule (.github/workflows/
+          // contracts.yml) and never on the path of a pull request — CLAUDE.md
+          // §5 makes that inviolable, because a CI that fails for reasons
+          // foreign to the diff is a CI everyone learns to ignore.
+          testTimeout: 60_000,
+          retry: 1,
         },
       },
     ],

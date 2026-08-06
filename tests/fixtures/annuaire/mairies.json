@@ -1,0 +1,95 @@
+{
+  "total_count": 10,
+  "results": [
+    {
+      "id": "8680041f-e03b-4067-b12b-9af7fee58aba",
+      "nom": "Conseil territorial de Saint-Barthélemy",
+      "code_insee_commune": "97701",
+      "site_internet": "[{\"libelle\": \"\", \"valeur\": \"https://www.comstbarth.fr\"}, {\"libelle\": \"Demande de rendez-vous\", \"valeur\": \"https://www.comstbarth.fr/Demande-de-rendez-vous\"}]",
+      "pivot": "[{\"type_service_local\": \"cg\", \"code_insee_commune\": [\"97701\"]}, {\"type_service_local\": \"mairie\", \"code_insee_commune\": [\"97701\"]}]",
+      "statut_de_diffusion": "true",
+      "date_modification_datetime": "2026-07-17T16:15:33+00:00"
+    },
+    {
+      "id": "00ad6543-1a5d-4a05-8e5c-4e88881976af",
+      "nom": "Mairie - Baignes-Sainte-Radegonde",
+      "code_insee_commune": "16025",
+      "site_internet": "[{\"libelle\": \"\", \"valeur\": \"http://www.baignes-sainte-radegonde.fr\"}]",
+      "pivot": "[{\"type_service_local\": \"mairie\", \"code_insee_commune\": [\"16025\"]}]",
+      "statut_de_diffusion": "true",
+      "date_modification_datetime": "2025-10-16T14:24:00+00:00"
+    },
+    {
+      "id": "b3185dfc-c607-4410-adfb-116eab505897",
+      "nom": "Mairie - Bajus",
+      "code_insee_commune": "62077",
+      "site_internet": "[{\"libelle\": \"\", \"valeur\": \"www.bajus.fr\"}]",
+      "pivot": "[{\"type_service_local\": \"mairie\", \"code_insee_commune\": [\"62077\"]}]",
+      "statut_de_diffusion": "true",
+      "date_modification_datetime": "2026-05-04T15:36:20+00:00"
+    },
+    {
+      "id": "03ee8567-2073-4f5c-b053-e12d1683a6e5",
+      "nom": "Mairie - Conlie",
+      "code_insee_commune": "72089",
+      "site_internet": "[{\"libelle\": \"\", \"valeur\": \"https://www.conlie.fr/\"}, {\"libelle\": \"Prise de rendez-vous en ligne\", \"valeur\": \"https://www.conlie.fr/vie-pratique/mes-demarches/rdv-en-ligne/\"}]",
+      "pivot": "[{\"type_service_local\": \"mairie\", \"code_insee_commune\": [\"72089\"]}]",
+      "statut_de_diffusion": "true",
+      "date_modification_datetime": "2026-07-01T10:10:17+00:00"
+    },
+    {
+      "id": "00033429-1b83-46b4-9101-3a2ad178af79",
+      "nom": "Mairie - Courcelles-sur-Aire",
+      "code_insee_commune": "55128",
+      "site_internet": null,
+      "pivot": "[{\"type_service_local\": \"mairie\", \"code_insee_commune\": [\"55128\"]}]",
+      "statut_de_diffusion": "true",
+      "date_modification_datetime": "2025-07-03T15:44:48+00:00"
+    },
+    {
+      "id": "001c2e78-286c-4673-82d3-e90627f4afff",
+      "nom": "Mairie - Curgy",
+      "code_insee_commune": "71162",
+      "site_internet": "[{\"libelle\": \"\", \"valeur\": \"https://www.curgy.fr/\"}]",
+      "pivot": "[{\"type_service_local\": \"mairie\", \"code_insee_commune\": [\"71162\"]}]",
+      "statut_de_diffusion": "true",
+      "date_modification_datetime": "2026-07-01T10:10:10+00:00"
+    },
+    {
+      "id": "1e701caf-260c-4ce9-8bcc-2310fb812024",
+      "nom": "Mairie - Saint-Malo - annexe Saint-Servan",
+      "code_insee_commune": "35288",
+      "site_internet": "[{\"libelle\": \"\", \"valeur\": \"https://www.ville-saint-malo.fr\"}, {\"libelle\": \"\", \"valeur\": \"https://saint-malo.fr\"}, {\"libelle\": \"\", \"valeur\": \"https://www.saint-malo.fr\"}]",
+      "pivot": "[{\"type_service_local\": \"mairie\", \"code_insee_commune\": [\"35288\"]}]",
+      "statut_de_diffusion": "true",
+      "date_modification_datetime": "2025-12-01T14:38:00+00:00"
+    },
+    {
+      "id": "4f94c6d2-87de-4c0b-b4fe-971d1e3cd284",
+      "nom": "Mairie annexe - Sainte-Croix-Grand-Tonne",
+      "code_insee_commune": "14098",
+      "site_internet": "[{\"libelle\": \"\", \"valeur\": \"https://www.thueetmue.fr\"}]",
+      "pivot": "[{\"type_service_local\": \"mairie\", \"code_insee_commune\": [\"14098\"]}]",
+      "statut_de_diffusion": "true",
+      "date_modification_datetime": "2026-02-02T12:11:26+00:00"
+    },
+    {
+      "id": "42730fb0-8038-4422-bf68-0a86904ed462",
+      "nom": "Mairie déléguée - Coudreceau",
+      "code_insee_commune": "28112",
+      "site_internet": "[{\"libelle\": \"\", \"valeur\": \"http://www.arcisses.fr\"}]",
+      "pivot": "[{\"type_service_local\": \"mairie\", \"code_insee_commune\": [\"28112\", \"28236\"]}]",
+      "statut_de_diffusion": "true",
+      "date_modification_datetime": "2026-07-22T15:42:52+00:00"
+    },
+    {
+      "id": "41b8cb3c-eaaf-4d05-926b-7ac573fcfd43",
+      "nom": "Mairie déléguée - Magny-le-Freule",
+      "code_insee_commune": "14387",
+      "site_internet": "[{\"libelle\": \"\", \"valeur\": \"https://mva14.fr/\"}]",
+      "pivot": "[{\"type_service_local\": \"mairie\", \"code_insee_commune\": [\"14431\"]}]",
+      "statut_de_diffusion": "true",
+      "date_modification_datetime": "2026-07-07T15:38:03+00:00"
+    }
+  ]
+}

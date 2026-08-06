@@ -1,0 +1,62 @@
+name: Contracts
+
+# The scheduled half of the frozen fixtures (CLAUDE.md §5, fourth test
+# priority). The fixtures under tests/fixtures/ pin the shape the parsers were
+# written against; nothing inside a fixture can notice the day upstream stops
+# sending it. This asks the real APIs, weekly.
+#
+# NEVER on `pull_request`, and that is not an oversight to correct later. §5
+# makes it inviolable: no test on the path of a pull request performs a real
+# request. Such a check would fail for reasons foreign to the diff, and in a
+# project where CI is the only judge, teaching everyone to ignore a red CI is
+# the worst failure available.
+#
+# When this job goes red, the first question is *which kind* of red: the suite
+# distinguishes an availability failure — the API did not answer after four
+# attempts — from a contract failure, where the payload arrived and no longer
+# matches. Only the second one justifies touching a schema.
+on:
+  schedule:
+    # Mondays, 05:17 UTC. Not on the hour: GitHub's scheduler queues everything
+    # written `0 * * * *` and delivers it late.
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ASTRO_TELEMETRY_DISABLED: '1'
+
+concurrency:
+  group: contracts
+  cancel-in-progress: false
+
+jobs:
+  contracts:
+    name: contracts (the real geo.api.gouv.fr and DILA payloads)
+    runs-on: ubuntu-latest
+    # Generous on purpose: §5 lists this layer as unbounded, and the point is to
+    # wait out a slow upstream rather than to report our impatience as drift.
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check the source contracts
+        run: pnpm test:contract
