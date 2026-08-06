@@ -3,10 +3,14 @@
  * Waits for Netlify's commit status and writes its target URL to the job output.
  *
  * The URL is discovered rather than configured. CLAUDE.md §6 forbids a base URL
- * in the diff, and a hardcoded host would be wrong on every branch but one:
- * a pull request gets `deploy-preview-<n>--<site>`, a push to main gets the
- * production host. Netlify publishes both as a commit status, so the status is
- * the source of truth.
+ * in the diff, and a hardcoded host would be wrong on every branch but one.
+ * Netlify publishes the preview URL as a commit status, so the status is the
+ * source of truth.
+ *
+ * Pull requests only. Netlify posts a commit status for deploy previews but not
+ * for production deploys — measured, after a first version assumed otherwise and
+ * spent five minutes on main seeing zero statuses. Checking production needs its
+ * host, which §6 keeps out of the diff.
  *
  * Reads GH_TOKEN, SHA and REPO from the environment. The token needs
  * `statuses: read` and nothing else — no Netlify credential is involved, which

@@ -73,8 +73,19 @@ jobs:
   #
   # It is separate from `verify` on purpose: it depends on a third party, so a
   # Netlify outage must not be able to mask a real `verify` failure.
+  #
+  # Pull requests only. The first version also ran on pushes to main, on the
+  # assumption that Netlify posts a commit status for production deploys the way
+  # it does for previews. It does not: the run on 7e36ec2 polled for five
+  # minutes and saw `0 netlify status(es) seen` throughout. Checking production
+  # needs its host, which §6 keeps out of the diff — so it waits for SITE_URL to
+  # exist as an Actions variable (docs/roadmap.md).
+  #
+  # Little is lost meanwhile: main is protected, so every commit reaches it
+  # through a pull request this job has already gated.
   deploy:
     name: deploy (the preview serves the application)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -87,14 +98,11 @@ jobs:
       # The deploy URL is read from the commit status Netlify publishes, never
       # written down here: §6 forbids a base URL in the diff, and a hardcoded
       # host would also be wrong on every branch but one.
-      #
-      # The prefix match covers both contexts Netlify uses — deploy-preview on
-      # a pull request, and the production deploy on a push to main.
       - name: Resolve the Netlify deploy URL
         id: netlify
         env:
           GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          SHA: ${{ github.event.pull_request.head.sha }}
           REPO: ${{ github.repository }}
         run: node scripts/resolve-netlify-url.mjs
 
