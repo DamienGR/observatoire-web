@@ -152,7 +152,13 @@ export const commune = pgTable(
     // Five characters, always. This is the assertion that catches an INSEE code
     // read as an integer somewhere upstream: `01004` coming back as `1004`.
     check('commune_code_insee_length', sql`char_length(${table.codeInsee}) = 5`),
-    check('commune_population_positive', sql`${table.population} > 0`),
+    // `>= 0`, not `> 0`, and the difference is six real communes: Beaumont-en-
+    // Verdunois, Bezonvaux, Cumières-le-Mort-Homme, Fleury-devant-Douaumont,
+    // Haumont-près-Samogneux and Louvemont-Côte-du-Poivre were destroyed in
+    // 1916 and never rebuilt. They are still legally communes and the
+    // referential reports 0 inhabitants for each. The original `> 0` was
+    // written from an assumption about what a commune is; J1-07 measured it.
+    check('commune_population_not_negative', sql`${table.population} >= 0`),
     index('commune_departement_idx').on(table.departement),
     index('commune_region_idx').on(table.region),
     // The v1 perimeter is a population threshold, and the rankings are sorted
