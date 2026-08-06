@@ -1167,3 +1167,49 @@ personne n'écrit un test pour un défaut qu'il n'a pas encore imaginé.
   l'est pas : rien dans la session ne permet de la vérifier, et une adresse plausible mais fausse
   dans un document légal est pire qu'une adresse absente. Inscrit en dette **[humain]** plutôt
   qu'en supposition — la leçon de l'entrée 010, appliquée avant de la répéter.
+
+### Post-scriptum — le budget a viré au rouge sur la preview, et c'était le but
+
+La PR #26 est partie avec `verify` vert et le check `deploy` **rouge**, sur une seule ligne :
+
+```
+ok    content-security-policy does not allow 'unsafe-inline'
+ok    GET / carries no inline <script>, as script-src 'self' requires
+ok    GET /methodologie, /droit-de-reponse, /mentions-legales, /accessibilite → 200
+ok    GET an unknown path returns 404
+FAIL  GET / ships 143.1 kB of JavaScript as served, over the 20.0 kB budget.
+```
+
+`PUBLIC_SENTRY_DSN` était bien définie sur Netlify, en contexte `all`. La preview embarquait donc
+le SDK navigateur, et le budget écrit quelques heures plus tôt l'a dit avec le chiffre et la cause.
+
+Deux choses méritent d'être notées, parce qu'elles se contredisent en apparence :
+
+- **Le check a fait exactement son travail.** Il a transformé une supposition de session (« il
+  faudrait vérifier en console ») en constat daté et chiffré sur le déploiement réel. Aucune autre
+  couche du pipeline ne pouvait le voir : le build réussit, les tests passent, la page s'affiche.
+- **Il a bloqué le merge.** Et c'est correct : le §11.7 interdit de contourner un check qui gêne,
+  la sortie est de traiter la cause. La variable a été retirée côté Netlify, ce qui est réversible
+  d'un clic le jour où le site aura du JavaScript client à surveiller.
+
+La question posée par le porteur mérite sa réponse écrite, parce qu'elle se reposera : **non, on
+ne peut pas « brancher Sentry » sous 20 ko — mais le budget ne concerne que le navigateur.** Le SDK
+serveur est actif, coûte zéro octet côté client, et c'est lui qui répond à l'exigence du brief.
+Couper le tracing et le replay, déjà fait, ne descend pas sous les 48 ko gz : c'est le plancher du
+paquet. Le loader CDN de Sentry ne sauverait rien non plus — ~30 ko, et servi par un domaine tiers
+que `script-src 'self'` refuse. Le jour où un îlot existera, l'arbitrage sera explicite : relever
+le budget dans une PR qui l'argumente, ou écrire un mouchard de quelques centaines d'octets.
+
+### Ce que la lecture des variables Netlify a montré au passage
+
+Retirer la variable a demandé de lister l'environnement du projet, et cette liste a appris quelque
+chose qu'aucune tâche ne cherchait : **`OPS_TOKEN` n'y est pas marqué « secret ».** Netlify renvoie
+donc sa valeur en clair à qui interroge l'API, là où `DATABASE_URL` et `PSI_API_KEY`, eux, sont
+masqués. Le §7 dit ce qu'il faut en faire — rotation à la moindre suspicion — et la valeur ayant
+transité en clair dans une session, la suspicion est acquise. Inscrit en dette **[humain]**.
+
+C'est la deuxième fois dans ce projet qu'un détour opérationnel trouve mieux que la tâche en
+cours : la première fois, c'était la vérification de `sharp` qui avait trouvé `ipx` (entrée 008).
+Il y a probablement une règle là-dedans : **une session qui va lire l'état réel d'un service en
+rapporte toujours plus que ce qu'elle était venue chercher**, et c'est un argument pour aller le
+lire plutôt que de le supposer.
