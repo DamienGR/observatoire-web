@@ -989,3 +989,28 @@ gardée.
 La règle qu'on en tire : **un commentaire qui affirme un comportement externe est une assertion
 non testée.** Soit on le vérifie avant de l'écrire, soit on écrit ce qu'on a mesuré et rien de
 plus.
+
+### Second post-scriptum — la dette disait « il faut », le porteur a répondu « c'est déjà là »
+
+Le premier post-scriptum concluait que vérifier la production attendait `SITE_URL` en variable
+Actions, réglage **[humain]**. Réponse du porteur : la variable existait déjà.
+
+C'est la **deuxième fois de la journée** qu'une de mes notes de dette situe mal un obstacle —
+après celle de l'entrée 008 qui plaçait le risque de `sharp` chez Astro alors qu'il était chez
+`ipx`. Le motif est identique : la note est écrite au moment où l'on quitte le sujet, donc au
+moment où l'on en sait le moins, et elle prend dans le fichier l'apparence d'un constat.
+
+Il faut en tirer la règle explicitement, parce qu'elle a maintenant deux occurrences :
+**une ligne de dette est une hypothèse datée, pas un fait.** Celles qui affirment qu'une chose
+*manque* sont les plus traîtresses — elles ferment une piste sans que personne ne repasse
+vérifier. Le format devrait porter la distinction : « constaté que X » n'est pas « supposé que X ».
+
+Le job `deploy-production` existe donc, sur les pushes vers `main`, l'hôte venant de la variable.
+Il affirme que **la production sert l'application**, pas qu'elle sert déjà ce commit : Netlify
+bascule atomiquement, le déploiement peut être en vol pendant que la version précédente répond
+correctement. C'est « la production est cassée » qu'on veut attraper — la panne de 008, exactement.
+
+Reste une limite que la session ne peut pas lever : `GET /actions/variables` répond **403**, comme
+la protection de branche. Le job échoue bruyamment si la variable est vide, mais **rien ne peut
+vérifier qu'elle pointe le bon hôte**. Troisième réglage de console dans la même famille que
+l'entrée 003, et troisième statut « déclaré par le porteur » plutôt que constaté.
