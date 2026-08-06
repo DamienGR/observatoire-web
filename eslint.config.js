@@ -116,12 +116,37 @@ export default tseslint.config(
     },
   },
 
+  // Type-aware rules are switched off on `.astro` files, and the reason is
+  // measured rather than assumed. `astro-eslint-parser` does not support
+  // `projectService` and falls back to `project: true`; template expressions
+  // then resolve to the `error` type, which the `no-unsafe-*` family reports as
+  // a violation. Every `{items.map(...)}` in a page is flagged, and no amount
+  // of rewriting satisfies a rule reading a type that could not be computed.
+  //
+  // Little is lost: `astro check` runs the Astro language server over the same
+  // files with real types, it is part of `pnpm verify`, and it is what actually
+  // typechecks a component. What stays on here is everything that does not need
+  // types — including the whole jsx-a11y set, which is why these files are
+  // linted at all.
   {
     files: ['**/*.astro'],
+    ...tseslint.configs.disableTypeChecked,
     rules: {
+      ...tseslint.configs.disableTypeChecked.rules,
+
       // Astro components are typed through their frontmatter; requiring an
       // explicit return type on every template expression adds noise, not safety.
       '@typescript-eslint/explicit-module-boundary-types': 'off',
+
+      // A scrollable region must be reachable by keyboard, or its content is
+      // unreachable without a mouse — axe-core reports it as
+      // `scrollable-region-focusable`. The technique for that is exactly a
+      // `tabindex="0"` on an element carrying `role="region"` and a label, which
+      // this rule flags by default because the element is not interactive.
+      'astro/jsx-a11y/no-noninteractive-tabindex': [
+        'error',
+        { tags: [], roles: ['tabpanel', 'region'], allowExpressionValues: true },
+      ],
     },
   },
 );

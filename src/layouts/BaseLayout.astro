@@ -1,0 +1,66 @@
+---
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import '../styles/global.css';
+
+/**
+ * The one page template of the site.
+ *
+ * Everything §4 calls non-negotiable is decided here rather than page by page:
+ * the language, the skip link, the landmark structure, and the single `<h1>`
+ * that each page provides through its own content.
+ */
+interface Props {
+  /** Page title. The site name is appended; pages do not repeat it. */
+  readonly title: string;
+  /** One sentence, factual. Used as the meta description. */
+  readonly description: string;
+}
+
+const { title, description } = Astro.props;
+
+/**
+ * Absolute canonical URL, only when `SITE_URL` is configured — Astro leaves
+ * `Astro.site` undefined otherwise (astro.config.mjs). A canonical pointing at
+ * a domain that does not resolve is worse than none: it tells a crawler the
+ * real page lives nowhere.
+ */
+const canonical = Astro.site === undefined ? undefined : new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} — observatoire-web.fr</title>
+    <meta name="description" content={description} />
+    {canonical && <link rel="canonical" href={canonical.href} />}
+    {
+      /*
+      The site publishes no measurement yet. Until it does, indexing would
+      surface an empty observatory under a name that already sounds official —
+      the exact confusion docs/brief.md §9 sets out to avoid. Lifted with the
+      first published measurements (milestone 4).
+    */
+    }
+    <meta name="robots" content="noindex, follow" />
+  </head>
+  <body>
+    <a class="skip-link" href="#contenu">Aller au contenu principal</a>
+    <SiteHeader />
+    {
+      /*
+      `tabindex="-1"` is what makes the skip link actually skip: without it,
+      following the anchor scrolls the page but leaves focus in the header, so
+      the next Tab returns to the navigation the visitor just asked to leave.
+    */
+    }
+    <main id="contenu" tabindex="-1">
+      <div class="shell">
+        <slot />
+      </div>
+    </main>
+    <SiteFooter />
+  </body>
+</html>

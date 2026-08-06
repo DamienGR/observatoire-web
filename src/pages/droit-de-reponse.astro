@@ -1,0 +1,86 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+/**
+ * Right of reply (docs/brief.md §9, guarantee 3: "Droit de réponse avec
+ * procédure de re-mesure sous 48 h, visible et facile à activer").
+ *
+ * "Visible et facile à activer" is why this page is linked from the header, the
+ * footer and the home page rather than buried in the legal notice: a right of
+ * reply nobody can find is a guarantee on paper only.
+ */
+---
+
+<BaseLayout
+  title="Droit de réponse et correction"
+  description="Comment signaler une erreur de mesure ou d'adresse, et sous quel délai la mesure est refaite et republiée."
+>
+  <h1>Droit de réponse et correction</h1>
+
+  <p class="lede">
+    Une mesure publiée ici peut être fausse : adresse périmée, page mesurée qui n'est pas la bonne,
+    indisponibilité passagère au moment du passage. Toute commune concernée, comme toute personne
+    constatant une erreur, peut demander une vérification.
+  </p>
+
+  <h2>Ce que vous pouvez demander</h2>
+  <ul>
+    <li>
+      <strong>La correction de l'adresse mesurée</strong> : le site officiel a changé d'adresse, ou l'adresse
+      publiée par l'annuaire de l'administration n'est pas la bonne.
+    </li>
+    <li>
+      <strong>Une nouvelle mesure</strong> : le site était indisponible, en maintenance, ou a été corrigé
+      depuis la mesure publiée.
+    </li>
+    <li>
+      <strong>La publication d'une réponse</strong> : un texte court, de votre rédaction, affiché à côté
+      de la mesure concernée.
+    </li>
+    <li>
+      <strong>Le retrait d'une mesure erronée</strong>, lorsque l'erreur porte sur la mesure
+      elle-même et non sur ce qu'elle révèle.
+    </li>
+  </ul>
+
+  <h2>Comment procéder</h2>
+  <p>
+    Adressez la demande par le formulaire de contact de <a
+      href="https://dg-tech.dev/#contact"
+      rel="external">dg-tech.dev</a
+    >, ou déposez-la publiquement dans le <a
+      href="https://github.com/DamienGR/observatoire-web"
+      rel="external">dépôt du projet</a
+    >. Trois informations suffisent : la commune concernée, l'adresse du site officiel, et ce qui
+    vous paraît erroné.
+  </p>
+
+  <h2>Délai</h2>
+  <p>
+    <strong>Une nouvelle mesure est lancée sous 48 heures</strong> après réception de la demande, et son
+    résultat remplace le précédent dès qu'il est disponible. Une correction d'adresse est appliquée dans
+    le même délai. Si la demande appelle un arbitrage — une réponse à publier, un retrait —, la réception
+    est accusée sous 48 heures et la décision est motivée par écrit.
+  </p>
+
+  <h2>Ce que la procédure ne couvre pas</h2>
+  <ul>
+    <li>
+      <strong>Le retrait d'une mesure exacte.</strong> Les mesures portent sur des sites d'organismes
+      publics et sont produites à partir de sources publiques ; un résultat défavorable mais exact reste
+      publié, accompagné le cas échéant de votre réponse.
+    </li>
+    <li>
+      <strong>La contestation de la méthode elle-même</strong>, qui relève de la <a
+        href="/methodologie">méthodologie</a
+      > : elle est publique, et une critique argumentée y est traitée comme une correction à apporter
+      à la méthode, publiquement.
+    </li>
+  </ul>
+
+  <h2>Traçabilité</h2>
+  <p>
+    Chaque demande et sa résolution sont consignées. Une mesure remplacée à la suite d'une demande
+    reste identifiable comme telle : la correction est visible, elle n'efface pas l'historique.
+  </p>
+</BaseLayout>

@@ -1,0 +1,46 @@
+---
+/**
+ * Site footer.
+ *
+ * The independence notice is not decoration: docs/brief.md §9 names "on prend
+ * ce site pour une émanation publique" as the project's most likely line of
+ * attack, and a footer saying otherwise on every page is the cheapest possible
+ * counter-measure. It is why the editor is named here rather than only on the
+ * legal page.
+ */
+const links = [
+  { href: '/methodologie', label: 'Méthodologie' },
+  { href: '/accessibilite', label: 'Accessibilité' },
+  { href: '/mentions-legales', label: 'Mentions légales' },
+  { href: '/droit-de-reponse', label: 'Droit de réponse' },
+];
+---
+
+<footer class="site-footer">
+  <div class="shell">
+    <nav class="footer-links" aria-label="Informations du site">
+      <ul>
+        {
+          links.map((link) => (
+            <li>
+              <a href={link.href}>{link.label}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    <p>
+      <strong>Initiative indépendante</strong>, éditée par DG-Tech (<a
+        href="https://dg-tech.dev"
+        rel="external">dg-tech.dev</a
+      >). Ce site n'émane d'aucune administration et n'est mandaté par aucune d'entre elles.
+    </p>
+    <p>
+      Les mesures publiées sont automatisées et partielles : elles ne constituent ni un audit RGAA
+      ni une qualification juridique. Le code et la méthode sont publics dans le <a
+        href="https://github.com/DamienGR/observatoire-web"
+        rel="external">dépôt du projet</a
+      >.
+    </p>
+  </div>
+</footer>

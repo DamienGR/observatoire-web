@@ -1,35 +1,81 @@
 ---
-/**
- * Placeholder home page. The real shell — accessible layout, security headers,
- * legal and methodology pages — is J1-09; this page exists so the bootstrap has
- * something to build and the CI has something to typecheck.
- */
-const lastUpdated = new Date().toISOString();
+import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
-<!doctype html>
-<html lang="fr">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="robots" content="noindex" />
-    <title>observatoire-web.fr</title>
-  </head>
-  <body>
-    <main>
-      <h1>observatoire-web.fr</h1>
-      <p>
-        Mesures automatisées de qualité et d'accessibilité technique des sites des communes
-        françaises de plus de 10 000 habitants.
-      </p>
-      <p>Site en cours de construction. Aucune mesure n'est encore publiée.</p>
-      <p>
-        Initiative indépendante éditée par DG-Tech (dg-tech.dev). Sans lien avec une administration
-        publique.
-      </p>
-      <p>
-        <small>Page générée le <time datetime={lastUpdated}>{lastUpdated}</time>.</small>
-      </p>
-    </main>
-  </body>
-</html>
+<BaseLayout
+  title="Mesures techniques des sites des communes françaises"
+  description="Mesures automatisées de qualité et d'accessibilité technique sur les sites des communes françaises de plus de 10 000 habitants."
+>
+  <h1>Qualité et accessibilité technique des sites des communes françaises</h1>
+
+  <p class="lede">
+    observatoire-web.fr mesure automatiquement des indicateurs techniques publics sur les sites des
+    communes françaises de plus de 10 000 habitants, et publie chaque mesure avec sa date, sa
+    version de méthodologie et ses limites.
+  </p>
+
+  <div class="notice">
+    <h2>Aucune mesure n'est publiée à ce jour</h2>
+    <p>
+      Le site est en construction : la chaîne de mesure n'a pas encore été exécutée. Les pages de
+      méthodologie, de mentions légales, d'accessibilité et de droit de réponse sont en place avant
+      les mesures, et non après — elles décrivent les règles auxquelles ces mesures se tiendront.
+    </p>
+  </div>
+
+  <h2>Ce qui est mesuré</h2>
+  <ul>
+    <li>
+      Des indicateurs de performance et d'accessibilité technique produits par un audit automatisé
+      de la page d'accueil.
+    </li>
+    <li>
+      Des signaux publics complémentaires : présence d'une déclaration d'accessibilité, de mentions
+      légales, d'une politique de confidentialité, en-têtes de sécurité de la réponse, système de
+      gestion de contenu détecté.
+    </li>
+    <li>
+      L'évolution de ces indicateurs dans le temps, chaque mesure conservant la version de
+      méthodologie sous laquelle elle a été produite.
+    </li>
+  </ul>
+  <p>
+    Le détail des sources, des outils et des seuils est public : voir la <a href="/methodologie"
+      >méthodologie</a
+    >.
+  </p>
+
+  <h2>Ce que ces mesures ne disent pas</h2>
+  <p>
+    Un audit automatisé ne couvre qu'une fraction des critères du référentiel général d'amélioration
+    de l'accessibilité (RGAA). Les résultats publiés ici sont des <strong
+      >scores de conformité technique automatisée</strong
+    > : ils ne qualifient jamais un site de « conforme » ou de « non conforme », n'ont aucune portée juridique
+    et ne remplacent pas un audit conduit par une personne.
+  </p>
+  <ul>
+    <li>Rien n'est mesuré depuis un parcours d'utilisateur réel.</li>
+    <li>
+      Aucune donnée personnelle n'est collectée, ni sur les agents publics, ni sur les visiteurs.
+    </li>
+    <li>
+      Une mesure porte sur une page, à une date, depuis un outil : elle décrit un état observable,
+      pas la qualité d'un service public.
+    </li>
+  </ul>
+
+  <h2>Une erreur dans une mesure ?</h2>
+  <p>
+    L'adresse d'un site peut être périmée, une mesure peut porter sur la mauvaise page, une
+    indisponibilité passagère peut fausser un résultat. La procédure de <a href="/droit-de-reponse"
+      >droit de réponse et de correction</a
+    > décrit quoi signaler, à qui, et sous quel délai la mesure est refaite.
+  </p>
+
+  <h2>Qui publie ce site</h2>
+  <p>
+    Ce site est une initiative indépendante éditée par DG-Tech. Il n'émane d'aucune administration.
+    Les <a href="/mentions-legales">mentions légales</a> nomment l'éditeur sans ambiguïté, et le site
+    publie sa propre <a href="/accessibilite">déclaration d'accessibilité</a>.
+  </p>
+</BaseLayout>

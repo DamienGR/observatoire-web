@@ -23,6 +23,24 @@
   # own. Both directories are gitignored and produced by the build.
   publish = "dist"
 
+# Static assets never reach the Astro middleware — Netlify serves them straight
+# from the CDN — so the headers §7 requires on *every* response have to be
+# declared for them here. Only the ones that mean something on a stylesheet or a
+# script: `nosniff`, which is what stops a MIME-confused browser from executing
+# one as the other, HSTS, and the referrer policy.
+#
+# Cache-Control is deliberately absent: @astrojs/netlify already declares
+# `public, max-age=31536000, immutable` for /_astro/* through the Frameworks API
+# (.netlify/v1/config.json, read from the build output on 6/8), and two sources
+# for one header is how they end up disagreeing.
+[[headers]]
+  for = "/_astro/*"
+
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
 # Node version deliberately absent: .nvmrc is the single source and Netlify
 # reads it. Declaring it twice is how the `engines` floor drifted out of sync
 # with reality once already (docs/journal.md 005).
