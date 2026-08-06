@@ -74,15 +74,12 @@ jobs:
   # It is separate from `verify` on purpose: it depends on a third party, so a
   # Netlify outage must not be able to mask a real `verify` failure.
   #
-  # Pull requests only. The first version also ran on pushes to main, on the
+  # Pull requests only. An earlier version also ran on pushes to main, on the
   # assumption that Netlify posts a commit status for production deploys the way
   # it does for previews. It does not: the run on 7e36ec2 polled for five
-  # minutes and saw `0 netlify status(es) seen` throughout. Checking production
-  # needs its host, which §6 keeps out of the diff — so it waits for SITE_URL to
-  # exist as an Actions variable (docs/roadmap.md).
-  #
-  # Little is lost meanwhile: main is protected, so every commit reaches it
-  # through a pull request this job has already gated.
+  # minutes and saw `0 netlify status(es) seen` throughout. Production is
+  # covered by `deploy-production` below, which reads its host from a variable
+  # instead of resolving it.
   deploy:
     name: deploy (the preview serves the application)
     if: github.event_name == 'pull_request'
@@ -108,3 +105,37 @@ jobs:
 
       - name: Check the deployment
         run: node scripts/check-deploy.mjs "${{ steps.netlify.outputs.url }}"
+
+  # Production, on pushes to main. There is nothing to resolve here: Netlify
+  # posts a commit status for deploy previews but not for production deploys —
+  # measured on 7e36ec2, where the resolver polled five minutes and saw zero
+  # statuses. The host therefore comes from the SITE_URL Actions variable, which
+  # is how it stays out of the diff (§6).
+  #
+  # This asserts that production *serves the application*, not that it already
+  # serves this commit: Netlify swaps atomically, so the deploy may still be in
+  # flight while the previous version answers correctly. Catching "production is
+  # broken" is the point, and that is exactly the failure of journal 008.
+  deploy-production:
+    name: deploy (production serves the application)
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the deployment
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          if [ -z "$SITE_URL" ]; then
+            echo "The SITE_URL Actions variable is empty or unset."
+            echo "It must hold the production origin — the Netlify host for as long"
+            echo "as the custom domain has no DNS records (docs/roadmap.md)."
+            exit 1
+          fi
+          node scripts/check-deploy.mjs "$SITE_URL"
