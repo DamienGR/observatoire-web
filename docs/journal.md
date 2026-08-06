@@ -1324,3 +1324,135 @@ C'est un argument pour les traiter comme du code de production : **un check a de
 d'erreur, et ils doivent être éprouvés comme les autres.** Le chemin vert de celui-ci avait été
 vérifié avant le push. Ses chemins d'erreur, non. Ils le sont maintenant, tous les deux : port
 fermé, et production réelle.
+
+---
+
+## 013 — Le serveur de développement ne montre pas le site, et je l'ai appris par un test rouge
+
+**6 août 2026** · jalon 1 · branche `claude/tache-j1-12-ia95i5`
+
+J1-09 avait laissé cette phrase dans la feuille de route : « axe-core sans violation sur les 6
+pages, clair et sombre — **mesuré en session, pas encore en CI** ». J1-12 consiste à transformer
+cette mesure en juge. Le livrable tient en trois fichiers et un job. Tout l'intérêt est dans ce
+que la mise au point a fait apparaître, et qui n'a rien à voir avec Playwright.
+
+### La friction : `pnpm dev` sert le HTML sans le CSS
+
+Premier passage de la suite contre le serveur de développement, trois tests rouges. Le plus
+parlant :
+
+```
+Error: expect(locator).not.toBeInViewport() failed
+  - locator resolved to <a href="#contenu" class="skip-link">Aller au contenu principal</a>
+  - unexpected value "viewport ratio 1"
+```
+
+Le lien d'évitement est censé être hors de l'écran tant qu'il n'a pas le focus. Il était visible,
+en haut à gauche, en permanence. J'ai d'abord soupçonné le CSS lui-même — `transform` ne s'applique
+pas à une boîte en ligne, et `.skip-link` est un `<a>`. Fausse piste : la règle porte aussi
+`position: absolute`, qui rend la boîte en bloc. La mesure a tranché en une commande :
+
+```
+skip box   {"x":8,"y":8,"width":167.5,"height":17}
+skip style { display: 'inline', transform: 'none', position: 'static', top: 'auto' }
+```
+
+`display: inline`, `position: static` : **aucune** des règles de `.skip-link` n'était appliquée.
+Et `x: 8, y: 8` est la marge par défaut du navigateur, alors que la feuille de style met
+`body { margin: 0 }`. Ce n'est pas une règle qui manque, c'est la feuille entière qui n'existe pas
+pour le navigateur.
+
+La cause est dans l'en-tête, pas dans le CSS :
+
+```html
+<style data-vite-dev-id="/home/user/observatoire-web/src/styles/global.css">
+```
+
+```
+content-security-policy: … style-src 'self' …
+```
+
+En développement, Astro sert la feuille de style **en ligne** — c'est Vite qui l'injecte, pour le
+rechargement à chaud. Le build, lui, ne le fait pas : `build.inlineStylesheets: 'never'` existe
+précisément pour ça (entrée 011). Mais le middleware pose la même CSP en développement qu'en
+production, et `style-src 'self'` sans `unsafe-inline` la bloque. Le serveur de développement rend
+donc le site **entièrement sans style**, silencieusement : rien dans le terminal, rien dans le
+statut HTTP, une page qui a l'air d'une page.
+
+C'est la troisième fois que la CSP se manifeste ailleurs que dans un en-tête, après les
+stylesheets inlinées et le SDK Sentry de l'entrée 011. La formule de cette entrée tient toujours,
+et gagne un cran : **la CSP n'est pas une contrainte sur la chaîne de rendu, c'en est une sur la
+chaîne d'observation.** Ce qu'on regarde en développement n'est pas ce qu'on livre.
+
+Conséquence directe et non négociable pour J1-12 : toute assertion qui lit un style calculé —
+l'anneau de focus, le lien d'évitement hors écran, et **l'intégralité des contrôles de contraste
+d'axe-core** — n'a de sens que contre la deploy preview. Le choix était déjà écrit dans
+`playwright.config.ts` au titre du « tester ce qui est déployé » ; il est maintenant *obligatoire*,
+et le commentaire dit pourquoi avec la mesure à l'appui.
+
+### Le sélecteur traverse le shadow DOM, et la barre d'outils de développement y vit
+
+Deuxième symptôme du même passage, et une deuxième fausse piste. Deux pages échouaient sur
+`h1 → h3` — un saut de niveau de titre. Or `grep` sur les six pages ne montre que des `h1` et des
+`h2`. Plus troublant : **les pages fautives changeaient d'une exécution à l'autre**. Une
+instabilité, pas une erreur de contenu.
+
+C'est l'instabilité qui donne la réponse : quelque chose arrive après le chargement. Dump des
+titres avec leur racine :
+
+```json
+{ "tag": "H1", "text": "Audit", "inShadow": true, "host": "ASTRO-DEV-TOOLBAR-AUDIT-WINDOW" }
+{ "tag": "H1", "text": "No islands detected.", "inShadow": true, "host": "ASTRO-DEV-TOOLBAR-APP-CANVAS" }
+```
+
+Les sélecteurs CSS de Playwright **traversent les shadow roots ouverts** par défaut. La barre
+d'outils de développement d'Astro y loge ses propres titres, et le test comptait les titres d'un
+outil de développement comme s'ils appartenaient à la page.
+
+Ici encore, l'artefact est propre au développement : la preview ne contient pas cette barre. Mais
+le motif est le même que le précédent, et c'est ce qui mérite d'être retenu — **valider une suite
+E2E contre `astro dev`, c'est la valider contre un document que le visiteur ne reçoit jamais**,
+deux fois plutôt qu'une : sans le CSS, et avec du DOM en plus. Pour la validation en session, j'ai
+coupé la barre (`astro preferences disable devToolbar`, qui écrit dans `.astro/`, déjà ignoré par
+Git) et contourné la CSP côté navigateur (`bypassCSP`, dans une configuration Playwright de
+session, jamais committée). Aucun des deux contournements n'entre dans le dépôt : ce sont des
+béquilles d'observation, et le juge reste la preview.
+
+### Éprouver le rouge, puisque l'entrée 012 l'a payé cher
+
+L'entrée précédente s'achève sur « un check a des chemins d'erreur, et ils doivent être éprouvés
+comme les autres ». Appliqué ici avant le push, en cassant volontairement le produit :
+
+| Ce qu'on casse | Ce qu'on attend | Ce qu'on observe |
+|---|---|---|
+| `--text` de la **palette sombre** seule | les 6 tests sombres rouges, les 6 clairs verts | exactement ça : `color-contrast [serious] … 20 nœud(s)` |
+| un `<h3>` juste après le `<h1>` | un saut de niveau nommé | `/ skips a heading level` → `"h1 → h3"` |
+| un second `<h1>` | le compte des titres de niveau 1 | `toHaveCount(1)` rouge |
+| `outline: none` sur `:focus-visible` | l'anneau de focus absent | `the focused skip link draws no outline` |
+| `BASE_URL` absente | un refus lisible avant tout navigateur | l'erreur de configuration, en 0,8 s |
+
+La première ligne est la seule qui m'intéressait vraiment. `colorScheme: 'dark'` est une étiquette
+dans une configuration ; rien ne prouve qu'elle change ce qui est mesuré. Six rouges d'un côté et
+six verts de l'autre, sur une couleur modifiée **uniquement** sous
+`@media (prefers-color-scheme: dark)`, le prouvent. Sans cette manipulation, j'aurais livré douze
+tests verts dont six auraient pu ne rien regarder.
+
+### Ce qui a marché sans effort, et une friction de conteneur
+
+Le reste n'a pas résisté. `@axe-core/playwright` était installé depuis le bootstrap (J1-04), les
+six gabarits passent la totalité des règles axe — y compris les *best practices*, qu'aucun filtre
+de tags ne retire —, et la suite complète tourne en **11,4 s** pour 22 tests sur deux workers. Le
+budget de §5 est de 6 minutes ; il est désormais appliqué par `scripts/budget.mjs`, ce que la
+phrase « enveloppe chaque couche de test » du §5 affirmait déjà sans que ce soit vrai pour l'E2E.
+
+Une friction de conteneur, mineure et notée pour la suivante : la session embarque Chromium en
+révision **1194**, alors que `@playwright/test@1.62.1` en épingle **1234**. `playwright install`
+est déconseillé dans cet environnement ; la validation en session est donc passée par un
+`executablePath` pointant le binaire préinstallé, dans la configuration de session jetable. En CI,
+c'est la révision épinglée qui est installée — le navigateur est versionné avec la suite, pas avec
+le runner.
+
+Enfin, une divergence assumée avec le §4 de `CLAUDE.md` : la branche s'appelle
+`claude/tache-j1-12-ia95i5` et non `feat/e2e-accessibilite`. Le nom est imposé par le harnais qui
+ouvre la session, pas choisi. Ça ne coûte rien aujourd'hui ; ça vaut d'être écrit avant qu'on
+lise l'historique en se demandant qui a ignoré la convention.
