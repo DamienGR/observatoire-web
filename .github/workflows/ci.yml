@@ -106,6 +106,79 @@ jobs:
       - name: Check the deployment
         run: node scripts/check-deploy.mjs "${{ steps.netlify.outputs.url }}"
 
+  # Accessibility and end-to-end journeys, in a browser, on the same preview.
+  #
+  # It is not folded into `deploy`, which answers a different question with a
+  # different tool: `deploy` reads HTTP responses and asserts the deployment
+  # serves the application at all, in seconds and with no browser. This one
+  # renders the pages and asserts what a visitor gets. Kept apart, a Playwright
+  # failure never has to be untangled from a Netlify outage — and, running side
+  # by side, both wait out the same preview build instead of queueing behind
+  # each other (§5: under 10 minutes from push to verdict).
+  #
+  # Pull requests only, as §5 prescribes: "E2E et accessibilité — chaque PR".
+  # A merge to main is covered by having run here first.
+  e2e:
+    name: e2e (Playwright + axe-core on the preview)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Only Chromium: §5 caps this layer at 5 to 8 journeys and one browser,
+      # and three engines would triple the slowest layer to re-measure the same
+      # markup. The revision is the one @playwright/test pins in the lockfile,
+      # so the browser is versioned with the suite rather than with the runner.
+      - name: Install the browser Playwright pins
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Deliberately after the two installs above: resolving polls until Netlify
+      # reports the preview ready, so the wait overlaps with work that has to
+      # happen anyway instead of being added to it.
+      - name: Resolve the Netlify deploy URL
+        id: netlify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+        run: node scripts/resolve-netlify-url.mjs
+
+      - name: Run the end-to-end and accessibility suite
+        env:
+          BASE_URL: ${{ steps.netlify.outputs.url }}
+        run: pnpm test:e2e
+
+      # The report, the screenshots and the traces, uploaded whatever the
+      # verdict: from a cloud session they are the only way to see the pages at
+      # all (CLAUDE.md §1), and a green run is worth looking at too.
+      - name: Upload the Playwright report and traces
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: warn
+
   # Production, on pushes to main. There is nothing to resolve here: Netlify
   # posts a commit status for deploy previews but not for production deploys —
   # measured on 7e36ec2, where the resolver polled five minutes and saw zero

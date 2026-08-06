@@ -20,7 +20,7 @@
     "test": "node scripts/budget.mjs 60 vitest run --project unit --coverage",
     "test:watch": "vitest --project unit",
     "test:integration": "node scripts/budget.mjs 240 vitest run --project integration --no-file-parallelism --passWithNoTests",
-    "test:e2e": "playwright test --pass-with-no-tests",
+    "test:e2e": "node scripts/budget.mjs 360 playwright test",
     "test:mutation": "stryker run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
