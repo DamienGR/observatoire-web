@@ -1213,3 +1213,26 @@ cours : la première fois, c'était la vérification de `sharp` qui avait trouv�
 Il y a probablement une règle là-dedans : **une session qui va lire l'état réel d'un service en
 rapporte toujours plus que ce qu'elle était venue chercher**, et c'est un argument pour aller le
 lire plutôt que de le supposer.
+
+### Les 1,6 ko qui restent, et à qui ils appartiennent
+
+Le check repassé au vert annonce `ships 1.6 kB of JavaScript in 1 file(s)`. Zéro était attendu : le
+build local n'émet aucune balise `<script>`. Vérification plutôt que conjecture, sur les trois
+URL :
+
+| URL | Scripts servis |
+|---|---|
+| `deploy-preview-26--observatoireweb.netlify.app` | `/.netlify/scripts/cdp` |
+| `observatoireweb.netlify.app` (production) | aucun |
+| `main--observatoireweb.netlify.app` | aucun |
+
+Le fichier est le tiroir d'aperçu de Netlify (`ntl-drawer`), injecté par la plateforme sur les
+deploy previews uniquement. Trois conséquences, toutes utiles à la prochaine session :
+
+- **La production n'envoie aucun JavaScript.** La déclaration d'accessibilité du site, qui
+  l'affirme, reste exacte — elle a été vérifiée, pas supposée.
+- Le script est servi en même origine, donc `script-src 'self'` l'autorise : ce n'est pas une
+  entorse à la CSP.
+- **Le budget JS mesure des previews, et inclut donc ce que Netlify y ajoute.** Un chiffre non nul
+  dans un log vert n'est pas un début de dérive : la marge restante est de 18 ko, et le jour où
+  elle se réduira, il faudra se souvenir que 1,6 ko ne sont pas les nôtres.
