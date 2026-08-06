@@ -112,10 +112,13 @@ jobs:
   # statuses. The host therefore comes from the SITE_URL Actions variable, which
   # is how it stays out of the diff (§6).
   #
-  # This asserts that production *serves the application*, not that it already
-  # serves this commit: Netlify swaps atomically, so the deploy may still be in
-  # flight while the previous version answers correctly. Catching "production is
-  # broken" is the point, and that is exactly the failure of journal 008.
+  # It waits for production to serve *this* commit, and that correction was paid
+  # for: the earlier version of this comment claimed the job asserted only that
+  # production "serves the application", while the script asserted the expected
+  # heading and the headers this build adds. On `cabda6a` — the first merge to
+  # change the heading — the job met the previous version mid-swap and went red
+  # on a healthy site. The script now retries until the expected heading is the
+  # one answering, which is the assertion it was making all along.
   deploy-production:
     name: deploy (production serves the application)
     if: github.event_name == 'push'

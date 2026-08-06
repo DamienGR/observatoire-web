@@ -1236,3 +1236,91 @@ deploy previews uniquement. Trois conséquences, toutes utiles à la prochaine s
 - **Le budget JS mesure des previews, et inclut donc ce que Netlify y ajoute.** Un chiffre non nul
   dans un log vert n'est pas un début de dérive : la marge restante est de 18 ko, et le jour où
   elle se réduira, il faudra se souvenir que 1,6 ko ne sont pas les nôtres.
+
+---
+
+## 012 — Le check que j'ai livré a cassé `main`, de deux façons différentes
+
+**6 août 2026** · jalon 1 · branche `fix/deploy-check-race`
+
+Le merge de la PR #26 a fait virer `main` au rouge. Pas le produit : le check que la PR venait
+d'étendre. Deux défauts distincts, découverts l'un après l'autre, et le second seulement parce que
+j'avais relancé le job pour vérifier le premier.
+
+### Défaut 1 — une assertion couplée au commit dans un job qui prétendait l'inverse
+
+Le job `deploy-production` portait ce commentaire, écrit la veille :
+
+> Il affirme que **la production sert l'application**, pas qu'elle sert déjà ce commit : Netlify
+> bascule atomiquement, le déploiement peut être en vol.
+
+C'était faux au moment même où je l'écrivais. Le script assère le `<h1>` attendu — et depuis la
+PR #26, les en-têtes que ce build ajoute. Ces assertions sont **couplées au commit**. Tant que la
+phrase et le code se contredisaient sans conséquence, personne ne pouvait le voir : jusqu'ici,
+aucun merge n'avait changé le titre de la page d'accueil. `cabda6a` est le premier, et le job a
+mesuré la version précédente :
+
+```
+FAIL  content-security-policy is absent from GET /
+FAIL  referrer-policy is absent from GET /
+FAIL  permissions-policy is absent from GET /
+```
+
+Trois en-têtes « absents » sur une production parfaitement saine, qui les servait tous deux
+minutes plus tard. **Le rouge était correct sur les données observées et faux sur la réalité.**
+
+La correction ne consiste pas à retirer l'assertion mais à la faire dire ce qu'elle fait : le
+script réessaie maintenant jusqu'à ce que le titre attendu soit celui qui répond, et le
+commentaire du workflow décrit ce comportement au lieu de le nier. C'est le même travers que
+l'entrée 010 avait nommé — un commentaire n'a pas de chemin d'exécution, donc rien ne l'oblige à
+être vrai — sauf qu'ici je l'avais commis en écrivant l'entrée 010.
+
+### Défaut 2 — le script plantait au lieu de conclure
+
+Job relancé une fois la production basculée, et rouge à nouveau, en seize secondes :
+
+```
+TypeError: fetch failed
+    at async request (scripts/check-deploy.mjs:82:20)
+  [cause]: Error: read ECONNRESET
+```
+
+Un `fetch` sans `catch`. La page d'accueil, elle, avait sa boucle de réessai depuis le premier
+jour ; les autres requêtes, non — et une connexion coupée par le CDN suffisait à tuer le processus
+avant qu'il ne rende un verdict sur quoi que ce soit. J'avais d'ailleurs vu le symptôme une heure
+plus tôt, en `curl` : `Recv failure: Connection reset by peer`, sur la preview, suivi d'une
+requête identique qui passait. Je l'avais mis sur le compte du proxy de la session et je suis
+passé à autre chose. **Un symptôme observé et non expliqué est une panne qu'on rencontrera deux
+fois.**
+
+Trois tentatives de transport, deux secondes d'écart, et une erreur réseau devient une ligne
+`FAIL` nommée au lieu d'une trace de pile.
+
+### Le détail qui compte : quatre `ok` sur un site mort
+
+En éprouvant le chemin rouge — le script pointé sur un port fermé — quatre lignes restaient
+vertes :
+
+```
+ok    content-security-policy does not allow 'unsafe-inline'
+ok    GET / carries no inline <script>
+ok    GET / carries no inline <style>
+ok    GET / ships 0.0 kB of JavaScript
+```
+
+Toutes lisent le corps ou les en-têtes de la page d'accueil. Sur une chaîne vide, l'absence
+d'`unsafe-inline` est vraie, l'absence de `<script>` est vraie, zéro kilo-octet est vrai. **Quatre
+succès parfaitement exacts et totalement vides de sens.** Sur un déploiement à moitié cassé, ils
+auraient rassuré exactement au mauvais moment. Elles sont désormais **sautées**, avec la mention
+`-- (home page unavailable)` : le journal dit ce qui n'a pas été vérifié, plutôt que de laisser
+croire que ça l'a été.
+
+### Ce que cette séquence apprend sur la CI comme juge unique
+
+Trois occurrences en deux jours du même motif : le check du jour J attrape une vraie panne, et
+c'est le check lui-même qui devient la panne du jour J+1. Ce n'est pas un argument contre les
+checks — sans celui-ci, la production aurait pu servir des pages sans CSP pendant des semaines.
+C'est un argument pour les traiter comme du code de production : **un check a des chemins
+d'erreur, et ils doivent être éprouvés comme les autres.** Le chemin vert de celui-ci avait été
+vérifié avant le push. Ses chemins d'erreur, non. Ils le sont maintenant, tous les deux : port
+fermé, et production réelle.

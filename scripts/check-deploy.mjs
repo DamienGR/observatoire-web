@@ -65,10 +65,19 @@ const CLIENT_JS_BUDGET_BYTES = 20 * 1024;
  */
 
 const REQUEST_TIMEOUT_MS = 15_000;
+/** Waiting for the deploy this commit produced to be the one answering. */
 const ATTEMPTS = 6;
 const RETRY_DELAY_MS = 10_000;
+/** Waiting for a connection that was dropped in transit, not for a deploy. */
+const TRANSPORT_ATTEMPTS = 3;
+const TRANSPORT_RETRY_DELAY_MS = 2_000;
 /** Enough for the shell and its foreseeable growth; a crawl, not a spider. */
 const MAX_LINKED_PAGES = 20;
+
+/** The text of the first `<h1>`, or null. The marker that a deploy is live. */
+function headingOf(html) {
+  return /<h1\b[^>]*>([\s\S]*?)<\/h1>/.exec(html)?.[1]?.trim() ?? null;
+}
 
 const baseUrl = process.argv[2]?.replace(/\/+$/, '');
 if (!baseUrl) {
@@ -78,44 +87,83 @@ if (!baseUrl) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function request(path) {
-  const response = await fetch(`${baseUrl}${path}`, {
-    redirect: 'follow',
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    headers: { 'user-agent': 'observatoire-web-deploy-check' },
-  });
-  return { status: response.status, contentType: response.headers.get('content-type') ?? '' };
-}
-
 /**
- * The home page is fetched with retries: a fresh deploy can answer before its
- * function is warm. Everything after it runs once — by then the site is up, and
- * retrying an assertion that should already hold only hides flapping.
+ * A single request, tolerant of a connection dropped in transit.
+ *
+ * The first version had no `catch` at all, and a reset connection took the
+ * whole script down with a stack trace instead of a named failure — measured on
+ * the production run of `cabda6a`, where `ECONNRESET` on one path produced
+ * `TypeError: fetch failed` and no verdict on any of the other checks. A check
+ * that crashes says nothing about the deployment; it only says the network
+ * hiccuped, and that is a report nobody can act on.
+ *
+ * Retrying is not the same as hiding a failure: an HTTP response, whatever its
+ * status, is returned immediately. Only a transport error is retried.
  */
-async function fetchHomeWithRetry() {
-  let last = { status: 0, headers: new Headers(), body: '', error: 'no response' };
-  for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+async function request(path) {
+  let lastError = 'no response';
+
+  for (let attempt = 1; attempt <= TRANSPORT_ATTEMPTS; attempt += 1) {
     try {
-      const response = await fetch(`${baseUrl}/`, {
+      const response = await fetch(`${baseUrl}${path}`, {
         redirect: 'follow',
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         headers: { 'user-agent': 'observatoire-web-deploy-check' },
       });
-      const body = await response.text();
-      // Keep the real response even when it is a failure: reporting
-      // "no response" for a site that answered 404 sends the next reader
-      // hunting for a network fault that never happened.
-      last = { status: response.status, headers: response.headers, body };
-      if (response.ok) return last;
+      return {
+        status: response.status,
+        contentType: response.headers.get('content-type') ?? '',
+        headers: response.headers,
+        body: await response.text(),
+      };
     } catch (error) {
-      last = { status: 0, headers: new Headers(), body: '', error: error.message };
+      lastError = error.message;
+      if (attempt < TRANSPORT_ATTEMPTS) await sleep(TRANSPORT_RETRY_DELAY_MS);
     }
+  }
+
+  return { status: 0, contentType: '', headers: new Headers(), body: '', error: lastError };
+}
+
+/**
+ * Fetches the home page until it is the one this commit describes.
+ *
+ * Two things are being waited on, and conflating them was a design mistake in
+ * the first version. A fresh deploy can answer before its function is warm —
+ * that is the retry everyone writes. But Netlify also swaps atomically, so a
+ * check that starts seconds after a merge legitimately meets the *previous*
+ * version, and every assertion coupled to this commit — the heading, the
+ * headers this middleware adds — fails on correct behaviour. That is what
+ * happened on `cabda6a`, the first commit to change the heading.
+ *
+ * So the wait is on the expected heading, not merely on a 200. The workflow
+ * comment used to claim this job asserted "production serves the application,
+ * not this commit"; with commit-coupled assertions that was never true, and
+ * pretending otherwise produced a red build on a healthy site. It now waits for
+ * this commit, says so, and fails with the heading it actually found.
+ */
+async function fetchHomeWithRetry() {
+  let last = { status: 0, headers: new Headers(), body: '', error: 'no response' };
+
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+    // Keep the real response even when it is a failure: reporting
+    // "no response" for a site that answered 404 sends the next reader
+    // hunting for a network fault that never happened.
+    last = await request('/');
+
+    if (last.status === 200 && headingOf(last.body) === EXPECTED_HEADING) return last;
+
     if (attempt < ATTEMPTS) {
-      const reason = last.error ?? `HTTP ${last.status}`;
-      console.log(`  attempt ${attempt}/${ATTEMPTS} failed (${reason}), retrying…`);
+      const reason =
+        last.error ??
+        (last.status === 200
+          ? `heading is "${headingOf(last.body) ?? 'absent'}" — deploy still in flight?`
+          : `HTTP ${last.status}`);
+      console.log(`  attempt ${attempt}/${ATTEMPTS} not ready (${reason}), retrying…`);
       await sleep(RETRY_DELAY_MS);
     }
   }
+
   return last;
 }
 
@@ -140,15 +188,26 @@ function linkedPages(html) {
  * check has no business asserting what it did not observe.
  */
 async function transferSize(url) {
-  const response = await fetch(url, {
-    redirect: 'follow',
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    headers: { 'user-agent': 'observatoire-web-deploy-check', 'accept-encoding': 'gzip, br' },
-  });
-  const declared = Number(response.headers.get('content-length'));
-  const body = await response.arrayBuffer();
+  let lastError = 'no response';
 
-  return Number.isFinite(declared) && declared > 0 ? declared : body.byteLength;
+  for (let attempt = 1; attempt <= TRANSPORT_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        redirect: 'follow',
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        headers: { 'user-agent': 'observatoire-web-deploy-check', 'accept-encoding': 'gzip, br' },
+      });
+      const declared = Number(response.headers.get('content-length'));
+      const body = await response.arrayBuffer();
+
+      return { bytes: Number.isFinite(declared) && declared > 0 ? declared : body.byteLength };
+    } catch (error) {
+      lastError = error.message;
+      if (attempt < TRANSPORT_ATTEMPTS) await sleep(TRANSPORT_RETRY_DELAY_MS);
+    }
+  }
+
+  return { error: lastError };
 }
 
 const failures = [];
@@ -177,7 +236,7 @@ if (contentType.includes('text/html')) {
   fail(`GET / content-type is "${contentType || 'absent'}", expected text/html`);
 }
 
-const heading = /<h1\b[^>]*>([\s\S]*?)<\/h1>/.exec(home.body)?.[1]?.trim();
+const heading = headingOf(home.body);
 if (heading === EXPECTED_HEADING) {
   pass('GET / renders the expected heading');
 } else {
@@ -185,9 +244,13 @@ if (heading === EXPECTED_HEADING) {
 }
 
 for (const path of MUST_NOT_BE_SERVED) {
-  const { status } = await request(path);
+  const { status, error } = await request(path);
   if (status === 200) {
     fail(`${path} is served (status 200) — the repository is being published instead of the build`);
+  } else if (status === 0) {
+    // Not "absent": unverified. Reporting it as a pass would turn a dropped
+    // connection into evidence of the very thing this check exists to catch.
+    fail(`${path} could not be checked (${error})`);
   } else {
     pass(`${path} is not served (status ${status})`);
   }
@@ -206,8 +269,22 @@ for (const [name, expected] of Object.entries(REQUIRED_SECURITY_HEADERS)) {
   }
 }
 
+/**
+ * Everything below reads the home page's body or headers. When the home page
+ * never arrived, those reads succeed on an empty string and report `ok` — four
+ * vacuous passes on a dead site, which is the reassuring green §5 calls the
+ * worst possible failure of a CI. They are skipped instead, and the skip is
+ * printed so the log says what was not checked.
+ */
+const homeAvailable = home.status === 200;
+const skip = (message) => console.log(`  --    ${message} (home page unavailable)`);
+
 const csp = home.headers.get('content-security-policy') ?? '';
 for (const forbidden of ["'unsafe-inline'", "'unsafe-eval'"]) {
+  if (!homeAvailable) {
+    skip(`content-security-policy does not allow ${forbidden}`);
+    continue;
+  }
   if (csp.includes(forbidden)) {
     fail(`content-security-policy allows ${forbidden}, which §7 forbids`);
   } else {
@@ -226,14 +303,18 @@ for (const forbidden of ["'unsafe-inline'", "'unsafe-eval'"]) {
  * pull request, and this check is the reminder.
  */
 const inlineScripts = [...home.body.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>/gi)];
-if (inlineScripts.length === 0) {
+if (!homeAvailable) {
+  skip('GET / carries no inline <script>');
+} else if (inlineScripts.length === 0) {
   pass("GET / carries no inline <script>, as script-src 'self' requires");
 } else {
   fail(`GET / carries ${inlineScripts.length} inline <script>, blocked by script-src 'self'`);
 }
 
 const inlineStyles = [...home.body.matchAll(/<style\b[^>]*>/gi)];
-if (inlineStyles.length === 0) {
+if (!homeAvailable) {
+  skip('GET / carries no inline <style>');
+} else if (inlineStyles.length === 0) {
   pass("GET / carries no inline <style>, as style-src 'self' requires");
 } else {
   fail(`GET / carries ${inlineStyles.length} inline <style>, blocked by style-src 'self'`);
@@ -260,6 +341,8 @@ for (const path of linkedPages(home.body)) {
 const missing = await request('/cette-page-nexiste-pas-observatoire-web');
 if (missing.status === 404) {
   pass('GET an unknown path returns 404');
+} else if (missing.status === 0) {
+  fail(`GET an unknown path got no response (${missing.error})`);
 } else {
   fail(`GET an unknown path returns HTTP ${missing.status}, expected 404`);
 }
@@ -271,13 +354,26 @@ const scriptUrls = [...home.body.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/gi)].ma
 );
 
 let totalBytes = 0;
+let unreadable = 0;
 for (const url of scriptUrls) {
-  totalBytes += await transferSize(url);
+  const { bytes, error } = await transferSize(url);
+  if (bytes === undefined) {
+    unreadable += 1;
+    fail(`the size of ${url} could not be read (${error})`);
+  } else {
+    totalBytes += bytes;
+  }
 }
 
 const kib = (bytes) => `${(bytes / 1024).toFixed(1)} kB`;
 
-if (totalBytes <= CLIENT_JS_BUDGET_BYTES) {
+if (!homeAvailable) {
+  skip('the JavaScript budget');
+} else if (unreadable > 0) {
+  // A partial sum is not a budget verdict: saying "under budget" while one file
+  // went unmeasured is the kind of reassuring green this project has no use for.
+  console.log(`  --    JavaScript budget not evaluated: ${unreadable} file(s) unreadable`);
+} else if (totalBytes <= CLIENT_JS_BUDGET_BYTES) {
   pass(
     `GET / ships ${kib(totalBytes)} of JavaScript as served in ${scriptUrls.length} file(s), ` +
       `budget ${kib(CLIENT_JS_BUDGET_BYTES)}`,
