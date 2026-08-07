@@ -22,5 +22,5 @@
     }
   },
   "include": [".astro/types.d.ts", "**/*.ts", "**/*.astro", "**/*.mjs"],
-  "exclude": ["dist", "node_modules", ".netlify", "coverage", ".stryker-tmp"]
+  "exclude": ["dist", "dist-jobs", "node_modules", ".netlify", "coverage", ".stryker-tmp"]
 }

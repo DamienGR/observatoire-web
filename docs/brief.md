@@ -1,6 +1,6 @@
 # observatoire-web.fr — Brief projet
 
-**Version** 1.3 — 5 août 2026
+**Version** 1.4 — 7 août 2026
 **Porteur** DG-Tech (Damien) — dg-tech.dev
 **Domaine** observatoire-web.fr
 **Dépôt** `observatoire-web` (public)
@@ -47,7 +47,9 @@ Le site doit être réellement en ligne, réellement à jour, et défendable pub
 
 ### Périmètre v1
 
-Les **communes françaises de plus de 10 000 habitants** — de l'ordre de 950 à 1 000 entités. Le comptage exact est dérivé de l'API et non d'une source secondaire : c'est le premier test d'ingestion.
+Les **communes françaises de plus de 10 000 habitants** — **1 067 entités**, mesurées le 7 août 2026 sur 34 969 communes. Le comptage est dérivé de l'API et non d'une source secondaire : c'est le premier test d'ingestion, et il a corrigé l'estimation initiale de « 950 à 1 000 » de 7 %.
+
+Ce nombre n'est écrit nulle part dans le code : il est **recalculé à chaque ingestion** et publié dans le rapport du job. Une commune qui franchit le seuil au recensement suivant entre dans le périmètre sans qu'on touche à quoi que ce soit — et le chiffre ci-dessus vieillira, ce qui est la raison pour laquelle il porte sa date.
 
 Le périmètre est extensible par conception (autres strates de communes, EPCI, puis éventuellement d'autres secteurs). Le nom du site n'enferme pas le périmètre : c'est délibéré.
 
@@ -85,7 +87,7 @@ Par ordre de valeur, pas de volume :
 ### Contraintes opérationnelles
 
 - **Débit réel de l'API PSI ≈ 1 requête/seconde**, très en deçà du quota affiché : au-delà, l'API renvoie des erreurs 500 pendant plusieurs minutes. Le job doit être lent, patient, avec backoff et reprise.
-- **Le champ URL de l'annuaire est incomplet et parfois périmé.** La résolution d'URL est modélisée comme un **processus à états** (candidat → vérifié → invalide → à revoir), pas comme une simple colonne.
+- **Le champ URL de l'annuaire est incomplet et parfois périmé.** La résolution d'URL est modélisée comme un **processus à états** (candidat → vérifié → invalide → à revoir), pas comme une simple colonne. Mesuré le 7 août 2026 sur le périmètre v1 : **1 052 communes sur 1 067** reçoivent au moins une URL candidate, **15 n'en reçoivent aucune** (dont deux sans aucune fiche mairie), et **138 en reçoivent plusieurs** — souvent une page de démarches à côté de l'accueil. C'est cette dernière file, et non les URL mortes, qui justifie la machine à états.
 - **Ne jamais stocker les rapports Lighthouse bruts** (300–500 Ko pièce). On extrait une vingtaine de métriques et on jette le reste. Sans cette règle, le stockage explose en trois semaines.
 
 ### Ce qu'on ne mesure pas en v1
@@ -169,7 +171,7 @@ Deux décisions à ne pas rater, très coûteuses à rattraper ensuite :
 
 Cloudflare reste objectivement mieux adapté à un site de données à nombreuses pages et demeure un plan de repli crédible, mais l'argument économique qui le renforçait a disparu. À réévaluer au jalon 4 sur le seul terrain technique, quand le cache edge et la purge ciblée seront réellement exercés.
 
-**Volumétrie v1 :** 1 commune = 1 URL (page d'accueil), 1 stratégie (mobile), soit ~1 000 mesures par passage hebdomadaire. L'extension à 3 URLs par commune est un jalon à part entière.
+**Volumétrie v1 :** 1 commune = 1 URL (page d'accueil), 1 stratégie (mobile), soit **1 067 mesures** par passage hebdomadaire — au débit réel de l'API PSI (≈ 1 req/s), une trentaine de minutes de scan si rien n'échoue. L'extension à 3 URLs par commune est un jalon à part entière.
 
 **Coût total réaliste :** 0 € au démarrage, 20–30 €/mois si l'audience décolle. Le coût dominant reste le temps de revue et les rate limits Claude.
 
@@ -250,6 +252,22 @@ Sans cette trace, une session future ne peut pas distinguer un choix délibéré
 
 Format : versions par ordre décroissant, la plus récente en tête. Les corrections de forme ne
 justifient pas d'entrée ; les changements de fond, toujours.
+
+### 1.4 — 7 août 2026
+
+**Le périmètre v1 est mesuré, plus estimé : 1 067 communes.** L'ingestion du référentiel (J1-14)
+a dérivé le chiffre de `geo.api.gouv.fr` — 34 969 communes lues, 1 067 au-dessus de 10 000
+habitants — contre « de l'ordre de 950 à 1 000 » écrit au jour 1. L'écart est de 7 % : sans
+conséquence technique, mais ce nombre finira sur une page publique, et une estimation présentée
+comme un décompte est exactement le genre d'approximation que le §9 interdit ailleurs.
+
+Le chiffre reste **dérivé, jamais écrit dans le code** : il est recalculé à chaque ingestion. Il
+est daté ici parce qu'il vieillira.
+
+- §3 : le périmètre annonce la mesure et sa date, et dit qu'elle se recalcule.
+- §4 : la couverture réelle de l'annuaire sur le périmètre (1 052 / 15 / 138) chiffre le travail
+  que la machine à états de résolution aura à faire.
+- §7 : la volumétrie passe de « ~1 000 » à 1 067 mesures par passage.
 
 ### 1.3 — 5 août 2026
 

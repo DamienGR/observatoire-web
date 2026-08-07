@@ -41,7 +41,7 @@ Conséquences pratiques :
 | Gestionnaire de paquets | pnpm (via `corepack`) | Version pinnée par `packageManager`. Lockfile committé. |
 | Framework | Astro (SSR, adaptateur `@astrojs/netlify`) | Îlots uniquement là où c'est nécessaire |
 | Langage | TypeScript en `strict` | `any` implicite ou explicite interdit hors justification commentée |
-| Base | Postgres serverless (Neon) | Branches Neon pour les previews et les dry-run de migration |
+| Base | Postgres serverless (Neon) | Branches Neon pour les previews et les dry-run de migration. Les jobs se connectent en TCP par `pg` : ils tournent dans un runner Actions, pas sur un runtime edge — et le même chemin de code s'éprouve alors contre un Postgres jetable en session (journal 017) |
 | ORM / migrations | Drizzle + drizzle-kit | Migrations SQL versionnées et committées |
 | Validation | Zod | Toute donnée externe est parsée, jamais castée |
 | Hébergement | Netlify | Cache edge + purge par tag |
@@ -67,7 +67,8 @@ dépendent. On peut changer leur implémentation, pas leur nom, sans mettre à j
 ```bash
 pnpm install --frozen-lockfile   # Installation (toujours --frozen-lockfile en CI)
 pnpm dev                         # Serveur de développement
-pnpm build                       # Build de production
+pnpm build                       # Build de production (site)
+pnpm build:jobs                  # Compile src/jobs/ et ses dépendances vers dist-jobs/
 pnpm preview                     # Sert le build local
 
 pnpm typecheck                   # astro check + tsc --noEmit — zéro erreur exigé
@@ -87,7 +88,7 @@ pnpm db:migrate                  # Applique les migrations (DATABASE_URL requis)
 pnpm db:check                    # Vérifie la cohérence schéma / migrations
 pnpm db:studio                   # Drizzle Studio
 
-pnpm verify                      # typecheck + lint + format:check + test + build
+pnpm verify                      # typecheck + lint + format:check + test + build + build:jobs
 ```
 
 `pnpm verify` est la porte d'entrée : **le lancer avant tout commit**. Ce qu'il valide doit
@@ -97,9 +98,18 @@ corriger. Il n'inclut **délibérément pas** `test:integration`, `test:e2e`, `t
 ces couches ont leur propre place dans le pipeline (§5) et alourdiraient une commande dont tout
 l'intérêt est d'être exécutable à chaque commit sans y penser.
 
+`build:jobs` est dans `verify` pour une raison précise : les jobs de `src/jobs/` sont le seul
+TypeScript que rien d'autre ne compile — Astro construit le site, Vitest transpile les tests, et un
+job lancé par Actions n'a ni l'un ni l'autre. Sans cette étape, une erreur de résolution de module
+dans un job ne se découvrirait qu'au moment de le déclencher, c'est-à-dire le jour où on en a
+besoin. Node ne peut pas exécuter les sources telles quelles : son *type stripping* ne résout pas
+un spécificateur `./x.js` vers un fichier `.ts` (vérifié en session), et tout le dépôt écrit ses
+imports ainsi.
+
 **Pas de shell en production.** Il n'existe aucune commande à lancer « sur le serveur ».
 Toute opération sur les données passe par la surface d'ops (§8) ou par un workflow GitHub
-Actions déclenchable manuellement (`workflow_dispatch`).
+Actions déclenchable manuellement (`workflow_dispatch`) — aujourd'hui
+`.github/workflows/ingest.yml`, qui construit les jobs puis exécute l'ingestion du référentiel.
 
 ---
 
