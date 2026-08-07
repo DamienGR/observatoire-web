@@ -6,9 +6,11 @@ import type { CommuneRecord } from '../sources/geo.js';
  *
  * The exact count is derived from the API rather than from a secondary source —
  * the brief calls that "le premier test d'ingestion". Measured on the
- * referential of 6 August 2026: 34 969 communes, of which **1 067** are in the
- * perimeter. The brief's "de l'ordre de 950 à 1 000 entités" is an estimate,
- * and this module is what makes the estimate unnecessary.
+ * referential of 7 August 2026: 34 969 communes, of which **1 067** are in the
+ * perimeter. That measurement is what replaced the brief's original estimate of
+ * "950 à 1 000 entités" (brief v1.4), and the count stays derived: it is
+ * recomputed on every run and written down in no source file, this one
+ * included.
  */
 export const V1_POPULATION_THRESHOLD = 10_000;
 
