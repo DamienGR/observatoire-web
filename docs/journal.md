@@ -1810,3 +1810,129 @@ l'API expose (`started_at` du job contre `started_at` des étapes) et que person
 
 À reprendre quand la panne sera finie, pas pendant : corriger un timeout au milieu d'un incident,
 c'est valider une hypothèse sur un système dont on sait qu'il ment.
+
+---
+
+## 017 — L'ingestion tourne pour de vrai en session, et Node refuse d'exécuter le job
+
+**7 août 2026** · jalon 1 · branche `claude/traite-j1-14-85bsg0`
+
+### Contexte
+
+J1-14 : le job d'ingestion du référentiel des communes. Ses trois dépendances étaient livrées —
+le garde SSRF (J1-05), les parsers gelés (J1-07), le schéma et sa migration (J1-08) — et il ne
+restait, sur le papier, qu'à les câbler : télécharger deux référentiels, croiser, écrire.
+
+Deux choses valent d'être notées : une friction purement cloud-only qui a coûté une décision
+d'architecture, et le fait que le job a été **exécuté en entier**, sur les vraies API et sur une
+vraie base, avant d'être poussé.
+
+### La friction : rien dans ce dépôt ne sait exécuter un job
+
+Le site est construit par Astro, les tests sont transpilés par Vitest. Un job déclenché par
+GitHub Actions n'a ni l'un ni l'autre : c'est du TypeScript que rien ne compile. Node 22.22 sait
+pourtant exécuter du TypeScript sans outil — le *type stripping* est actif par défaut depuis
+22.18 — et j'ai commencé par supposer que l'affaire était réglée.
+
+Elle ne l'était pas, et la vérification a pris trente secondes :
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '…/src/lib/sources/geo.js'
+```
+
+Node **ne résout pas** un spécificateur `./x.js` vers un fichier `x.ts`. Or tout le dépôt écrit
+ses imports ainsi, parce que `verbatimModuleSyntax` et la discipline ESM le demandent. Le type
+stripping fonctionne fichier par fichier ; il ne fonctionne pas sur un graphe de modules qui suit
+la convention recommandée par ailleurs. Les deux règles sont raisonnables séparément et
+incompatibles ensemble.
+
+Deux sorties : ajouter un exécutant TypeScript (`tsx`, `vite-node`), ou compiler. J'ai compilé —
+`tsconfig.jobs.json`, `module: NodeNext`, sortie dans `dist-jobs/`. Ce n'est pas la solution la
+plus courte, c'est celle qui ne fait pas dépendre l'exploitation d'un paquet de plus. Et surtout
+`build:jobs` entre dans `pnpm verify` : une erreur de résolution dans un job casse désormais la
+PR, au lieu d'attendre le jour où quelqu'un déclenche le workflow et découvre que le job ne
+démarre pas. C'était le vrai risque — dans un projet sans shell, un job qui ne démarre pas ne se
+constate qu'en le déclenchant.
+
+### Ce qui a marché sans résistance, et qui aurait dû être dur
+
+Le §12 du contrat dit de commencer par les documents ; ici c'est le §5 qui a payé. La logique
+pure — périmètre, appariement mairie/commune, plan d'écriture — a été écrite en test-first, et les
+tests ont tenu sans être retouchés parce qu'ils n'ont pas été imaginés : les cas viennent des
+mesures faites par J1-07 sur les jeux complets (13 fiches dont le code INSEE de tête contredit
+celui du pivot, une fiche qui déclare deux rôles, 13 656 sans site). Écrire ces tests revenait à
+recopier des faits.
+
+Le résultat est tombé juste du premier coup, et il est identique à celui qu'une exploration
+indépendante avait donné avant l'écriture du code : **34 969 communes lues, 1 067 dans le
+périmètre, 1 224 URL candidates, 138 communes en portant plusieurs, 15 sans aucune**.
+
+### Le job a été exécuté, pas seulement compilé
+
+Le journal 014 avait établi qu'un Postgres 16 jetable tourne dans le conteneur de session. Il a
+servi ici pour ce qu'il vaut : le job complet a été lancé **contre les vraies API et une vraie
+base**, deux fois de suite.
+
+```
+{"communesPlanned":1067,"communesInserted":1067,"communesUpdated":0,
+ "sitesPlanned":1224,"sitesInserted":1224,"sitesAlreadyKnown":0}
+{"communesPlanned":1067,"communesInserted":0,"communesUpdated":1067,
+ "sitesPlanned":1224,"sitesInserted":0,"sitesAlreadyKnown":1224}
+```
+
+Le second passage est la seule preuve qui compte pour le §8 : **rejouer ne duplique rien**. Ce
+n'est pas une propriété qu'un test unitaire peut établir, parce que ce n'est pas une propriété
+d'une fonction — c'est une propriété d'un index unique et d'un `ON CONFLICT DO NOTHING`. Et
+`DO NOTHING` plutôt que `DO UPDATE` sur `site` n'est pas une micro-optimisation : l'annuaire
+proposera la même URL toutes les semaines, et un upsert qui touche `statut_resolution`
+ramènerait à `candidat` tout ce que J1-06 aura vérifié — silencieusement, et seulement pour les
+sites que quelqu'un avait pris la peine de juger.
+
+### La friction que je me suis infligée : l'API m'a coupé le robinet
+
+Entre deux essais, `geo.api.gouv.fr` s'est mis à répondre `503` sur les quatre tentatives. Trois
+tirages du référentiel complet en cinq minutes suffisent. Aucune conséquence en production — une
+exécution, un tirage — mais deux enseignements.
+
+Le premier est une règle de mise au point : **on met au point sur une capture, pas sur l'API**.
+C'est exactement ce que disent le §5 et les fixtures gelées ; je l'ai redécouvert en le violant.
+
+Le second est plus intéressant, parce que le job a réagi comme on voulait sans que personne ne
+l'ait éprouvé pour de bon :
+
+```
+{"level":"error","message":"ingestion failed",
+ "error":"ReferentialUnavailableError: geo.api.gouv.fr did not answer after 4 attempts (HTTP 503)…
+          This is an availability failure, not a contract failure…"}
+```
+
+La distinction disponibilité / dérive de contrat avait été écrite par J1-07 pour les tests de
+contrat. Elle vient de servir ailleurs, en vrai, et sur le bon message : rien dans ce que
+l'ingestion a vu ne justifiait de toucher un schéma. C'est le genre de vérification qu'on ne peut
+pas planifier — elle est arrivée parce que j'ai été impatient.
+
+### Ce qu'on n'a pas fait, et pourquoi
+
+- **Aucun `schedule:` sur le workflow.** La fréquence de rafraîchissement est une décision
+  ouverte du §11 du brief. Un cron « en attendant » l'aurait tranchée sans le dire.
+- **Aucune URL n'est jugée.** 154 candidates sont en `http`, certaines pointent une page de
+  démarches plutôt qu'un accueil, cinq n'ont pas de schéma du tout (hors périmètre). Tout est
+  enregistré verbatim en `candidat`. Normaliser ici aurait fabriqué une URL que l'annuaire n'a
+  jamais donnée, et surtout aurait supprimé la ligne que J1-06 doit pouvoir rejeter en laissant
+  une trace.
+- **Rien n'est jamais supprimé.** Une commune qui passe sous le seuil, une URL que l'annuaire
+  retire : la ligne reste. Retirer une candidate est une décision, et une décision doit avoir un
+  auteur.
+
+### Ce que ça dit de l'expérimentation
+
+Trois jalons plus tôt, la question « comment lancer un job sans shell ? » aurait été un vrai
+obstacle. Elle s'est réduite à un fichier de workflow et un `tsconfig` parce que les règles
+posées au jour 1 — pas de `console.log`, pas de `process.env` en direct, tout ce qui est pur dans
+`src/lib/` — ont désigné d'elles-mêmes où chaque morceau devait aller. Le logger applicatif que le
+§4 exigeait depuis le premier jour n'existait pas ; il a été écrit ici, en quarante lignes, parce
+que c'est le premier composant du projet dont **quelqu'un lit vraiment la sortie**.
+
+La friction restante est ailleurs, et elle est connue : ces neuf tests d'intégration ne tournent
+dans aucune CI. Ils ont été exécutés dans la session, ce qui n'a, comme l'a établi l'entrée 016,
+aucune valeur institutionnelle. J1-11 attend toujours un réglage de console.

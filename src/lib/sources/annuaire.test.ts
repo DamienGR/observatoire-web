@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   isMairie,
+  mairiesExportUrl,
   mairiesRequestUrl,
   parseAnnuairePage,
   parseAnnuaireRecords,
@@ -254,5 +255,26 @@ describe('mairiesRequestUrl', () => {
 
   it('omits the offset when there is none', () => {
     expect(new URL(mairiesRequestUrl({ limit: 1 })).searchParams.has('offset')).toBe(false);
+  });
+});
+
+describe('mairiesExportUrl', () => {
+  it('asks the export endpoint the same question, without pagination', () => {
+    const url = new URL(mairiesExportUrl());
+
+    expect(url.pathname.endsWith('/exports/json')).toBe(true);
+    expect(url.searchParams.get('where')).toBe('pivot like "mairie"');
+    expect(url.searchParams.has('limit')).toBe(false);
+  });
+
+  it('asks for no field that carries personal data either', () => {
+    // The same guarantee as `/records`: this endpoint is the one the ingestion
+    // job actually calls, so the `select` clause is what keeps personal data
+    // out of the database, not just out of the fixtures.
+    const select = new URL(mairiesExportUrl()).searchParams.get('select') ?? '';
+
+    for (const forbidden of ['courriel', 'telephone', 'affectation', 'adresse']) {
+      expect(select).not.toContain(forbidden);
+    }
   });
 });

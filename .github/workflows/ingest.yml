@@ -1,0 +1,87 @@
+name: Ingest
+
+# The commune referential ingestion (J1-14), dispatched by hand.
+#
+# There is no shell in production (CLAUDE.md §3): an operation on the data is
+# either the authenticated ops surface — milestone 2 — or a workflow someone
+# can start from a browser. This is the second, and until the ops surface
+# exists it is the only way to load the perimeter.
+#
+# No `schedule:` on purpose. The referential moves once a year (a population
+# census) and the directory moves continuously, but how often to re-read them
+# is a frequency decision the brief leaves open (§11), and a cron added "for
+# now" is how an open decision gets settled by accident. Dispatch it when
+# something changed, read the report, then decide.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Download and plan, write nothing'
+        type: boolean
+        default: false
+
+# The only workflow of this repository that writes to the database, so it is
+# also the only one that reads a secret outside a pull request. `contents: read`
+# and nothing else: the job needs the code, never the right to change it.
+permissions:
+  contents: read
+
+env:
+  ASTRO_TELEMETRY_DISABLED: '1'
+
+concurrency:
+  group: ingest
+  # Never cancel a run in flight. The write is one transaction and would roll
+  # back cleanly, but killing a job mid-download to start the same job again is
+  # two downloads of 17 MB from a government API for one result.
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    name: ingest (communes and candidate URLs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the jobs
+        run: pnpm build:jobs
+
+      # The direct endpoint, not the pooled one: the write is a single
+      # transaction over ~2 300 rows (CLAUDE.md §9).
+      - name: Run the ingestion
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+        run: |
+          node dist-jobs/jobs/ingest-communes.js \
+            ${{ inputs.dry_run && '--dry-run' || '' }} \
+            --report reports/ingest.json
+
+      # Uploaded whatever the verdict. From a cloud-only session an artefact is
+      # the only way to see what a job did (CLAUDE.md §1), and a run that failed
+      # halfway is exactly the one worth reading.
+      - name: Upload the ingestion report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ingest-report
+          path: reports/
+          retention-days: 30
+          if-no-files-found: warn

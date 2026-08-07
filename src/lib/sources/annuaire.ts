@@ -224,3 +224,19 @@ export function mairiesRequestUrl(options: { limit: number; offset?: number }): 
   if (options.offset !== undefined) url.searchParams.set('offset', String(options.offset));
   return url.toString();
 }
+
+/**
+ * The URL of *every* town-hall record, in one answer. Nothing is fetched here.
+ *
+ * The same `where` and the same `select` as above — the second one is what
+ * keeps personal data out of this repository — but the export endpoint, whose
+ * envelope `parseAnnuaireRecords` handles. Measured on 7 August 2026: 35 803
+ * records, 12.7 MB, one request instead of the 358 pages `/records` would
+ * need at its maximum page size.
+ */
+export function mairiesExportUrl(): string {
+  const url = new URL(`${ANNUAIRE_DATASET_ENDPOINT}/exports/json`);
+  url.searchParams.set('where', `pivot like "${MAIRIE_PIVOT}"`);
+  url.searchParams.set('select', ANNUAIRE_FIELDS.join(','));
+  return url.toString();
+}

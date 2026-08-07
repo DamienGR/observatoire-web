@@ -1,4 +1,5 @@
 dist/
+dist-jobs/
 .astro/
 .netlify/
 coverage/

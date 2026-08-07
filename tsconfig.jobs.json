@@ -1,0 +1,30 @@
+{
+  // The jobs of `src/jobs/` are the only TypeScript in this repository that
+  // nothing else compiles: Astro builds the site, Vitest transpiles the tests,
+  // and a job dispatched by GitHub Actions has neither.
+  //
+  // Node cannot run the sources as they are. Its type stripping is enabled by
+  // default on Node 22.18+, but it does **not** resolve a `.js` specifier to a
+  // `.ts` file — verified in a session, not assumed — and every module here
+  // imports `./x.js` as `verbatimModuleSyntax` and the rest of the repository
+  // require. So the jobs are emitted with `tsc` under `module: NodeNext`, which
+  // maps those specifiers at compile time and leaves real `.js` files behind.
+  // The alternative was a runtime dependency (`tsx`, `vite-node`) whose only
+  // job would be to do the same rewriting on every run.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist-jobs",
+    "rootDir": "src",
+    "sourceMap": true,
+    // The `~/*` alias is deliberately absent: `tsc` does not rewrite path
+    // aliases on emit, so a job importing through one would compile and then
+    // fail to start. Jobs and the modules they reach use relative specifiers.
+    "paths": {}
+  },
+  "include": ["src/jobs/**/*.ts", "src/db/**/*.ts", "src/lib/**/*.ts"],
+  "exclude": ["**/*.test.ts"]
+}
