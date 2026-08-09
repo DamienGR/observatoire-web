@@ -1936,3 +1936,95 @@ que c'est le premier composant du projet dont **quelqu'un lit vraiment la sortie
 La friction restante est ailleurs, et elle est connue : ces neuf tests d'intégration ne tournent
 dans aucune CI. Ils ont été exécutés dans la session, ce qui n'a, comme l'a établi l'entrée 016,
 aucune valeur institutionnelle. J1-11 attend toujours un réglage de console.
+
+---
+
+## 018 — Le premier module qu'aucune mesure ne peut calibrer
+
+**9 août 2026** · jalon 1 · branche `claude/j1-06-osmspn`
+
+### Contexte
+
+J1-06 : la machine à états de résolution d'URL. Le brief la réclame depuis le jour 1 et la
+justifie par un chiffre — 138 communes du périmètre portent plusieurs URL candidates, une
+d'accueil et une de démarches le plus souvent. J1-14 avait rempli la file ; il s'agissait de la
+juger. Périmètre : `src/lib/`, logique pure, test-first strict (§5).
+
+Le livrable est fait de quatre étages — ce qu'on peut requêter et dans quel ordre, ce que vaut
+une observation, quelles transitions sont légales et par qui, que faire des autres candidats
+d'une même commune — et de 73 tests écrits avant eux.
+
+### La friction : cette fois, les tests ne recopiaient pas des faits
+
+L'entrée 017 notait que la logique pure de J1-14 était tombée juste du premier coup parce que
+ses tests n'avaient pas été imaginés : chaque cas venait d'une mesure faite sur les jeux complets.
+**Ici, cette ressource manque.** Les règles à écrire sont de la forme « que signifie un 403 ? »,
+« que faire quand deux URL d'une même commune répondent toutes les deux ? » — et il n'existe
+aucun moyen de les calibrer :
+
+- le §5 interdit toute requête réseau sur le chemin d'une PR, donc rien dans la CI ne peut
+  observer un site de commune ;
+- le module n'a **aucun consommateur** : le job qui exécutera ces règles est du jalon 2. Il n'y a
+  donc même pas d'exécution en session à regarder, contrairement à J1-14.
+
+C'est le premier module du dépôt dont la spécification est une **décision** et non une mesure.
+Et c'est exactement la situation où l'on écrit un seuil qui a l'air d'une règle, que la session
+suivante lira comme un fait établi. Le dépôt en a déjà un exemple : la contrainte
+`commune_population_positive`, écrite depuis une intuition de ce qu'est une commune, et démentie
+par six communes détruites en 1916.
+
+La règle que je me suis donnée est donc : **ancrer tout ce qui est mesuré, et refuser d'écrire
+ce qui ne l'est pas.** Concrètement, presque chaque test porte une URL réelle de la capture gelée
+et un compte mesuré par J1-07 ou J1-14 — `www.bajus.fr` sans schéma, les trois adresses de
+Saint-Malo, la page de rendez-vous de Conlie, les 154 candidates en `http`. Et là où rien n'est
+mesuré, le code **signale sans juger** : quand une chaîne de redirections finit sur un autre
+hôte, `movedHost` est levé et l'état reste `verifie`. Décider qu'un tel déplacement est suspect
+demanderait de savoir à quelle fréquence il arrive ; ce chiffre n'existera qu'après le premier
+scan réel. Un drapeau qu'un humain lira coûte un drapeau ; un seuil inventé coûte une donnée
+publiée à tort.
+
+### Ce que la contrainte cloud a rendu visible : qui a le droit de décider
+
+La partie du module dont je suis le plus sûr est aussi celle qu'aucune mesure ne dictait — et
+elle vient en droite ligne de l'organisation du projet, pas du domaine. Les transitions déclarent
+non seulement ce qui est légal, mais **par qui** : un scan peut vérifier, invalider, mettre à
+revoir ; il ne peut ni ressusciter une URL invalidée, ni sortir une URL de `à revoir`. Seul un
+opérateur le peut.
+
+Sans ces deux règles, la ré-ingestion hebdomadaire de l'annuaire — qui reproposera exactement les
+mêmes 1 224 candidates — effacerait chaque semaine tout jugement humain, silencieusement. C'est
+la deuxième fois que ce risque précis est attrapé à un endroit différent : l'entrée 017 raconte
+le choix d'un `ON CONFLICT DO NOTHING` plutôt qu'un `DO UPDATE` sur `site`, pour que l'écriture
+ne ramène pas à `candidat` ce qui aura été vérifié. Le même danger, vu deux fois, à deux couches.
+Dans un projet sans shell, il n'y a aucune session de rattrapage où l'on s'apercevrait que la
+base a été « remise à plat » : ce qui écrase une décision l'écrase définitivement.
+
+### Deux frictions mineures, notées parce qu'elles coûtent cinq minutes chacune
+
+**Le conteneur démarre sans `node_modules`.** Le premier `vitest` d'une session échoue en
+`ERR_MODULE_NOT_FOUND: Cannot find package 'vitest'` — depuis `vitest.config.ts` lui-même, ce
+qui ressemble beaucoup à une configuration cassée alors qu'il ne manque qu'un
+`pnpm install --frozen-lockfile`. Sans conséquence, mais c'est un faux départ que chaque session
+paiera tant qu'il n'est pas écrit quelque part.
+
+**`erasableSyntaxOnly` refuse les propriétés de paramètres.** Écrire
+`constructor(readonly from: Statut, …)` est du TypeScript parfaitement ordinaire, et le réglage
+l'interdit parce que Node doit pouvoir effacer les types sans les compiler. Le point notable
+n'est pas la correction — trois lignes — mais **qui a parlé** : la suite de tests était verte,
+c'est `astro check`, deuxième étape de `pnpm verify`, qui a refusé. L'ordre des étapes de
+`verify` est donc ce qui sépare « vert » de « vert pour de mauvaises raisons ». Une session qui
+se contenterait de `pnpm test` avant de pousser aurait envoyé du code que la CI aurait rejeté.
+
+### Ce qui a marché
+
+Le cycle rouge-vert a tenu, y compris son premier échec, qui était de ma faute et instructif : le
+test exigeait que le message d'erreur nomme les deux états et l'acteur *dans cet ordre*, par une
+expression régulière. L'implémentation les nommait dans un autre. La spécification que je voulais
+écrire était « le message nomme les trois choses » — c'est donc le test qui a été corrigé, pas le
+message. Un test qui contraint plus que la spécification est un test qui interdira demain une
+réécriture parfaitement légitime.
+
+Reste que ce module est, pour l'instant, une bibliothèque que personne n'appelle. Sa vraie
+épreuve n'est pas la CI verte d'aujourd'hui : c'est le premier scan réel, où l'on saura combien
+de communes tombent dans `à revoir` — et si cette file est utilisable par un humain ou si elle
+compte 300 lignes.

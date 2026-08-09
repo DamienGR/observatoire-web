@@ -407,7 +407,12 @@ Règles de cette surface :
 - Un scan est **idempotent et reprenable à la commune près**. Chaque mesure porte son propre
   statut. Jamais de « le job a planté, on recommence tout ».
 - La résolution d'URL est un **processus à états** (`candidat → vérifié → invalide → à revoir`),
-  pas une simple colonne.
+  pas une simple colonne. Ses règles vivent dans `src/lib/resolve/` en logique pure : ce qu'on
+  peut requêter et dans quel ordre (`attempt`), ce que vaut une observation (`verdict`), quelles
+  transitions sont légales et **par qui** (`states`), et que faire des autres candidats d'une même
+  commune (`arbitrate`). Deux règles y sont non négociables, parce qu'elles protègent le travail
+  humain de la ré-ingestion hebdomadaire : un scan ne ressuscite jamais une URL invalidée, et un
+  scan ne sort jamais une URL de `à revoir`. Seul un opérateur le peut.
 
 ---
 
