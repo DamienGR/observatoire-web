@@ -1,4 +1,4 @@
-import { cacheHeaders } from './cache.js';
+import { cacheHeaders, type CacheDowngrade } from './cache.js';
 import { matchRoute, UNMATCHED_ROUTE_POLICY } from './routes.js';
 import { securityHeaders } from './security.js';
 
@@ -15,14 +15,25 @@ export interface HttpPolicyOptions {
   readonly pathname: string;
   /** The Sentry DSN in force, when there is one (see security.ts). */
   readonly sentryDsn?: string | undefined;
+  /**
+   * A page giving up the caching its route declares, for this response only —
+   * a data page that could not read its data (see `CacheDowngrade`). It can
+   * never widen the policy, so the registry stays the ceiling.
+   */
+  readonly downgrade?: CacheDowngrade | undefined;
 }
 
-export function policyHeaders({ pathname, sentryDsn }: HttpPolicyOptions): Record<string, string> {
+export function policyHeaders({
+  pathname,
+  sentryDsn,
+  downgrade,
+}: HttpPolicyOptions): Record<string, string> {
   const route = matchRoute(pathname)?.policy ?? UNMATCHED_ROUTE_POLICY;
+  const cache = downgrade === undefined ? route : { cache: downgrade, tags: [] };
 
   return {
     ...securityHeaders({ sentryDsn }),
-    ...cacheHeaders(route),
+    ...cacheHeaders(cache),
   };
 }
 

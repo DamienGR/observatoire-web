@@ -10,9 +10,16 @@
  * `Netlify-Cache-Tag` is what a purge targets. It is emitted here, ahead of the
  * purge itself (milestone 4): a tag added later would leave every response
  * cached before it untargetable.
+ *
+ * Both Netlify headers are **instructions to the CDN and never reach a client**:
+ * the platform reads them and strips them (measured on a deploy preview, see
+ * docs/journal.md 019). What a visitor — or a test — observes is `Cache-Control`
+ * and `Cache-Status`, the latter reporting what the edge actually did with the
+ * response. So this module's output is asserted here, and its *effect* is
+ * asserted over HTTP in tests/e2e/stats.spec.ts.
  */
 
-export type CachePolicyName = 'editorial' | 'uncached';
+export type CachePolicyName = 'editorial' | 'donnees' | 'uncached';
 
 export interface CachePolicy {
   /** `Cache-Control` — what the visitor's browser may hold. */
@@ -38,12 +45,38 @@ export const CACHE_POLICIES: Readonly<Record<CachePolicyName, CachePolicy>> = {
     cdn: 'public, s-maxage=3600, stale-while-revalidate=86400',
   },
 
+  /**
+   * Pages whose content comes from the database rather than from the code.
+   *
+   * Five minutes at the edge, against the hour the editorial pages get, and the
+   * asymmetry is the point of §10: data must never need a deploy to refresh, so
+   * the only thing standing between a write and a reader is this ceiling — for
+   * as long as the tag-based purge is still milestone 4 work. The tags are
+   * emitted from the first day the page exists, so that the day the ingestion
+   * job learns to purge, the responses cached before it are targetable.
+   */
+  donnees: {
+    browser: 'public, max-age=0, must-revalidate',
+    cdn: 'public, s-maxage=300, stale-while-revalidate=3600',
+  },
+
   /** Responses that must outlive nothing: errors, and anything unrouted. */
   uncached: {
     browser: 'no-store',
     cdn: 'no-store',
   },
 };
+
+/**
+ * What a page may do to its own policy: nothing but give it up.
+ *
+ * A page that renders a degraded state — "the figures could not be read" — must
+ * not have that state cached for the lifetime of its policy, and it is the only
+ * one that knows. Letting it *choose* a policy would put a second source of
+ * truth next to the registry (§10); letting it only downgrade to `uncached`
+ * cannot grant a page more caching than the registry allows, only less.
+ */
+export type CacheDowngrade = 'uncached';
 
 /** What a route declares: which policy applies, and under which purge tags. */
 export interface RoutePolicy {

@@ -1,0 +1,179 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { loadStats } from '../db/runtime.js';
+import {
+  formatCount,
+  formatDateTime,
+  formatShare,
+  toDateTimeAttribute,
+} from '../lib/stats/format.js';
+import { buildStatsView } from '../lib/stats/view.js';
+
+/**
+ * The state of the data (J1-15) — the first page of this site rendered from the
+ * database rather than from the code.
+ *
+ * It publishes what exists: an ingested referential and a queue of candidate
+ * URLs. Not one measurement, because the scan is milestone 2 — and saying so in
+ * a sentence, on a page anyone can read, is the point. §11.5 forbids
+ * non-factual vocabulary; a site that measures others owes at least the same
+ * plainness about its own state.
+ *
+ * The figures are read on each render and cached at the edge for five minutes
+ * (src/lib/http/cache.ts). No deployment refreshes them, which is §10's rule
+ * exercised for the first time on real data.
+ */
+const read = await loadStats();
+const view = read.ok ? buildStatsView(read.snapshot) : null;
+
+/** Why the figures are missing, in the reader's terms. Null when they are not. */
+const unavailable = read.ok
+  ? null
+  : read.reason === 'not-configured'
+    ? "Cet environnement n'est relié à aucune base de données : c'est le cas d'une prévisualisation construite sans accès aux données."
+    : "La base n'a pas répondu. L'incident est journalisé côté serveur ; les chiffres réapparaîtront dès qu'ils pourront être lus.";
+
+if (!read.ok) {
+  // A page that could not read its data must not be held at the edge for the
+  // lifetime of its policy: the outage would outlive itself. The registry stays
+  // the ceiling — a page can only give caching up, never grant itself more.
+  Astro.locals.cacheDowngrade = 'uncached';
+}
+---
+
+<BaseLayout
+  title="État des données"
+  description="Ce que la base d'observatoire-web.fr contient aujourd'hui : périmètre ingéré, adresses en cours de résolution, mesures publiées."
+>
+  <h1>État des données</h1>
+
+  <p class="lede">
+    Cette page est lue directement dans la base à chaque affichage. Elle décrit l'avancement de la
+    chaîne de mesure, sans arrondi ni chiffre recopié dans le code.
+  </p>
+
+  {
+    unavailable !== null && (
+      <div class="notice">
+        <h2>Les chiffres ne sont pas lisibles pour le moment</h2>
+        <p>{unavailable}</p>
+        <p>
+          Rien n'est affiché à la place : une valeur par défaut ressemblerait à une mesure, ce que
+          la <a href="/methodologie">méthodologie</a> interdit.
+        </p>
+      </div>
+    )
+  }
+
+  {
+    view !== null && (
+      <>
+        <h2>Périmètre ingéré</h2>
+
+        {!view.hasCommunes && (
+          <div class="notice">
+            <p>
+              La base est vide : le référentiel des communes n'a pas encore été ingéré dans cet
+              environnement. Les compteurs ci-dessous sont donc à zéro, et c'est la seule chose
+              qu'ils affirment.
+            </p>
+          </div>
+        )}
+
+        <dl class="figures">
+          <div>
+            <dt>Communes du périmètre</dt>
+            <dd>{formatCount(view.communes)}</dd>
+          </div>
+          <div>
+            <dt>Population cumulée</dt>
+            <dd>{formatCount(view.perimeterPopulation)} habitants</dd>
+          </div>
+          <div>
+            <dt>Communes sans adresse candidate</dt>
+            <dd>{formatCount(view.communesWithoutCandidate)}</dd>
+          </div>
+        </dl>
+
+        <p>
+          Le périmètre v1 est l'ensemble des communes de plus de 10 000 habitants. Ce nombre est
+          recalculé à chaque ingestion à partir de l'API du découpage administratif : il n'est écrit
+          nulle part dans le code, et il évoluera avec le recensement. Une commune sans adresse
+          candidate est une commune dont l'annuaire de l'administration ne publie aucun site ; elle
+          restera non mesurable tant qu'une adresse n'aura pas été renseignée autrement.
+        </p>
+
+        {view.referentialUpdatedAt !== null && (
+          <p class="meta">
+            Dernière écriture dans le référentiel :{' '}
+            <time datetime={toDateTimeAttribute(view.referentialUpdatedAt)}>
+              {formatDateTime(view.referentialUpdatedAt)}
+            </time>{' '}
+            (heure de Paris).
+          </p>
+        )}
+
+        <h2>Adresses en cours de résolution</h2>
+
+        <div
+          class="table-scroll"
+          role="region"
+          aria-label="Adresses par état de résolution"
+          tabindex="0"
+        >
+          <table>
+            <caption>
+              Les {formatCount(view.sites)} adresses connues, réparties par état. Une adresse n'est
+              mesurée qu'une fois vérifiée.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">État</th>
+                <th scope="col">Adresses</th>
+                <th scope="col">Part</th>
+              </tr>
+            </thead>
+            <tbody>
+              {view.resolution.map((row) => (
+                <tr>
+                  <th scope="row">{row.label}</th>
+                  <td class="numeric">{formatCount(row.total)}</td>
+                  <td class="numeric">{formatShare(row.share)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Ces états sont ceux décrits par la <a href="/methodologie">méthodologie</a> : une adresse
+          issue de l'annuaire reste candidate tant qu'elle n'a pas été interrogée, et seule une
+          intervention humaine sort une adresse de l'état « à revoir ». Le nombre d'adresses peut
+          dépasser le nombre de communes, une même commune pouvant en déclarer plusieurs — une page
+          d'accueil et un portail de démarches, le plus souvent.
+        </p>
+
+        <h2>Mesures publiées</h2>
+
+        {view.hasMeasurements ? (
+          <dl class="figures">
+            <div>
+              <dt>Mesures enregistrées</dt>
+              <dd>{formatCount(view.measurements)}</dd>
+            </div>
+            <div>
+              <dt>Scans exécutés</dt>
+              <dd>{formatCount(view.scanRuns)}</dd>
+            </div>
+          </dl>
+        ) : (
+          <p>
+            Aucune mesure n'a été produite à ce jour : la chaîne de mesure est en cours de
+            construction. Aucun score, aucun classement et aucune moyenne ne sont donc publiés, et
+            le compteur de scans enregistrés est à {formatCount(view.scanRuns)}.
+          </p>
+        )}
+      </>
+    )
+  }
+</BaseLayout>

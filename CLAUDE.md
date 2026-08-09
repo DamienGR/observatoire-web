@@ -41,7 +41,7 @@ Conséquences pratiques :
 | Gestionnaire de paquets | pnpm (via `corepack`) | Version pinnée par `packageManager`. Lockfile committé. |
 | Framework | Astro (SSR, adaptateur `@astrojs/netlify`) | Îlots uniquement là où c'est nécessaire |
 | Langage | TypeScript en `strict` | `any` implicite ou explicite interdit hors justification commentée |
-| Base | Postgres serverless (Neon) | Branches Neon pour les previews et les dry-run de migration. Les jobs se connectent en TCP par `pg` : ils tournent dans un runner Actions, pas sur un runtime edge — et le même chemin de code s'éprouve alors contre un Postgres jetable en session (journal 017) |
+| Base | Postgres serverless (Neon) | Branches Neon pour les previews et les dry-run de migration. **Un seul client, `pg` en TCP, pour les jobs comme pour le rendu SSR** : les jobs tournent dans un runner Actions et le site dans une fonction Netlify — un processus Node, pas un runtime edge —, donc aucun des deux n'a besoin du SDK serverless, et le même chemin de code s'éprouve contre un Postgres jetable en session (journal 017 et 019). Le job prend l'endpoint direct, le site l'endpoint *pooled* |
 | ORM / migrations | Drizzle + drizzle-kit | Migrations SQL versionnées et committées |
 | Validation | Zod | Toute donnée externe est parsée, jamais castée |
 | Hébergement | Netlify | Cache edge + purge par tag |
@@ -459,6 +459,12 @@ préfixer une valeur sensible. Vérifier ce point dans toute revue touchant à l
 - Une route mise en cache **déclare au moins un tag de purge**. Sans tag, la seule façon de
   l'évincer est une purge globale, que ce paragraphe interdit : `cacheHeaders` lève plutôt que
   de servir une page qu'on ne saurait pas invalider.
+- Une page lisant la base porte la politique `donnees` (plus courte que `editorial` tant que la
+  purge par tag n'existe pas) et le tag de la donnée qu'elle affiche, pas seulement le sien.
+- **Une page ne peut modifier sa politique que dans un sens : y renoncer.** `Astro.locals`
+  `cacheDowngrade` vaut `'uncached'` et rien d'autre — c'est ce qui permet à un rendu dégradé
+  (« les chiffres n'ont pas pu être lus ») de ne pas être conservé au bord, sans qu'une page
+  puisse jamais s'accorder plus de cache que le registre ne lui en donne.
 
 ---
 

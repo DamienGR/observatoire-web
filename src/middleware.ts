@@ -22,5 +22,8 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
   return applyPolicyHeaders(response, {
     pathname: context.url.pathname,
     sentryDsn: serverEnv().PUBLIC_SENTRY_DSN,
+    // The one thing a page may say about its own caching, and only to give it
+    // up: a data page that could not read its data (src/lib/http/cache.ts).
+    downgrade: context.locals.cacheDowngrade,
   });
 };
