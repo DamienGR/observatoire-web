@@ -18,8 +18,16 @@ import type { RoutePolicy } from './cache.js';
 /** Purge tag carried by every page of the shell: one purge repaints the lot. */
 const SHELL_TAG = 'shell';
 
+/**
+ * Carried by every page whose content is read from the commune referential.
+ * The ingestion job is what will purge it (milestone 4), which is why it is a
+ * tag about the *data* and not about the page.
+ */
+const COMMUNE_DATA_TAG = 'data:communes';
+
 export const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   '/': { cache: 'editorial', tags: ['page:accueil', SHELL_TAG] },
+  '/stats': { cache: 'donnees', tags: ['page:stats', COMMUNE_DATA_TAG, SHELL_TAG] },
   '/methodologie': { cache: 'editorial', tags: ['page:methodologie', SHELL_TAG] },
   '/mentions-legales': { cache: 'editorial', tags: ['page:mentions-legales', SHELL_TAG] },
   '/accessibilite': { cache: 'editorial', tags: ['page:accessibilite', SHELL_TAG] },

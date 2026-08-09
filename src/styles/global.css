@@ -275,6 +275,36 @@ code {
   font-size: 1.125rem;
 }
 
+/* A short list of headline figures. A description list rather than a table:
+   each figure is one label and one value, and a table of one column would
+   announce rows and columns that carry no relationship. */
+.figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.figures > div {
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.figures dt {
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+.figures dd {
+  margin: var(--space-1) 0 0;
+  font-size: 1.5rem;
+  /* Digits of equal width: a column of figures that shifts as the data changes
+     is harder to compare than one that does not. */
+  font-variant-numeric: tabular-nums;
+}
+
 /* --- Tables ------------------------------------------------------------- */
 
 /* §4 requires a caption and scoped headers on every data table. The horizontal
@@ -307,6 +337,12 @@ td {
 
 thead th {
   border-bottom: 2px solid var(--border-strong);
+}
+
+/* Counts read as a column, so they are aligned as one. */
+td.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Footer ------------------------------------------------------------- */

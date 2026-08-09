@@ -9,6 +9,15 @@ describe('CACHE_POLICIES', () => {
     expect(CACHE_POLICIES.editorial.cdn).toContain('s-maxage=');
   });
 
+  it('holds a data page for less time than an editorial one', () => {
+    // §10: data must never need a deploy to refresh. Until the tag-based purge
+    // exists (milestone 4), this ceiling is the only thing between a write and
+    // a reader — so it is shorter than the hour the editorial pages get.
+    const seconds = (policy: string) => Number(/s-maxage=(\d+)/.exec(policy)?.[1]);
+
+    expect(seconds(CACHE_POLICIES.donnees.cdn)).toBeLessThan(seconds(CACHE_POLICIES.editorial.cdn));
+  });
+
   it('keeps the uncached policy out of every store', () => {
     expect(CACHE_POLICIES.uncached.browser).toBe('no-store');
     expect(CACHE_POLICIES.uncached.cdn).toBe('no-store');

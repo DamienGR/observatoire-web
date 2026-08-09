@@ -9,8 +9,7 @@ import net from 'node:net';
  *
  * Two chokepoints cover everything a unit test could reach for:
  *
- *  - `fetch`, used by the Neon HTTP driver and by every call to PSI, geo.api or
- *    DILA;
+ *  - `fetch`, used by every call to PSI, geo.api or DILA;
  *  - `net.Socket.prototype.connect`, the single funnel through which TCP
  *    Postgres, `node:http`, `node:https` and `node:tls` all establish their
  *    connection. Patching it here catches transports that do not go through

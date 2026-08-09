@@ -29,6 +29,13 @@ export interface ConnectOptions {
   /** A job opens a handful of connections at most; the default of 10 is waste. */
   readonly maxConnections?: number;
   readonly connectionTimeoutMs?: number;
+  /**
+   * Postgres `statement_timeout`, in milliseconds. Left unset for a job — an
+   * ingestion transaction legitimately takes minutes — and set by the site,
+   * where a query that hangs holds a visitor's request until the platform kills
+   * the function, with no log saying why.
+   */
+  readonly statementTimeoutMs?: number;
 }
 
 /**
@@ -43,6 +50,9 @@ export function connect(connectionString: string, options: ConnectOptions = {}):
     connectionString,
     max: options.maxConnections ?? 2,
     connectionTimeoutMillis: options.connectionTimeoutMs ?? 15_000,
+    ...(options.statementTimeoutMs === undefined
+      ? {}
+      : { statement_timeout: options.statementTimeoutMs }),
   });
 
   return {

@@ -1,13 +1,21 @@
 ---
 /**
- * Site header: the name, and the two pages every measurement must be one click
- * away from — the methodology (docs/brief.md §9, guarantee 1) and the right of
- * reply (guarantee 3).
+ * Site header: the name, and the pages every measurement must be one click away
+ * from — the methodology (docs/brief.md §9, guarantee 1) and the right of reply
+ * (guarantee 3), plus the state of the data.
+ *
+ * The third link is not of the same nature as the other two, and it is here for
+ * a reason of its own: `/stats` is the only page of the site whose content
+ * comes from the database, so it is also the only one on which a broken read
+ * path is visible to anyone. Linking it from every page is what makes the
+ * deploy check (`scripts/check-deploy.mjs`, which crawls the links of the home
+ * page) request it on every single deployment.
  *
  * The name is a link, not a heading: §4 allows a single `<h1>` per page and it
  * belongs to the page's own subject, not to the site's.
  */
 const links = [
+  { href: '/stats', label: 'État des données' },
   { href: '/methodologie', label: 'Méthodologie' },
   { href: '/droit-de-reponse', label: 'Droit de réponse' },
 ];

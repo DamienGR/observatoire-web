@@ -2028,3 +2028,113 @@ Reste que ce module est, pour l'instant, une bibliothèque que personne n'appell
 épreuve n'est pas la CI verte d'aujourd'hui : c'est le premier scan réel, où l'on saura combien
 de communes tombent dans `à revoir` — et si cette file est utilisable par un humain ou si elle
 compte 300 lignes.
+
+---
+
+## 019 — La première page qui lit la base, et le seul juge qui ait vu le défaut
+
+**9 août 2026** · jalon 1 · branche `claude/traite-j1-15-0xxidx`
+
+### Contexte
+
+J1-15 : la page `/stats`, dernière tâche `à faire` du jalon 1. Le brief la décrit en trois mots
+— « page `/stats` minimale sur données réelles » — et c'est la première fois que du HTML de ce
+site est rendu depuis la base plutôt que depuis le code. Elle publie ce qui existe : 1 067
+communes ingérées, 1 224 adresses candidates, 15 communes sans adresse, **zéro mesure**.
+
+Une décision attendait cette tâche depuis le bootstrap : quel client Postgres côté SSR. Elle est
+tranchée pour `pg`, partout, et le SDK `@neondatabase/serverless` est retiré du dépôt.
+`@astrojs/netlify` déploie le point d'entrée en *fonction* Netlify — un processus Node sur
+Lambda, pas un runtime edge — donc il tient une socket, et l'endpoint *pooled* de Neon existe
+exactement pour cette forme. Le SDK n'apportait rien et coûtait un deuxième client à maintenir.
+
+### Le défaut que seul un vrai Postgres pouvait montrer
+
+La lecture est en SQL brut — six sous-requêtes scalaires en un aller-retour, plutôt que six
+requêtes sur le chemin d'un visiteur. J'ai fait passer la ligne obtenue par un schéma Zod, en
+notant en commentaire que ce n'était pas le cas d'usage prévu par le §4 (une base qui est la
+nôtre n'est pas une API tierce), mais que `db.execute` rend un `Record<string, unknown>` et que
+l'alternative au parsing était un `as` qui continuerait de compiler après un renommage de
+colonne.
+
+Le premier affichage de la page, sur la base réelle, a répondu ceci :
+
+```
+{"error":"ZodError: [{ \"expected\": \"date\", \"path\": [\"referential_updated_at\"],
+  \"message\": \"Invalid input: expected date, received string\" }]",
+ "level":"error","message":"stats read failed"}
+```
+
+`max(updated_at)` revient en **chaîne**, pas en `Date`. La raison est que Drizzle installe ses
+propres analyseurs de types sur le pool pour convertir les colonnes lui-même — et du SQL brut n'a
+aucune colonne à convertir. Ce qui compte n'est pas la correction, qui tient en cinq lignes, mais
+**qui a parlé** :
+
+- `pnpm verify` était vert. TypeScript croyait la valeur `Date` : c'est ce que le schéma
+  déclarait, et il n'existe aucun moyen pour le compilateur de savoir ce que `pg` a rendu.
+- Un test unitaire ne pouvait pas l'attraper : il aurait fourni une `Date`, comme moi.
+- Un `as` aurait publié `Invalid Date` sur une page publique, sans qu'aucun test, aucun statut
+  HTTP et aucun log ne s'en émeuve.
+
+C'est le troisième défaut de ce dépôt trouvé en exécutant pour de vrai plutôt qu'en relisant
+(après les six communes à zéro habitant, et le check de production qui mesurait la version
+précédente). La conclusion se répète : **la frontière entre notre code et un système extérieur
+est le seul endroit où « ça compile » ne veut rien dire**, et la parade n'est pas plus de types,
+c'est une assertion qui s'exécute. Le test d'intégration ajouté vérifie désormais le *type* de
+cette valeur, pas seulement sa présence.
+
+### La friction cloud-only : Node ne sort pas du conteneur
+
+Je voulais rejouer l'ingestion réelle pour voir la page sur ses vraies données. Le job a échoué
+quatre fois de suite en `503`, avec l'erreur d'indisponibilité que J1-14 avait justement pris
+soin de distinguer d'une dérive de contrat. J'ai d'abord cru retrouver la limite de débit de
+`geo.api.gouv.fr` mesurée le 7 août — l'explication était disponible, plausible, et fausse.
+
+`curl` sur la même URL : `200`, 4,2 Mo. `fetch` de Node sur la même URL, dans le même conteneur,
+à la même seconde : `503 upstream connect error`. Node n'honore pas `HTTPS_PROXY`, et tout le
+trafic sortant de cette session passe par un proxy. **Aucun job de ce dépôt ne peut télécharger
+quoi que ce soit depuis une session** — ce qui n'a aucune conséquence en production, où les
+runners Actions sortent directement, mais qui change la manière de mettre au point.
+
+Le contournement est resté hors du dépôt : un script dans le répertoire de travail temporaire
+lit les deux captures faites au `curl` et appelle les parsers, le planificateur et l'écriture du
+dépôt, inchangés. Tout ce qui est à nous a donc bien tourné sur les 34 969 communes et les 35 803
+fiches réelles ; seul le transport a été remplacé. Résultat écrit en base : 1 067 communes, 1 224
+adresses, exactement les chiffres du 7 août.
+
+Le piège dans cette histoire n'est pas le proxy, c'est le message d'erreur juste. `503` +
+« indisponibilité » désignait un coupable connu et documenté dans ce même journal. Un diagnostic
+qui confirme une note existante mérite d'être vérifié une fois de plus qu'un diagnostic qui la
+contredit.
+
+### Ce qu'une page de données oblige à décider, et que j'ai failli trancher en silence
+
+Une page qui lit une base peut échouer, et il fallait choisir ce qu'elle répond alors. Répondre
+503 est plus honnête pour un moniteur ; c'est aussi ce qui aurait fait virer au rouge
+`scripts/check-deploy.mjs`, qui suit les liens de l'accueil et exige un 200 sur chacun — un check
+rouge pour une variable d'environnement absente, c'est-à-dire pour une raison étrangère au diff.
+Le §5 est catégorique là-dessus : dans un projet où la CI est le seul juge, une CI qu'on apprend
+à ignorer est la panne la plus grave possible.
+
+La page répond donc 200 et **dit ce qu'elle ne peut pas lire**, avec trois conséquences écrites
+plutôt que supposées : la lecture ratée est journalisée côté serveur, le test E2E du tableau se
+*saute* visiblement au lieu de passer à vide, et surtout la réponse dégradée **renonce à son
+cache**. Ce dernier point a demandé le seul mécanisme nouveau de cette PR : `Astro.locals` porte
+un `cacheDowngrade` dont le type ne peut valoir que `'uncached'`. Une page peut abandonner le
+cache que le registre lui accorde, jamais s'en accorder davantage — sans quoi le registre du §10
+cesserait d'être la source unique. Vérifié sur le serveur réel, dans les deux sens : base debout,
+`s-maxage=300` et les trois tags ; base arrêtée, `no-store`.
+
+Reste une dette que je préfère écrire que masquer : **rien en CI ne distingue aujourd'hui une
+preview sans base d'un chemin de lecture cassé**. La sonde qui saurait le dire doit connaître
+l'environnement qu'elle interroge — c'est la surface d'ops du jalon 2, pas un `if` de plus dans
+une page.
+
+### Ce qui a marché
+
+Le test-first sur `src/lib/stats/`, sans surprise cette fois : la spécification y était
+connaissable d'avance, et les cas venaient des mesures de J1-14 plutôt que d'exemples inventés.
+Deux d'entre eux ont eu un intérêt immédiat — la division par zéro d'une base vide, qui est
+l'état *normal* de cette page le jour où elle est déployée, et l'obligation d'afficher les états
+de résolution à zéro. « 0 adresse à revoir » est un fait ; une ligne absente ressemble à un
+oubli, et la file que personne n'affiche est celle que personne ne vide.

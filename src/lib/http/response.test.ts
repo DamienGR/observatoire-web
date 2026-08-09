@@ -29,6 +29,39 @@ describe('policyHeaders', () => {
     );
   });
 
+  it('caches a data page at the edge, under a tag the ingestion can purge', () => {
+    const headers = policyHeaders({ pathname: '/stats' });
+
+    expect(headers['netlify-cdn-cache-control']).toBe(CACHE_POLICIES.donnees.cdn);
+    expect(headers['netlify-cache-tag']).toContain('data:communes');
+  });
+
+  it('stores nothing when a page gives its caching up', () => {
+    // The degraded render of a data page: the figures could not be read, and
+    // holding that answer at the edge would make the outage outlive itself.
+    const headers = policyHeaders({ pathname: '/stats', downgrade: 'uncached' });
+
+    expect(headers['cache-control']).toBe('no-store');
+    expect(headers['netlify-cdn-cache-control']).toBe('no-store');
+    expect(headers['netlify-cache-tag']).toBeUndefined();
+  });
+
+  it('keeps the security headers on a downgraded response', () => {
+    const headers = policyHeaders({ pathname: '/stats', downgrade: 'uncached' });
+
+    for (const name of SECURITY_HEADER_NAMES) {
+      expect(headers[name], name).toBeDefined();
+    }
+  });
+
+  it('leaves the declared policy in force when no downgrade is asked for', () => {
+    // `undefined` has to mean "the registry decides", not "no cache": the
+    // middleware passes the field on every request, set or not.
+    expect(policyHeaders({ pathname: '/stats', downgrade: undefined })['cache-control']).toBe(
+      CACHE_POLICIES.donnees.browser,
+    );
+  });
+
   it('passes the Sentry DSN through to the policy', () => {
     const headers = policyHeaders({
       pathname: '/',
