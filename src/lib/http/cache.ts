@@ -10,6 +10,13 @@
  * `Netlify-Cache-Tag` is what a purge targets. It is emitted here, ahead of the
  * purge itself (milestone 4): a tag added later would leave every response
  * cached before it untargetable.
+ *
+ * Both Netlify headers are **instructions to the CDN and never reach a client**:
+ * the platform reads them and strips them (measured on a deploy preview, see
+ * docs/journal.md 019). What a visitor — or a test — observes is `Cache-Control`
+ * and `Cache-Status`, the latter reporting what the edge actually did with the
+ * response. So this module's output is asserted here, and its *effect* is
+ * asserted over HTTP in tests/e2e/stats.spec.ts.
  */
 
 export type CachePolicyName = 'editorial' | 'donnees' | 'uncached';

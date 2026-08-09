@@ -2138,3 +2138,41 @@ Deux d'entre eux ont eu un intérêt immédiat — la division par zéro d'une b
 l'état *normal* de cette page le jour où elle est déployée, et l'obligation d'afficher les états
 de résolution à zéro. « 0 adresse à revoir » est un fait ; une ligne absente ressemble à un
 oubli, et la file que personne n'affiche est celle que personne ne vide.
+
+### Addendum — la CI a trouvé ce qu'aucune session ne pouvait mesurer
+
+L'E2E de cette PR est parti rouge sur la deploy preview, et sur la seule assertion que j'avais
+pourtant *vérifiée à la main* une heure plus tôt :
+
+```
+expect(headers['netlify-cdn-cache-control']).toBe('no-store')
+Expected: "no-store"   Received: undefined
+```
+
+**Netlify consomme `Netlify-CDN-Cache-Control` et `Netlify-Cache-Tag`.** Ce sont des
+instructions au CDN : il les lit, les applique, et ne les transmet pas. Aucun client ne les voit
+donc jamais. Le serveur de développement, lui, n'est pas la plateforme : il relaie les en-têtes
+tels quels, et c'est exactement ce que j'avais observé en session — deux `curl`, base debout puis
+base arrêtée, `s-maxage=300` puis `no-store`. La mesure était juste ; ce qu'elle mesurait n'était
+pas ce que je croyais.
+
+Le comportement, lui, était correct depuis le début. Ce que la plateforme expose est meilleur que
+ce que j'assérais :
+
+```
+/methodologie  cache-status: "Netlify Edge"; fwd=miss; fwd-status=200; stored
+/stats         cache-status: "Netlify Edge"; fwd=miss; fwd-status=200
+```
+
+`Cache-Status` (RFC 9211) dit ce que le bord **a fait**, pas ce qu'on lui a demandé. La page
+éditoriale est stockée, la page de données dégradée ne l'est pas. Le test assère désormais cela,
+et la déclaration — la politique et ses tags de purge — reste assérée là où elle est visible, en
+test unitaire. La répartition est plus propre qu'avant l'échec : l'unitaire vérifie ce qu'on
+émet, l'E2E vérifie ce que le bord en fait.
+
+C'est la deuxième fois dans cette PR qu'une exécution réelle dément une vérification qui avait
+l'air complète, et la deuxième fois que le juge n'est pas celui que j'attendais. La première
+était la base (`max(updated_at)` en chaîne), attrapée par un parse. Celle-ci ne pouvait être
+attrapée que par la plateforme elle-même — c'est-à-dire par la CI, sur une PR. Le §1 dit que la
+CI est l'unique juge de qualité ; ce jour-là, elle a jugé quelque chose qu'aucune session ne
+pouvait voir, et le mot « unique » a cessé d'être une formule.

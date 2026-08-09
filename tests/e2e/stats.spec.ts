@@ -22,6 +22,26 @@ import { expect, test } from '@playwright/test';
 const FIGURES = 'Périmètre ingéré';
 const UNAVAILABLE = 'Les chiffres ne sont pas lisibles pour le moment';
 
+/**
+ * Whether the edge kept the response, read from `Cache-Status` (RFC 9211).
+ *
+ * Not from `Netlify-CDN-Cache-Control`, and that is the whole lesson of this
+ * helper: Netlify **consumes** that header along with `Netlify-Cache-Tag` —
+ * they are instructions to the CDN, and the CDN does not pass them on. A first
+ * version of this suite asserted them and went red against a deployment whose
+ * caching was perfectly correct (docs/journal.md 019). The dev server, which is
+ * not the platform, forwards them untouched, so nothing in a session could have
+ * shown it.
+ *
+ * What is left is better than what was lost: `Cache-Status` reports what the
+ * edge *did* — `stored` on a miss it kept, `hit` when it served from store —
+ * rather than what we asked it to do. The declaration side (the policy and its
+ * purge tags) is asserted where it is visible, in src/lib/http/response.test.ts.
+ */
+function edgeKeptTheResponse(headers: Record<string, string>): boolean {
+  return /stored|hit/.test(headers['cache-status'] ?? '');
+}
+
 test('answers 200 and shows either its figures or why it cannot', async ({ page }) => {
   const response = await page.goto('/stats');
 
@@ -39,23 +59,32 @@ test('answers 200 and shows either its figures or why it cannot', async ({ page 
   ).toBe(1);
 });
 
-test('caches its data at the edge, under a tag a purge can target', async ({ page }) => {
+test('is held at the edge only when it has data to hold', async ({ page }) => {
   const response = await page.goto('/stats');
   const headers = response?.headers() ?? {};
 
   const degraded = (await page.getByRole('heading', { name: UNAVAILABLE }).count()) > 0;
 
   if (degraded) {
-    // §10 by way of honesty: an answer that says "unreadable" must not be held
-    // at the edge, or the outage outlives itself.
-    expect(headers['netlify-cdn-cache-control']).toBe('no-store');
+    // §10 by way of honesty: an answer that says "unreadable" must not be kept
+    // at the edge, or the outage outlives itself. This is the one assertion of
+    // the suite that proves the downgrade of src/lib/http/cache.ts reaches the
+    // platform at all — the browser directive alone would not.
+    expect(headers['cache-control']).toContain('no-store');
+    expect(
+      edgeKeptTheResponse(headers),
+      `the edge stored a degraded answer: ${headers['cache-status'] ?? 'no Cache-Status'}`,
+    ).toBe(false);
     return;
   }
 
-  // A cached response with no tag can only be evicted by a global purge, which
-  // §10 forbids — so the tag is what makes the whole policy admissible.
-  expect(headers['netlify-cdn-cache-control']).toContain('s-maxage=');
-  expect(headers['netlify-cache-tag']).toContain('data:communes');
+  // The browser revalidates, the edge holds: that asymmetry is what makes a
+  // purge take effect at once (§10).
+  expect(headers['cache-control']).toContain('must-revalidate');
+  expect(
+    edgeKeptTheResponse(headers),
+    `the edge kept nothing: ${headers['cache-status'] ?? 'no Cache-Status'}`,
+  ).toBe(true);
 });
 
 test('presents the resolution states as a data table, captioned and scoped', async ({ page }) => {
