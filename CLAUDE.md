@@ -420,18 +420,25 @@ Règles de cette surface :
 
 Documenter toute nouvelle variable ici **et** dans `.env.example`.
 
+Côté Actions, la **portée est un choix de sécurité, pas un rangement** : un secret de dépôt est
+lisible par tout workflow, y compris celui qu'une PR déclenche, ce que le §7 interdit pour la
+production. Les secrets de production vivent donc dans l'environment GitHub `production`
+(branche `main` uniquement, reviewer requis), qu'un job nomme par `environment: production`.
+Ceux dont un job de PR a besoin restent au niveau du dépôt — et ils n'y restent que parce qu'ils
+n'ouvrent rien en production.
+
 | Variable | Portée | Rôle |
 |---|---|---|
-| `DATABASE_URL` | Netlify, Actions | Chaîne de connexion Neon (pooled) |
-| `DATABASE_URL_UNPOOLED` | Actions | Connexion directe, requise pour les migrations |
-| `PSI_API_KEY` | Netlify, Actions | Clé API PageSpeed Insights |
-| `OPS_TOKEN` | Netlify, Actions | Jeton de la surface d'ops. Rotation à la moindre suspicion. |
+| `DATABASE_URL` | Netlify, Actions (env. `production`) | Chaîne de connexion Neon (pooled) |
+| `DATABASE_URL_UNPOOLED` | Actions (env. `production`) | Connexion directe : hôte **sans** le suffixe `-pooler`. Requise par les migrations et par la transaction unique de l'ingestion, que le mode transaction du pooler ne sait pas tenir |
+| `PSI_API_KEY` | Netlify, Actions (dépôt) | Clé API PageSpeed Insights. N'ouvre qu'un quota ; passe dans l'environment le jour où le scan écrit |
+| `OPS_TOKEN` | Netlify | Jeton de la surface d'ops. Rotation à la moindre suspicion. **Non provisionné tant que la surface d'ops n'existe pas** (jalon 2) : un jeton sans consommateur n'est qu'une surface d'exposition |
 | `PUBLIC_SENTRY_DSN` | Netlify | DSN Sentry côté client (public par nature). Sa présence embarque le SDK navigateur — cf. §2 |
-| `SENTRY_DSN` | Netlify, Actions | DSN Sentry côté serveur |
+| `SENTRY_DSN` | Netlify, Actions (env. `production`) | DSN Sentry côté serveur |
 | `SENTRY_AUTH_TOKEN` | Netlify | Upload des source maps. **Sur Netlify, pas sur Actions** : le build tourne là-bas, et l'upload a lieu pendant le build |
-| `NEON_API_KEY` | Actions | Création/suppression des branches Neon éphémères |
-| `NETLIFY_AUTH_TOKEN` | Actions | Déploiement et purge de cache |
-| `SITE_URL` | Netlify, Actions | URL canonique, utilisée pour les liens absolus |
+| `NEON_API_KEY` | Actions (dépôt) | Création/suppression des branches Neon éphémères. **Au niveau du dépôt délibérément** : c'est le seul secret dont un job de PR a besoin (J1-11), et il ne touche à aucune donnée de production |
+| `NETLIFY_AUTH_TOKEN` | Actions (env. `production`) | Purge de cache depuis Actions. **Non provisionné** : un PAT Netlify vaut pour tout le compte et ne se restreint pas à un site, et une purge déclenchée *depuis une fonction* Netlify n'en demande aucun. À créer si, et seulement si, la purge part d'Actions (jalon 4) |
+| `SITE_URL` | Netlify, Actions (variable) | URL canonique, utilisée pour les liens absolus |
 
 Sous Astro, **seules** les variables préfixées `PUBLIC_` sont exposées au client. Ne jamais
 préfixer une valeur sensible. Vérifier ce point dans toute revue touchant à la configuration.

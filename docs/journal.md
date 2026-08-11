@@ -2176,3 +2176,76 @@ l'air complète, et la deuxième fois que le juge n'est pas celui que j'attendai
 attrapée que par la plateforme elle-même — c'est-à-dire par la CI, sur une PR. Le §1 dit que la
 CI est l'unique juge de qualité ; ce jour-là, elle a jugé quelque chose qu'aucune session ne
 pouvait voir, et le mot « unique » a cessé d'être une formule.
+
+---
+
+## 020 — Le quatrième réglage que personne ici ne peut voir
+
+**9 août 2026** · jalon 1 · branche `claude/traite-j1-15-0xxidx`
+
+### Contexte
+
+J1-10 : l'environment GitHub `production`. Une tâche de console, trois clics, et la dernière
+avant de débloquer J1-11. Elle attendait depuis le 4 août avec la mention « à faire avant
+J1-11 », c'est-à-dire sans que rien ne dise *pourquoi* elle était urgente. C'est J1-15 qui l'a
+dit, et pas de la manière prévue.
+
+### Ce que la question du porteur a révélé
+
+Le porteur a demandé quoi faire exactement. J'ai commencé par recopier la liste du §9 — six
+secrets à déplacer — puis j'ai vérifié ce que le dépôt lit réellement :
+
+```
+NETLIFY_AUTH_TOKEN → src/lib/env/index.ts uniquement
+OPS_TOKEN          → src/lib/env/index.ts uniquement
+PSI_API_KEY        → src/lib/env/index.ts uniquement
+NEON_API_KEY       → src/lib/env/index.ts uniquement
+```
+
+**Quatre des six secrets provisionnés n'ont aucun consommateur.** Ils n'existent que comme
+lignes d'un schéma Zod, déclarés au bootstrap pour des fonctionnalités qui arriveront aux jalons
+2 et 4. Deux d'entre eux valent mieux que d'être déplacés : `OPS_TOKEN`, dont la dette du 6 août
+dit qu'il a transité en clair et doit être tourné, et `NETLIFY_AUTH_TOKEN`, qui n'existe pas
+encore et dont un PAT Netlify donnerait accès à **tout le compte** — un jeton non restreignable
+pour une purge qui, déclenchée depuis une fonction Netlify, n'en demande aucun.
+
+La réponse juste n'était donc pas « déplace-les » mais « supprime-les, et crée-les quand quelque
+chose les appellera ». C'est le même raisonnement qui a fait retirer le SDK Neon la veille, et il
+se trouve qu'il s'applique aux secrets bien plus fort qu'aux dépendances : une dépendance
+inutilisée coûte une montée de version, un secret inutilisé coûte une fuite possible pour rien.
+
+Ce que je retiens de la séquence : la liste du §9 avait l'air d'un inventaire de ce qui existe,
+et c'était un inventaire de ce qui était *prévu*. Personne ne l'aurait vu sans la question, parce
+qu'aucun outil ne signale un secret que rien ne lit — GitHub ne sait pas ce que le code appelle,
+et le code ne sait pas ce que GitHub détient. La colonne « Portée » du §9 dit désormais où vit
+chaque valeur **et** laquelle n'est pas provisionnée.
+
+### La friction, la même que d'habitude, pour la quatrième fois
+
+Rien de tout cela n'est vérifiable d'ici :
+
+```
+GET /repos/…/environments      → 403
+GET /repos/…/actions/secrets   → 403
+GET /repos/…/actions/variables → 403
+```
+
+Le statut de J1-10 est donc **déclaratif**, comme J1-13, comme le check `deploy` requis, comme la
+valeur de `SITE_URL`. C'est la quatrième entrée de la même famille, et il faut cesser de la
+traiter comme un accident : dans ce projet, **une session ne peut pas constater la configuration
+de son propre dépôt**. Ce que je peux faire, en revanche, est écrire le code qui *échoue
+bruyamment* si le réglage n'est pas celui qu'on croit — et c'est exactement ce que le
+`environment: production` posé sur `ingest.yml` produit : si l'environment n'existe pas ou si les
+secrets n'y sont pas, le prochain dispatch d'ingestion échoue sur une chaîne de connexion vide,
+avec le nom de la variable manquante. Le réglage reste invérifiable ; sa conséquence, elle, est
+observable.
+
+### Ce qui reste ouvert
+
+`/stats` en production dit toujours « la base n'a pas répondu ». La cause la plus probable est
+qu'aucune migration n'a jamais été appliquée à Neon — les cinq tables n'existent que dans des
+Postgres jetables détruits avec leur session. Je ne peux pas le confirmer : la page dit que
+l'incident est journalisé côté serveur, et **le journal des fonctions Netlify n'est pas lisible
+depuis une session**. Une page qui renvoie vers une trace que ses propres auteurs ne peuvent pas
+ouvrir ne tient sa promesse qu'à moitié ; c'est noté en dette, et c'est J1-11 qui répondra — soit
+en donnant enfin un schéma à Neon, soit en prouvant qu'on cherchait au mauvais endroit.

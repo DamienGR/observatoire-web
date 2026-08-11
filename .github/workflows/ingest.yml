@@ -42,6 +42,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # The production secrets live in this GitHub environment and nowhere else
+    # (J1-10). A repository secret is readable by *every* workflow, including
+    # the ones a pull request triggers — which §7 forbids for anything
+    # production. Naming the environment here is what moves `DATABASE_URL` out
+    # of that reach: the environment allows the `main` branch only, and holds a
+    # required reviewer, so this job now waits for an explicit approval before
+    # it writes anything.
+    #
+    # Consequence to remember when dispatching: run it from `main`. A dispatch
+    # on any other ref cannot read these secrets, by design.
+    environment: production
+
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
