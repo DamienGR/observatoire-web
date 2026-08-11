@@ -1,0 +1,94 @@
+name: Migrate
+
+# Applies the schema migrations to a database (J1-16), dispatched by hand.
+#
+# It exists because of a gap the roadmap had, and that production found first:
+# J1-11 says how a *preview* gets a schema (an ephemeral Neon branch) and J1-14
+# says how the data is loaded, but nothing ever said how **production** receives
+# its migrations. It had received none — the ingestion of 11 August failed with
+# `relation "commune" does not exist`, and the five tables turned out to exist
+# only in throwaway Postgres clusters destroyed with their session.
+#
+# There is no shell in production (CLAUDE.md §3): a schema change is either this
+# workflow or nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        # Default false, unlike the ingestion's `dry_run`. A schema change on
+        # real data is the one operation this repository cannot take back —
+        # drizzle-kit generates no down migration — so the default has to be the
+        # one that cannot destroy anything. An accidental dispatch reports.
+        description: 'Apply the pending migrations (unchecked: report only)'
+        type: boolean
+        default: false
+
+# Reads the code, writes to the database, and needs nothing else. Not even the
+# right to change the repository it checks out.
+permissions:
+  contents: read
+
+env:
+  ASTRO_TELEMETRY_DISABLED: '1'
+
+concurrency:
+  group: migrate
+  # Two migrators on one database is how a half-applied schema happens. Queue
+  # rather than cancel: a run in flight has to finish, not be killed mid-DDL.
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: migrate (apply pending schema migrations)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # The production secrets live here and nowhere else (J1-10): `main` only,
+    # required reviewer. So this job waits for an explicit human approval before
+    # it can touch the schema — which is what CLAUDE.md §8 asks of an operation
+    # nobody can undo. Dispatch it from `main`; any other ref cannot read these.
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the jobs
+        run: pnpm build:jobs
+
+      # `DATABASE_URL_UNPOOLED` and no fallback: a migration is a session-level
+      # operation, and the pooled endpoint is where sessions do not exist
+      # (CLAUDE.md §9). The job fails by name if it is absent.
+      - name: Run the migration
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+        run: |
+          node dist-jobs/jobs/migrate.js \
+            ${{ inputs.apply && '--apply' || '' }} \
+            --report reports/migrate.json
+
+      # Uploaded whatever the verdict. From a cloud-only session an artefact is
+      # the only account of what happened to a schema (CLAUDE.md §1), and a run
+      # that stopped halfway is exactly the one worth reading.
+      - name: Upload the migration report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: migrate-report
+          path: reports/migrate.json
+          if-no-files-found: warn
+          retention-days: 30

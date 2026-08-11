@@ -109,7 +109,16 @@ imports ainsi.
 **Pas de shell en production.** Il n'existe aucune commande à lancer « sur le serveur ».
 Toute opération sur les données passe par la surface d'ops (§8) ou par un workflow GitHub
 Actions déclenchable manuellement (`workflow_dispatch`) — aujourd'hui
-`.github/workflows/ingest.yml`, qui construit les jobs puis exécute l'ingestion du référentiel.
+`.github/workflows/ingest.yml`, qui exécute l'ingestion du référentiel, et
+`.github/workflows/migrate.yml`, qui applique les migrations. Les deux tournent sur
+l'environment `production` (§9), donc derrière une approbation humaine.
+
+**Le schéma de production s'applique par ce workflow, et par rien d'autre.** Cette phrase
+manquait, et son absence a coûté une panne : la migration `0000` avait été « appliquée et
+éprouvée » sur des Postgres jetables de session, la CI de PR n'avait pas encore de branche Neon,
+et personne n'avait écrit *comment* la vraie base recevait son schéma. Elle ne l'a jamais reçu.
+`pnpm db:migrate` reste la commande locale ; `migrate.yml` est le seul chemin vers la production.
+Il **rend compte avant d'agir** : sans `apply`, il énumère ce qu'il appliquerait et n'écrit rien.
 
 ---
 

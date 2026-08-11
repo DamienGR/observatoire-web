@@ -2249,3 +2249,103 @@ l'incident est journalisé côté serveur, et **le journal des fonctions Netlify
 depuis une session**. Une page qui renvoie vers une trace que ses propres auteurs ne peuvent pas
 ouvrir ne tient sa promesse qu'à moitié ; c'est noté en dette, et c'est J1-11 qui répondra — soit
 en donnant enfin un schéma à Neon, soit en prouvant qu'on cherchait au mauvais endroit.
+
+---
+
+## 021 — Le trou n'était pas dans le code, il était dans la feuille de route
+
+**11 août 2026** · jalon 1 · branche `claude/traite-j1-15-0xxidx`
+
+### Contexte
+
+Le porteur dispatche l'ingestion pour la première fois, maintenant que J1-10 a posé l'environment
+`production`. Elle échoue :
+
+```
+{"error":"Error: Failed query: select count(*) from \"commune\"","level":"error",
+ "message":"ingestion failed"}
+```
+
+Deux choses en sortent, et aucune n'est celle que je cherchais.
+
+### La friction : un message d'erreur qui a l'air complet et ne dit rien
+
+`Failed query: select count(*) from "commune"` dit que quelque chose a échoué et rien sur quoi.
+J'ai monté un Postgres vide en session et rejoué la requête :
+
+```
+--- ce que le job journalise ---
+Error: Failed query: select count(*) from "commune"
+--- ce qu'il jette ---
+cause[0]: error | relation "commune" does not exist | code= 42P01
+```
+
+Drizzle emballe l'erreur du driver, et les deux gestionnaires du dépôt — celui de
+`ingest-communes.ts` et celui de `src/db/runtime.ts` — journalisent `${error.name}:
+${error.message}`. La cause est à **une propriété** de là et se perd systématiquement. Dans un
+projet où le log est la seule fenêtre sur un job, ce n'est pas un défaut cosmétique : c'est
+l'écart entre « la base n'a pas de schéma » et « on ne sait pas ».
+
+Le détail qui pique : ce gestionnaire avait été écrit avec soin, et son commentaire dit « the
+message, never the payload », par souci de ne pas fuiter un secret dans un log public. La règle
+était bonne, l'implémentation en gardait trop peu. Une prudence mal calibrée coûte exactement ce
+que coûte une imprudence, en moins visible.
+
+### Le vrai sujet : personne n'avait écrit comment la production reçoit son schéma
+
+`relation "commune" does not exist` sur une base qui répond, c'est une base sans schéma. En
+remontant, la chaîne se lit toute seule :
+
+- J1-08 a livré le schéma et sa migration, « appliquée et éprouvée » — sur un Postgres jetable
+  de session, détruit avec elle ;
+- J1-11 prévoit d'appliquer les migrations en *dry-run* sur une branche Neon éphémère, pour les
+  PR ;
+- J1-14 charge les données, en supposant les tables présentes ;
+- J1-15 lit les données, en supposant les tables présentes.
+
+**Aucune ligne, nulle part, ne dit comment la base de production obtient ses tables.** Ce n'est
+pas un oubli d'implémentation : c'est un trou dans la feuille de route, resté invisible parce que
+chaque tâche voisine avait l'air de le couvrir. Quatre tickets se sont succédé en le contournant,
+et il a fallu qu'une opération réelle tape dedans pour qu'il apparaisse.
+
+Je retiens la forme du piège, parce qu'elle se reproduira : **un trou entouré de tâches
+plausibles ne se voit pas dans un plan, il se voit dans une exécution.** Le dépôt a déjà appris
+que la CI trouve ce qu'une session ne peut pas mesurer ; ici c'est une opération de production
+qui a trouvé ce qu'aucune relecture de plan n'aurait montré.
+
+### Ce que le workflow fait, et pourquoi il en fait plus que `drizzle-kit migrate`
+
+Le plus court aurait été un workflow lançant `pnpm db:migrate`. Il fait trois choses de plus,
+chacune payée par une raison :
+
+**Il rend compte avant d'agir, et c'est le défaut.** `apply` vaut `false` par défaut — l'inverse
+de `dry_run` sur l'ingestion. Une migration est la seule opération de ce dépôt qu'on ne peut pas
+défaire : drizzle-kit ne génère pas de migration descendante, la dette le note depuis le 6 août.
+Le défaut doit donc être celui qui ne détruit rien.
+
+**Il nomme ce qu'il va appliquer.** La table de Drizzle stocke `id`, `hash` et `created_at`, et
+**pas le tag** — mesuré sur une vraie base, pas lu dans une documentation. Le seul lien entre une
+ligne en base et un fichier du dépôt est cet horodatage, qui est exactement le `when` du journal.
+Sans un module qui fait cette jointure, un log de migration ne peut pas dire *quelle* migration a
+tourné. C'est ce que `src/lib/migrate/plan.ts` calcule, en logique pure et test-first.
+
+**Il refuse d'appliquer sur une base qui a dérivé.** Deux cas bloquants : la base a appliqué une
+migration absente du dépôt (elle vient d'une autre branche, ou l'historique a été réécrit), ou
+une migration en attente est plus ancienne qu'une déjà appliquée — ce que produisent deux
+branches parallèles fusionnées dans le mauvais ordre. Le second cas n'est pas théorique dans ce
+dépôt : le §12 organise le travail en branches parallèles, et J1-11 va créer des bases jetables
+par PR. Drizzle appliquerait sans un mot, produisant un schéma qu'aucune séquence de ces fichiers
+ne reproduit.
+
+### Ce qui a été éprouvé avant le push
+
+Base vide → 2 migrations planifiées, rien écrit en mode par défaut ; `--apply` → les 5 tables ;
+rejeu → « nothing to apply » ; dérive simulée en insérant une ligne étrangère dans la table de
+Drizzle → refus, code de sortie 1 ; variable absente → `MissingEnvError` nommée ; base injoignable
+→ `Failed query … ← Error: connect ECONNREFUSED`, c'est-à-dire précisément l'information qui
+manquait ce matin.
+
+Reste que le workflow n'a pas encore tourné sur la vraie base. Le dépôt en est à sa troisième
+leçon du même ordre — la CI a trouvé ce que la session ne pouvait pas voir, la production a
+trouvé ce que la CI ne pouvait pas voir — et je n'écrirai donc pas ici que la production est
+réparée. Elle le sera quand le job l'aura dit.
