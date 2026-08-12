@@ -2521,3 +2521,34 @@ La fausse API a été mise à jour pour répondre comme la vraie, et la chaîne 
 rejouée : organisation découverte, projet trouvé, branche fuitée élaguée, migrations appliquées,
 17 tests verts, suppression. Cette fausse API vaut désormais un peu plus que la spécification dont
 elle est née — c'est la première ligne d'un fichier de contrat qui n'existe pas encore.
+
+### Ce que la première exécution verte a dit en plus
+
+Trente-cinq secondes, dont treize de tests. Le job a découvert l'organisation
+`org-quiet-river-…`, le projet `fancy-voice-…`, créé `ci-pr-37-31579635601-1`, migré, lancé les
+17 tests, supprimé la branche. Les deux chaînes de connexion apparaissent dans le log sous la
+forme `DATABASE_URL: ***` : le masquage fonctionne, y compris dans l'en-tête que le runner imprime
+lui-même au début de chaque étape — que le job ne contrôle pas.
+
+Deux choses qu'on ne cherchait pas.
+
+**La production a bien son schéma.** Le compte rendu de migration sur une branche *fraîchement
+créée* dit `applied: 2, pending: []`. Une branche Neon naît par copie sur écriture de la branche
+par défaut : ces deux migrations sont donc celles de la production. L'entrée 021 se terminait sur
+« je n'écrirai pas ici que la production est réparée. Elle le sera quand le job l'aura dit. » Ce
+n'est pas le job qu'on attendait qui l'a dit, c'est celui-ci, en passant.
+
+**`pg` prévient d'un affaiblissement futur.** À chaque connexion :
+
+> The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'. In
+> the next major version… these modes will adopt standard libpq semantics, which have weaker
+> security guarantees.
+
+Les URI que Neon fabrique portent `sslmode=require`. Aujourd'hui `pg` le lit comme `verify-full` ;
+demain il le lira comme libpq, c'est-à-dire en chiffrant sans vérifier le certificat. **Rien ne
+cassera** : la connexion marchera et vérifiera moins. C'est exactement la forme de régression que
+le §7 redoute le plus, et elle arrivera par une montée de version mineure de notre point de vue.
+L'avertissement est antérieur à cette PR — `ingest` et `migrate` connectent de la même façon — mais
+il n'était visible nulle part avant qu'un job tourne en CI à chaque push. Noté plutôt que corrigé
+au passage : réécrire une query string de connexion mérite sa propre PR, pas une ligne glissée dans
+celle-ci (§12).
