@@ -31,6 +31,7 @@ export const serverEnvSchema = z.object({
   SENTRY_DSN: z.url().optional(),
   SENTRY_AUTH_TOKEN: z.string().min(1).optional(),
   NEON_API_KEY: z.string().min(1).optional(),
+  NEON_PROJECT_ID: z.string().min(1).optional(),
   NETLIFY_AUTH_TOKEN: z.string().min(1).optional(),
   SITE_URL: z.url().optional(),
 });

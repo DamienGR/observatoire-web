@@ -226,6 +226,16 @@ correspond plus : seule la seconde justifie de toucher un schéma.
 intégration tournent en parallèle ; l'E2E attend la preview. Le temps total est celui du plus
 lent, pas la somme.
 
+**D'où vient la base de la couche d'intégration.** Le job `integration` de `ci.yml` crée une
+branche Neon éphémère pour la durée de son exécution, y applique les migrations — d'abord en
+compte rendu, puis pour de vrai —, lance la suite, et la supprime en `always()`. Les règles
+vivent dans `src/lib/neon/` en logique pure et le job dans `src/jobs/neon-branch.ts` :
+`NEON_API_KEY` étant un secret de dépôt, **aucune session ne peut exécuter ce transport**, donc
+tout ce qui pourrait supprimer la mauvaise branche est écrit là où un test unitaire l'atteint.
+Deux garde-fous portent le reste : le job ne supprime que des noms qu'il a lui-même préfixés
+`ci-`, jamais la branche par défaut ni une branche protégée, et jamais une branche plus jeune que
+deux heures — celle-là appartient à une exécution en vol.
+
 Le budget est appliqué par `scripts/budget.mjs`, qui enveloppe chaque couche de test : au-delà de
 la durée allouée, le processus est tué et la commande échoue. C'est ce qui rend le budget
 *mesuré* et non aspirationnel. Relever un plafond est une décision qui se discute dans la PR,
@@ -446,6 +456,7 @@ n'ouvrent rien en production.
 | `SENTRY_DSN` | Netlify, Actions (env. `production`) | DSN Sentry côté serveur |
 | `SENTRY_AUTH_TOKEN` | Netlify | Upload des source maps. **Sur Netlify, pas sur Actions** : le build tourne là-bas, et l'upload a lieu pendant le build |
 | `NEON_API_KEY` | Actions (dépôt) | Création/suppression des branches Neon éphémères. **Au niveau du dépôt délibérément** : c'est le seul secret dont un job de PR a besoin (J1-11), et il ne touche à aucune donnée de production |
+| `NEON_PROJECT_ID` | Actions (variable, facultative) | Projet Neon à brancher. **Pas un secret, un identifiant.** Sans elle, le job prend le seul projet que la clé voit et **refuse de choisir** s'il y en a plusieurs — la variable est la sortie documentée le jour où le compte en portera un second |
 | `NETLIFY_AUTH_TOKEN` | Actions (env. `production`) | Purge de cache depuis Actions. **Non provisionné** : un PAT Netlify vaut pour tout le compte et ne se restreint pas à un site, et une purge déclenchée *depuis une fonction* Netlify n'en demande aucun. À créer si, et seulement si, la purge part d'Actions (jalon 4) |
 | `SITE_URL` | Netlify, Actions (variable) | URL canonique, utilisée pour les liens absolus |
 

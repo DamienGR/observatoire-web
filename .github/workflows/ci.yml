@@ -66,6 +66,128 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
+  # The integration layer of CLAUDE.md §5, on a database that exists for the
+  # length of this job and is deleted with it.
+  #
+  # It is the second of the two "chaque push" layers of §5, and it was blocked
+  # for a week on a console setting (J1-10). What it buys is more than the
+  # seventeen tests it runs: it is the first time in this repository that
+  # `drizzle/*.sql` is applied to a **Neon** database by CI rather than to a
+  # throwaway Postgres inside a session container (docs/journal.md 014). A
+  # migration therefore stops being a file somebody generated and becomes a
+  # migration somebody has seen apply, on a copy-on-write clone of production's
+  # own default branch, before the pull request is merged.
+  #
+  # Never production: §7 forbids production's DATABASE_URL in CI outright, and
+  # the connection strings below belong to the branch this job just created.
+  #
+  # NEON_API_KEY is the only secret a pull request job in this repository reads,
+  # and it is at repository level for exactly that reason (J1-10) — it creates
+  # and deletes throwaway branches and touches no production data.
+  integration:
+    name: integration (Vitest on an ephemeral Neon branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The Neon job and the migration job are TypeScript, and nothing else here
+      # compiles them (CLAUDE.md §3).
+      - name: Build the jobs
+        run: pnpm build:jobs
+
+      # The connection strings leave the job through a file rather than through
+      # its stdout: two of them are credentials, and a workflow log is public on
+      # a public repository (§7). The job also emits `::add-mask::` for each, so
+      # a later step that echoed one would print asterisks.
+      #
+      # `always()` on the cleanup step below, and a prune inside this one, are
+      # two halves of the same concern: a Neon project caps how many branches it
+      # may hold, so a leak is not untidiness, it is the next run failing.
+      #
+      # The branch label reaches the shell through an environment variable
+      # rather than through `${{ }}` interpolation: a ref name is attacker-
+      # controlled text, and interpolating it into a command line is the
+      # classic script injection (§7).
+      - name: Create the ephemeral Neon branch
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          BRANCH_LABEL: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref_name }}
+        run: |
+          if [ -z "$NEON_API_KEY" ]; then
+            echo "NEON_API_KEY is empty or unreadable."
+            echo "Expected on a pull request from a fork: forks get no secrets, so the"
+            echo "integration layer cannot run there. See CLAUDE.md §5 and §9."
+            exit 1
+          fi
+          node dist-jobs/jobs/neon-branch.js create \
+            --label "$BRANCH_LABEL" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --env-out "$RUNNER_TEMP/neon-branch.env"
+          cat "$RUNNER_TEMP/neon-branch.env" >> "$GITHUB_ENV"
+
+      # DATABASE_URL, DATABASE_URL_UNPOOLED, NEON_PROJECT_ID and NEON_BRANCH_ID
+      # come from the step above through $GITHUB_ENV, so the three steps below
+      # need no `env:` block of their own.
+      #
+      # The dry run first, and its report uploaded: this is the "migration en
+      # dry-run sur une branche Neon éphémère" the definition of done asks of
+      # every schema change (CLAUDE.md §6.5). It says what it would apply and
+      # writes nothing — and it fails outright if the branch has drifted from
+      # this checkout, which is what two parallel branches merged in the wrong
+      # order produce.
+      - name: Report what the migrations would do
+        run: node dist-jobs/jobs/migrate.js --report reports/migrate-dry-run.json
+
+      # Then for real, on the direct endpoint: a migration is a session-level
+      # operation and the pooled endpoint is where sessions do not exist (§9).
+      - name: Apply the migrations to the branch
+        run: node dist-jobs/jobs/migrate.js --apply --report reports/migrate-apply.json
+
+      # The suite connects through DATABASE_URL — the pooled endpoint, as it is
+      # on Netlify (§9) — so it exercises the shape the site actually uses.
+      - name: Run the integration suite
+        run: pnpm test:integration
+
+      # From a cloud-only session an artefact is the only account of what
+      # happened to a schema (CLAUDE.md §1), and a run that stopped halfway is
+      # the one worth reading.
+      - name: Upload the migration reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: migrate-reports
+          path: reports/
+          retention-days: 7
+          if-no-files-found: warn
+
+      # `always()` covers cancellation too, which is the case that matters here:
+      # `concurrency: cancel-in-progress` kills the run of every superseded push.
+      - name: Delete the ephemeral Neon branch
+        if: always() && env.NEON_BRANCH_ID != ''
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ env.NEON_PROJECT_ID }}
+        run: node dist-jobs/jobs/neon-branch.js delete --branch "$NEON_BRANCH_ID"
+
   # `verify` proves the build compiles. It says nothing about what the deployed
   # site actually serves — and for a while it served nothing: Netlify published
   # the Git tree, `/` answered 404, and four pull requests were merged green

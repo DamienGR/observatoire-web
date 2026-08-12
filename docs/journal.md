@@ -2349,3 +2349,206 @@ Reste que le workflow n'a pas encore tourné sur la vraie base. Le dépôt en es
 leçon du même ordre — la CI a trouvé ce que la session ne pouvait pas voir, la production a
 trouvé ce que la CI ne pouvait pas voir — et je n'écrirai donc pas ici que la production est
 réparée. Elle le sera quand le job l'aura dit.
+
+---
+
+## 022 — Éprouver un job dont on ne peut pas avoir la clé
+
+**12 août 2026** · jalon 1 · branche `claude/j1-11-w4yw73`
+
+### Contexte
+
+J1-11 est la dernière brique du jalon : le job de CI qui fait tourner la couche d'intégration
+contre une branche Neon éphémère. Elle attendait depuis le 4 août — d'abord `bloqué` sur un
+réglage de console (J1-10, fait le 9/8), puis simplement en file.
+
+Sa valeur avait été réécrite deux fois pendant cette attente, et une de ces réécritures était
+fausse. C'est le sujet de la dernière section.
+
+### La friction centrale : le secret qu'aucune session ne peut lire
+
+`NEON_API_KEY` vit dans les secrets du dépôt. Une session cloud ne peut ni le lire, ni s'en
+servir : `GET /actions/secrets` ne rend que des noms, et c'est très bien ainsi. Conséquence
+directe et inhabituelle pour ce dépôt : **le composant central de la tâche ne peut pas être
+exécuté une seule fois avant d'être poussé.**
+
+L'entrée 016 a déjà établi qu'une exécution en session n'a « aucune valeur institutionnelle ».
+Ici c'est pire : il n'y a même pas d'exécution à ne pas valoriser.
+
+La réponse tient en une règle de découpage, appliquée plus strictement que d'habitude : **tout ce
+qui décide vit dans `src/lib/neon/`, en fonctions pures, et tout ce qui appelle vit dans
+`src/jobs/neon-branch.ts`.** Le partage n'est pas esthétique, il est dicté par ce qui est
+testable :
+
+- ce qui pourrait supprimer la mauvaise branche (`selectStaleBranches`) ;
+- ce qui pourrait donner au job une adresse de base fausse (`pooledConnectionUri`) ;
+- ce qui pourrait le faire agir sur le projet d'un tiers (`selectProjectId`) ;
+- ce qui pourrait produire un nom que le pruner reprendrait pour une fuite (`ephemeralBranchName`).
+
+Quarante-quatre tests unitaires, tous écrits avant le code, contre zéro requête. Le transport,
+lui, reçoit son `fetch` par injection, comme `src/lib/ingest/referentials.ts` : la politique de
+réessai, la distinction 4xx/5xx et le refus de retenter une requête malformée sont donc eux aussi
+éprouvés sans réseau.
+
+### La répétition générale : une fausse API Neon et un vrai Postgres
+
+Restait la question à laquelle aucun test unitaire ne répond : est-ce que la *chaîne* marche ?
+Créer, transmettre les deux chaînes de connexion à des étapes suivantes, migrer, tester,
+supprimer — cinq maillons dont chacun peut casser sur un détail de format.
+
+Le conteneur de session porte déjà Postgres 16 (entrée 014). Il ne manquait qu'un interlocuteur
+côté Neon : une soixantaine de lignes de `node:http`, servant la forme décrite par la
+spécification OpenAPI de Neon (téléchargée dans la session, pas récitée de mémoire), et créant une
+vraie base par branche sur le cluster jetable. Le job reçoit alors `--api-base` et parle à ce
+serveur.
+
+Ce que la répétition a établi, dans l'ordre où le job l'a fait :
+
+| Ce qu'on voulait voir | Ce qu'on a vu |
+|---|---|
+| le projet découvert sans être écrit nulle part | `proj-fake-0001` |
+| une branche fuitée par une exécution antérieure élaguée | `ci-pr-7-999-1` supprimée |
+| un nom de branche lisible tiré d'un `ref_name` sale | `feat/J1-11 branche éphémère` → `ci-feat-j1-11-branche-ephemere-1000-1` |
+| les identifiants masqués **avant** toute autre sortie | trois `::add-mask::` en tête de log |
+| l'attente de disponibilité réellement exercée | branche `init` au premier regard, `ready` au second |
+| la migration en compte rendu, puis appliquée | 2 en attente, 0 après |
+| la couche d'intégration | 17 tests verts en 3,5 s |
+| la suppression rejouée | deuxième `delete` sans erreur, base réellement disparue |
+
+Puis cinq chemins rouges : variable absente, clé refusée (401, sans réessai et sans que la clé
+apparaisse dans le message), commande inconnue, `create` sans `--env-out`, `delete` sans
+`--branch`. Aucun ne laisse de branche derrière lui.
+
+**Ce que cela ne remplace pas.** La fausse API dit ce que la spécification promet, pas ce que
+Neon fait. La forme exacte d'un `connection_uris` réel, les états intermédiaires d'une branche,
+le message d'un dépassement de quota : rien de tout cela n'a été observé. La première exécution
+en CI reste le premier vrai essai — exactement ce que l'entrée 021 disait de `migrate.yml`, et
+c'est pourquoi c'est écrit ici avant de le redécouvrir.
+
+### Le détail qui a coûté vingt minutes : `--env-file` appartient à Node
+
+Le job devait écrire les chaînes de connexion dans un fichier, que le workflow ajoute ensuite à
+`$GITHUB_ENV` — un fichier plutôt que stdout parce que deux de ces valeurs sont des identifiants
+et qu'un log de workflow est public. L'option s'appelait naturellement `--env-file`.
+
+Elle ne fonctionne pas. Node 22 revendique `--env-file` **pour lui-même, où qu'elle apparaisse
+sur la ligne de commande**, arguments du script compris :
+
+```
+$ node script.mjs --env-file /tmp/nope.env
+node: /tmp/nope.env: not found      # code 9, le script n'a jamais démarré
+$ node script.mjs --env-out  /tmp/nope.env
+["--env-out","/tmp/nope.env"]       # tout autre nom passe sans problème
+```
+
+Mesuré, pas déduit : le job mourait avant sa première ligne, avec un message qui ne nomme ni le
+script ni l'option. L'option s'appelle `--env-out`, et la raison est écrite en tête du fichier —
+c'est le genre de collision qu'une session future refait en trente secondes si personne ne l'a
+notée.
+
+### La correction : J1-11 ne donne pas de base à la deploy preview
+
+Le 9 août, une ligne de dette affirmait que J1-11 ferait passer `/stats` « de "la base n'a pas
+répondu" à de vrais chiffres, en preview comme en production », et la ligne de la feuille de route
+le répétait. C'est faux, et il vaut mieux l'écrire que le laisser se démentir tout seul.
+
+La branche éphémère naît dans un runner GitHub Actions et meurt avec lui, une quinzaine de
+minutes plus tard. La deploy preview, elle, est construite par Netlify, qui n'a jamais entendu
+parler de cette branche. Les relier demanderait de poser une variable d'environnement Netlify par
+pull request depuis Actions — donc un `NETLIFY_AUTH_TOKEN` valant pour tout le compte, que le §9
+refuse justement de provisionner sans usage — pour donner une base à une page que personne
+n'ouvrira avant qu'elle soit détruite.
+
+Ce que J1-11 apporte réellement est ailleurs, et suffit : **les migrations de ce dépôt sont
+désormais appliquées à un Postgres géré, par la CI, avant chaque merge, sur une copie des données
+réelles.** Jusqu'à ce matin, la seule chose qui les avait jamais exécutées était un cluster
+jetable détruit avec sa session — et c'est précisément cet écart qui avait laissé la production
+sans schéma pendant six jours (entrée 021).
+
+### Une limite qui n'est pas de la coquetterie
+
+Un projet Neon plafonne son nombre de branches. Une exécution tuée entre la création et
+l'enregistrement de l'identifiant ne laisse rien à l'étape de nettoyage, et `cancel-in-progress`
+tue des exécutions à chaque nouveau push. Trois ou quatre fuites, et **toutes** les exécutions
+suivantes échouent sur un quota — c'est-à-dire sur un message qui ne parle pas du diff, la CI
+qu'on apprend à ignorer du §5.
+
+D'où l'élagage au début de chaque exécution, avec trois garde-fous qui protègent tous la même
+chose : ne supprimer que des noms que ce dépôt a lui-même préfixés, jamais la branche par défaut
+ni une branche protégée, jamais une branche de moins de deux heures — celle-là appartient à une
+exécution en vol, et la tuer ferait échouer la pull request d'un tiers. Un échec de l'élagage ne
+fait pas échouer le job : ne pas savoir ranger n'est pas une raison de ne pas travailler.
+
+### Post-scriptum : la première exécution réelle a trouvé la chose en trente secondes
+
+Écrit une heure après le reste de cette entrée, et c'est précisément pourquoi il vaut la peine
+d'être écrit. La section précédente annonçait que la fausse API dit « ce que la spécification
+promet, pas ce que Neon fait », et que la première exécution en CI serait le premier vrai essai.
+Elle l'a été, et elle a échoué à la deuxième requête :
+
+```
+NeonApiError: The Neon API rejected GET /projects with HTTP 400:
+org_id is required, you can find it on your organization settings page
+```
+
+Le compte derrière `NEON_API_KEY` appartient à une organisation. Neon refuse alors de deviner de
+quel compte parle une énumération de projets sans filtre. La spécification OpenAPI décrit bien un
+paramètre `org_id` sur `GET /projects` — **« Search for projects by `org_id` »**, présenté comme
+un filtre facultatif. Elle ne dit nulle part qu'il cesse d'être facultatif. Aucune lecture, si
+attentive soit-elle, n'aurait produit cette information : seule la requête la donne.
+
+Trois choses valent d'être notées.
+
+**Le message était lisible, et c'est un choix qui a payé.** Le §7 interdit de logger un secret,
+pas de logger une explication. Le client remonte le `message` que l'API fournit, plafonné à deux
+cents caractères, à côté du verbe et du chemin. « HTTP 400 » aurait envoyé la session suivante
+lire du code ; « org_id is required » l'envoie corriger une requête. Le diagnostic a coûté une
+lecture de log.
+
+**Rien n'a fuité.** L'échec arrive *avant* la création de la branche — la découverte du projet est
+la première chose que fait le job —, donc aucune branche n'a été laissée derrière. L'ordre des
+opérations n'était pas un hasard, mais je ne l'avais pas justifié par ce cas-là.
+
+**Le correctif est déclenché par le statut, pas par le texte.** Le job retente en nommant
+l'organisation (`GET /users/me/organizations`, puis `GET /projects?org_id=…`), et il ne le fait
+que sur un **400** : une requête sans paramètre qui se fait refuser pour cause de paramètre
+manquant ne peut rien vouloir dire d'autre. Reconnaître la phrase aurait marché aujourd'hui et
+cassé le jour où Neon la reformule. `selectOrganizationId` applique la même discipline que son
+voisin `selectProjectId` — refuser de choisir entre plusieurs, et nommer `NEON_PROJECT_ID` comme
+la sortie qui court-circuite toute cette découverte.
+
+La fausse API a été mise à jour pour répondre comme la vraie, et la chaîne complète a été
+rejouée : organisation découverte, projet trouvé, branche fuitée élaguée, migrations appliquées,
+17 tests verts, suppression. Cette fausse API vaut désormais un peu plus que la spécification dont
+elle est née — c'est la première ligne d'un fichier de contrat qui n'existe pas encore.
+
+### Ce que la première exécution verte a dit en plus
+
+Trente-cinq secondes, dont treize de tests. Le job a découvert l'organisation
+`org-quiet-river-…`, le projet `fancy-voice-…`, créé `ci-pr-37-31579635601-1`, migré, lancé les
+17 tests, supprimé la branche. Les deux chaînes de connexion apparaissent dans le log sous la
+forme `DATABASE_URL: ***` : le masquage fonctionne, y compris dans l'en-tête que le runner imprime
+lui-même au début de chaque étape — que le job ne contrôle pas.
+
+Deux choses qu'on ne cherchait pas.
+
+**La production a bien son schéma.** Le compte rendu de migration sur une branche *fraîchement
+créée* dit `applied: 2, pending: []`. Une branche Neon naît par copie sur écriture de la branche
+par défaut : ces deux migrations sont donc celles de la production. L'entrée 021 se terminait sur
+« je n'écrirai pas ici que la production est réparée. Elle le sera quand le job l'aura dit. » Ce
+n'est pas le job qu'on attendait qui l'a dit, c'est celui-ci, en passant.
+
+**`pg` prévient d'un affaiblissement futur.** À chaque connexion :
+
+> The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'. In
+> the next major version… these modes will adopt standard libpq semantics, which have weaker
+> security guarantees.
+
+Les URI que Neon fabrique portent `sslmode=require`. Aujourd'hui `pg` le lit comme `verify-full` ;
+demain il le lira comme libpq, c'est-à-dire en chiffrant sans vérifier le certificat. **Rien ne
+cassera** : la connexion marchera et vérifiera moins. C'est exactement la forme de régression que
+le §7 redoute le plus, et elle arrivera par une montée de version mineure de notre point de vue.
+L'avertissement est antérieur à cette PR — `ingest` et `migrate` connectent de la même façon — mais
+il n'était visible nulle part avant qu'un job tourne en CI à chaque push. Noté plutôt que corrigé
+au passage : réécrire une query string de connexion mérite sa propre PR, pas une ligne glissée dans
+celle-ci (§12).
