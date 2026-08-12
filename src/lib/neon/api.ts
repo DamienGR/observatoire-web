@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { pooledConnectionUri, type NeonBranchSummary, type NeonProjectSummary } from './branch.js';
+import {
+  pooledConnectionUri,
+  type NeonBranchSummary,
+  type NeonOrganizationSummary,
+  type NeonProjectSummary,
+} from './branch.js';
 
 /**
  * The Neon management API, as much of it as J1-11 needs: list, create, wait,
@@ -88,6 +93,9 @@ export class NeonResponseError extends Error {
 const projectSchema = z.object({ id: z.string().min(1), name: z.string().min(1) });
 const projectsSchema = z.object({ projects: z.array(projectSchema) });
 
+const organizationSchema = z.object({ id: z.string().min(1), name: z.string().min(1) });
+const organizationsSchema = z.object({ organizations: z.array(organizationSchema) });
+
 const branchSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -132,7 +140,13 @@ export interface EphemeralBranch {
 }
 
 export interface NeonClient {
-  listProjects(): Promise<readonly NeonProjectSummary[]>;
+  /**
+   * `organizationId` is not optional decoration: Neon answers HTTP 400 to a
+   * bare listing when the key's account belongs to an organisation — measured
+   * on the first real CI run, not read in the specification.
+   */
+  listProjects(organizationId?: string): Promise<readonly NeonProjectSummary[]>;
+  listOrganizations(): Promise<readonly NeonOrganizationSummary[]>;
   listBranches(projectId: string): Promise<readonly NeonBranch[]>;
   createBranch(projectId: string, name: string): Promise<EphemeralBranch>;
   deleteBranch(projectId: string, branchId: string): Promise<void>;
@@ -248,8 +262,18 @@ export function createNeonClient(options: NeonClientOptions, deps: NeonApiDeps):
   }
 
   return {
-    async listProjects() {
-      return decode('/projects', projectsSchema, await request('GET', '/projects')).projects;
+    async listProjects(organizationId) {
+      const path =
+        organizationId === undefined
+          ? '/projects'
+          : `/projects?org_id=${encodeURIComponent(organizationId)}`;
+
+      return decode(path, projectsSchema, await request('GET', path)).projects;
+    },
+
+    async listOrganizations() {
+      const path = '/users/me/organizations';
+      return decode(path, organizationsSchema, await request('GET', path)).organizations;
     },
 
     async listBranches(projectId) {

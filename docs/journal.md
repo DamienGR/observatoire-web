@@ -2478,3 +2478,46 @@ chose : ne supprimer que des noms que ce dépôt a lui-même préfixés, jamais 
 ni une branche protégée, jamais une branche de moins de deux heures — celle-là appartient à une
 exécution en vol, et la tuer ferait échouer la pull request d'un tiers. Un échec de l'élagage ne
 fait pas échouer le job : ne pas savoir ranger n'est pas une raison de ne pas travailler.
+
+### Post-scriptum : la première exécution réelle a trouvé la chose en trente secondes
+
+Écrit une heure après le reste de cette entrée, et c'est précisément pourquoi il vaut la peine
+d'être écrit. La section précédente annonçait que la fausse API dit « ce que la spécification
+promet, pas ce que Neon fait », et que la première exécution en CI serait le premier vrai essai.
+Elle l'a été, et elle a échoué à la deuxième requête :
+
+```
+NeonApiError: The Neon API rejected GET /projects with HTTP 400:
+org_id is required, you can find it on your organization settings page
+```
+
+Le compte derrière `NEON_API_KEY` appartient à une organisation. Neon refuse alors de deviner de
+quel compte parle une énumération de projets sans filtre. La spécification OpenAPI décrit bien un
+paramètre `org_id` sur `GET /projects` — **« Search for projects by `org_id` »**, présenté comme
+un filtre facultatif. Elle ne dit nulle part qu'il cesse d'être facultatif. Aucune lecture, si
+attentive soit-elle, n'aurait produit cette information : seule la requête la donne.
+
+Trois choses valent d'être notées.
+
+**Le message était lisible, et c'est un choix qui a payé.** Le §7 interdit de logger un secret,
+pas de logger une explication. Le client remonte le `message` que l'API fournit, plafonné à deux
+cents caractères, à côté du verbe et du chemin. « HTTP 400 » aurait envoyé la session suivante
+lire du code ; « org_id is required » l'envoie corriger une requête. Le diagnostic a coûté une
+lecture de log.
+
+**Rien n'a fuité.** L'échec arrive *avant* la création de la branche — la découverte du projet est
+la première chose que fait le job —, donc aucune branche n'a été laissée derrière. L'ordre des
+opérations n'était pas un hasard, mais je ne l'avais pas justifié par ce cas-là.
+
+**Le correctif est déclenché par le statut, pas par le texte.** Le job retente en nommant
+l'organisation (`GET /users/me/organizations`, puis `GET /projects?org_id=…`), et il ne le fait
+que sur un **400** : une requête sans paramètre qui se fait refuser pour cause de paramètre
+manquant ne peut rien vouloir dire d'autre. Reconnaître la phrase aurait marché aujourd'hui et
+cassé le jour où Neon la reformule. `selectOrganizationId` applique la même discipline que son
+voisin `selectProjectId` — refuser de choisir entre plusieurs, et nommer `NEON_PROJECT_ID` comme
+la sortie qui court-circuite toute cette découverte.
+
+La fausse API a été mise à jour pour répondre comme la vraie, et la chaîne complète a été
+rejouée : organisation découverte, projet trouvé, branche fuitée élaguée, migrations appliquées,
+17 tests verts, suppression. Cette fausse API vaut désormais un peu plus que la spécification dont
+elle est née — c'est la première ligne d'un fichier de contrat qui n'existe pas encore.

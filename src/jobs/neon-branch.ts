@@ -4,8 +4,13 @@ import { requireEnv, type Env } from '../lib/env/index.js';
 import { serverEnv } from '../lib/env/runtime.js';
 import { describeErrorChain } from '../lib/log/errors.js';
 import { createLogger, type Logger } from '../lib/log/index.js';
-import { createNeonClient, type NeonClient } from '../lib/neon/api.js';
-import { ephemeralBranchName, selectProjectId, selectStaleBranches } from '../lib/neon/branch.js';
+import { NeonApiError, createNeonClient, type NeonClient } from '../lib/neon/api.js';
+import {
+  ephemeralBranchName,
+  selectOrganizationId,
+  selectProjectId,
+  selectStaleBranches,
+} from '../lib/neon/branch.js';
 
 /**
  * The ephemeral Neon branch of one CI run (J1-11).
@@ -86,6 +91,13 @@ function parseArguments(argv: readonly string[]): JobArguments {
  * made this task wait on a console setting, which is precisely what kept J1-11
  * blocked for a week — but it is the documented way out the day the account
  * holds a second project.
+ *
+ * The organisation detour is not speculative and was not in the plan: the first
+ * real CI run answered `400: org_id is required` to a bare `GET /projects`,
+ * because the account behind the key belongs to an organisation. It is keyed on
+ * the **status**, not on the wording — a 400 on a request that carries no
+ * parameter can only mean "you have to say which account" — and it costs one
+ * request in the case that already worked.
  */
 async function resolveProjectId(neon: NeonClient, env: Env, logger: Logger): Promise<string> {
   const declared = env.NEON_PROJECT_ID;
@@ -95,9 +107,22 @@ async function resolveProjectId(neon: NeonClient, env: Env, logger: Logger): Pro
     return declared;
   }
 
-  const projectId = selectProjectId(await neon.listProjects());
+  const projectId = await discoverProjectId(neon, logger);
   logger.info('project discovered', { projectId });
   return projectId;
+}
+
+async function discoverProjectId(neon: NeonClient, logger: Logger): Promise<string> {
+  try {
+    return selectProjectId(await neon.listProjects());
+  } catch (error) {
+    if (!(error instanceof NeonApiError) || error.status !== 400) throw error;
+
+    const organizationId = selectOrganizationId(await neon.listOrganizations());
+    logger.info('organisation discovered', { organizationId });
+
+    return selectProjectId(await neon.listProjects(organizationId));
+  }
 }
 
 /**

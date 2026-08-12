@@ -43,6 +43,11 @@ export interface NeonProjectSummary {
   readonly name: string;
 }
 
+export interface NeonOrganizationSummary {
+  readonly id: string;
+  readonly name: string;
+}
+
 /** Lowercase, `[a-z0-9-]`, no leading, trailing or doubled separator. */
 function sanitize(part: string): string {
   return part
@@ -184,6 +189,41 @@ export function selectProjectId(projects: readonly NeonProjectSummary[]): string
       'The Neon API key can see several projects, so this job will not guess which one to ' +
         'branch. Set the NEON_PROJECT_ID variable (CLAUDE.md §9) to one of: ' +
         `${projects.map((project) => `${project.id} (${project.name})`).join(', ')}.`,
+    );
+  }
+
+  return only.id;
+}
+
+/**
+ * The organisation whose projects the key may list.
+ *
+ * This function exists because the first real CI run said so. `GET /projects`
+ * came back `400: org_id is required, you can find it on your organization
+ * settings page`: the account behind `NEON_API_KEY` belongs to an
+ * organisation, and Neon then refuses to guess which account a bare project
+ * listing means. The OpenAPI specification calls `org_id` an optional filter
+ * and says nothing about when it stops being optional — which is exactly the
+ * gap docs/roadmap.md had recorded as "le job Neon n'a jamais parlé à Neon".
+ *
+ * Same discipline as `selectProjectId`, for the same reason: picking the first
+ * of several would act on somebody else's account.
+ */
+export function selectOrganizationId(organizations: readonly NeonOrganizationSummary[]): string {
+  const [only] = organizations;
+
+  if (only === undefined) {
+    throw new Error(
+      'The Neon API key belongs to no organisation, yet Neon asked for one. ' +
+        'Set the NEON_PROJECT_ID variable (CLAUDE.md §9) to skip this lookup entirely.',
+    );
+  }
+
+  if (organizations.length > 1) {
+    throw new Error(
+      'The Neon API key can see several organisations, so this job will not guess which one ' +
+        'to list projects from. Set the NEON_PROJECT_ID variable (CLAUDE.md §9) to skip this ' +
+        `lookup entirely. Seen: ${organizations.map((org) => `${org.id} (${org.name})`).join(', ')}.`,
     );
   }
 

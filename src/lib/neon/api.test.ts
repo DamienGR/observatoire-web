@@ -110,12 +110,44 @@ describe('listProjects', () => {
     ]);
   });
 
+  it('filters by organisation when one is named', async () => {
+    // Not decoration. Measured on the first real CI run: Neon answers HTTP 400
+    // to a bare listing when the key's account belongs to an organisation
+    // (docs/journal.md 022).
+    const fake = vi.fn<typeof fetch>(() => Promise.resolve(jsonResponse({ projects: [] })));
+
+    await client(fake).listProjects('org-cool-frog-12345678');
+
+    expect(requestOf(fake).url).toBe(
+      'https://console.neon.tech/api/v2/projects?org_id=org-cool-frog-12345678',
+    );
+  });
+
   it('refuses a payload that does not describe projects', async () => {
     // CLAUDE.md §4: external data is parsed, never cast. A gateway answering
     // HTML with a 200 must not become an empty project list.
     const fake = vi.fn<typeof fetch>(() => Promise.resolve(jsonResponse({ projects: 'none' })));
 
     await expect(client(fake).listProjects()).rejects.toThrow(/unexpected shape/i);
+  });
+});
+
+describe('listOrganizations', () => {
+  it('parses the organisations the key belongs to', async () => {
+    const fake = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        jsonResponse({
+          organizations: [
+            { id: 'org-cool-frog-12345678', name: 'DG-Tech', handle: 'dg-tech', plan: 'free' },
+          ],
+        }),
+      ),
+    );
+
+    await expect(client(fake).listOrganizations()).resolves.toEqual([
+      { id: 'org-cool-frog-12345678', name: 'DG-Tech' },
+    ]);
+    expect(requestOf(fake).url).toBe('https://console.neon.tech/api/v2/users/me/organizations');
   });
 });
 

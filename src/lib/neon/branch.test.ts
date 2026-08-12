@@ -4,6 +4,7 @@ import {
   ephemeralBranchName,
   isEphemeralBranchName,
   pooledConnectionUri,
+  selectOrganizationId,
   selectProjectId,
   selectStaleBranches,
   type NeonBranchSummary,
@@ -215,5 +216,36 @@ describe('selectProjectId', () => {
 
   it('says the key sees nothing rather than fail one call later', () => {
     expect(() => selectProjectId([])).toThrow(/no project/i);
+  });
+});
+
+describe('selectOrganizationId', () => {
+  /**
+   * Added after the first real CI run, not before it. `GET /projects` answered
+   * `400: org_id is required, you can find it on your organization settings
+   * page` — the account behind `NEON_API_KEY` belongs to an organisation, and
+   * Neon refuses to guess which account a bare project listing means. The
+   * OpenAPI specification says `org_id` is an optional filter; it does not say
+   * when it stops being optional (docs/journal.md 022).
+   */
+  it('takes the only organisation the key can see', () => {
+    expect(selectOrganizationId([{ id: 'org-cool-frog-12345678', name: 'DG-Tech' }])).toBe(
+      'org-cool-frog-12345678',
+    );
+  });
+
+  it('refuses to guess between several, and points at the way out', () => {
+    expect(() =>
+      selectOrganizationId([
+        { id: 'org-a', name: 'DG-Tech' },
+        { id: 'org-b', name: 'Autre' },
+      ]),
+    ).toThrow(/NEON_PROJECT_ID/);
+  });
+
+  it('says the key belongs to no organisation rather than send an empty filter', () => {
+    // A `?org_id=` with nothing after it is a request that asks a different
+    // question, and gets an answer nobody can attribute.
+    expect(() => selectOrganizationId([])).toThrow(/no organisation/i);
   });
 });
