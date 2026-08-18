@@ -3117,3 +3117,113 @@ crevée par une installation de paquets système, pas par des tests : le budget 
 Noté sans être corrigé, et la raison est celle que ce journal répète : une occurrence n'est pas une
 fréquence. Mettre le navigateur en cache ou retirer `--with-deps` sont des réponses plausibles à un
 motif qu'on a vu une fois.
+
+---
+
+## 027 — Le jalon 2 commence par une chose qu'aucune session ne peut faire
+
+**18 août 2026** · jalon 2 · branche `claude/jalon-2-n554ts`
+
+### Contexte
+
+Ouvrir le jalon 2, donc d'abord le décomposer — le §12 veut qu'un jalon soit découpé au moment où
+on l'attaque, pas trois semaines avant. Sept tâches en sont sorties, et l'ordre a été décidé par
+une contrainte à laquelle je ne m'attendais pas.
+
+### La friction : la fixture PSI ne peut pas être capturée depuis une session
+
+Le raisonnement naturel plaçait le client PageSpeed Insights en premier : tout le jalon en dépend.
+La doctrine du §5 est claire sur la façon de l'écrire — pour une API tierce, **on observe le
+comportement réel, puis on fige l'observation en fixture**. On n'écrit pas le test d'abord quand la
+spécification est « ce que PSI fait vraiment ».
+
+Sauf qu'observer demande d'appeler l'API, et une session n'a aucune clé : `PSI_API_KEY` est un
+secret de dépôt, et rien de la sorte n'existe dans le conteneur (vérifié, pas supposé). Restait
+l'appel sans clé. Il répond, et ce qu'il répond mérite d'être noté :
+
+```
+HTTP 429 — "quota_limit_value": "0", "quota_unit": "1/d/{project}"
+```
+
+Zéro requête par jour. Le mode sans clé de PSI n'est pas un quota réduit, c'est un quota nul —
+l'API existe pour être appelée avec une clé, point. La réponse a mis 0,65 seconde à arriver : c'est
+la seule chose que cette session aura mesurée de PageSpeed Insights.
+
+**Ce n'est pas une impasse, c'est un ordre de tâches.** J2-02 commencera par capturer sa fixture
+via un `workflow_dispatch` — un workflow présent sur `main` peut être déclenché sur n'importe quelle
+référence et s'exécute alors dans la version *de cette branche*, ce qui donne à une PR l'accès à un
+secret de dépôt sans rien élargir. C'est la même famille de contournement que le job `deploy` du
+5/8 : ce que la session ne peut pas voir, la CI le voit pour elle.
+
+D'où le ticket réellement pris ici : **J2-01, la planification et la reprise d'un scan**, dont la
+spécification est connaissable sans rien appeler. C'est du reste ce que le §5 range troisième par
+valeur parmi les choses à tester.
+
+### Ce que la conception a appris à l'écriture, et non à la relecture
+
+Trois décisions ne se seraient pas prises en lisant le contrat. Toutes trois sont nées d'un test.
+
+**Un run se conclut depuis un plan frais.** Le test de parcours composait les quatre modules —
+démarrer, interrompre, reprendre — et concluait le run depuis le plan qui avait produit la dernière
+passe. Rouge, deux fois, et pour la bonne raison : ce plan décrit l'état d'*avant* les écritures
+qu'il a déclenchées. Le lire après coup déclare ouvert un run terminé, à chaque fois. La correction
+tient en une méthode (`inspect`) qui planifie sans dispatcher, et c'est exactement ce que la surface
+d'ops fera pour afficher l'état d'un run. Un piège découvert en composant, invisible dans chacun des
+quatre modules pris seul.
+
+**Une panne définitive dépense tout le budget d'essais.** Le schéma ne conserve d'une mesure qu'un
+statut et un compteur ; la reprise ne voit rien d'autre. Une URL que PSI refusera toujours ne peut
+donc pas être marquée « ne plus demander » par un drapeau — il n'y a pas de colonne pour lui, et en
+ajouter une pour ça serait ajouter une colonne pour un booléen que le compteur exprime déjà.
+Consommer le budget entier est la façon d'écrire « définitif » dans le vocabulaire que la reprise
+sait lire. Quatre essais à une requête par seconde, ce sont quatre secondes qu'une autre commune
+n'a pas.
+
+**Une ligne `running` est reprise même quand ses essais sont épuisés.** C'est le seul état qu'aucune
+passe ultérieure ne peut résoudre autrement : le worker est mort, personne n'écrira le résultat, et
+refuser la reprise laisserait la ligne bloquée pour toujours. Le bail — quinze minutes — est ce qui
+distingue « une requête est en vol » de « le runner a été tué », et c'est une distinction qu'un
+scan piloté sans shell ne peut pas faire autrement.
+
+### Une invariante qui a corrigé le code plutôt que l'inverse
+
+`ScanProgress` promet six compartiments qui totalisent le nombre de cibles. Un test l'assère, pour
+tous les statuts que la colonne peut porter. Il a échoué sur un cas que j'avais écrit moi-même :
+un run annulé rapportait zéro travail restant, parce que je comptais les tâches *dispatchées*
+plutôt que le travail *dû*. Un run annulé à mi-parcours devenait indiscernable d'un run terminé.
+
+Ce qui a tranché n'est pas un avis sur la meilleure sémantique, c'est que l'une des deux tenait
+l'invariante et l'autre non. J'ai changé le code, puis le test qui l'avait fixé de travers. C'est
+le troisième cas de la semaine où l'assertion la plus utile n'est pas « la fonction retourne x »
+mais « ces nombres s'additionnent ».
+
+### La couche de mutation a de nouveau payé, et pas là où je regardais
+
+Stryker restreint à `src/lib/scan/` : **92,80 %** au premier passage, 236 mutants, 41 secondes.
+Dix-sept survivants, dont huit de prose de message — la proportion que l'entrée 024 avait déjà
+mesurée. Les neuf autres se répartissaient en deux familles, et c'est la seconde qui surprend.
+
+**Trois trous réels**, tous des bornes que la couverture de branches disait pourtant couvertes :
+le retry qui se déclenche à l'instant exact où le backoff expire, la direction du comparateur de
+code INSEE — indécidable sur deux éléments, un tri à deux ne pose qu'une question et un comparateur
+qui répond toujours la même chose peut tomber juste par hasard —, et le comptage des mesures
+orphelines, écrit avec une cible et un orphelin, donc indiscernable de son propre inverse.
+
+**Trois branches mortes**, et c'est la lecture qui vaut le détour. Un mutant qui survit ne dit pas
+toujours « il manque un test » : il peut dire « cette branche ne décide rien ». Le départage entre
+deux essais de même compte était réimplémenté à la main alors que `Array.prototype.sort` est stable
+depuis ES2019 et que la liste est déjà construite dans l'ordre voulu ; `slice(0, undefined)` rend
+déjà le tableau entier, donc le ternaire qui traitait la limite absente n'avait pas d'autre effet
+que d'exister ; et sur la frontière de `nextDispatchAt`, les deux branches produisaient le même
+instant. Les trois ont été **supprimées**, pas testées.
+
+**96,00 % après correction** — `worklist.ts` et `progress.ts` à 100 %, `policy.ts` à 85,19 % dont
+la totalité des survivants sont des chaînes de caractères. Le résultat net du passage : trois tests
+en plus et neuf lignes de code en moins.
+
+### Ce qui n'est pas dans ce ticket, et pourquoi c'est écrit
+
+`src/lib/scan/progress.ts` prend en entrée le verdict « transitoire ou définitif » au lieu de le
+calculer. La tentation était de mapper les statuts PSI tout de suite — 429 et 5xx transitoires, 400
+définitif —, ce qui aurait été plausible, non observé, et rangé dans le seul endroit que ce dépôt
+traite comme du fait constaté. C'est J2-02 qui l'écrira, avec la charge réelle sous les yeux.

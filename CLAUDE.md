@@ -466,7 +466,19 @@ Règles de cette surface :
   Au-delà, l'API renvoie des 500 pendant plusieurs minutes. Le job est lent, patient, avec
   backoff exponentiel et reprise.
 - Un scan est **idempotent et reprenable à la commune près**. Chaque mesure porte son propre
-  statut. Jamais de « le job a planté, on recommence tout ».
+  statut. Jamais de « le job a planté, on recommence tout ». Les règles vivent dans
+  `src/lib/scan/` en logique pure : les cinq nombres auxquels un scan obéit et leur validation
+  (`policy`), quels sites sont mesurables et lesquels composent l'échantillon (`eligibility`), ce
+  qu'il reste à faire déduit des lignes déjà écrites (`worklist`), et ce qu'un essai laisse
+  derrière lui (`progress`). **Il n'y a pas de curseur** : « reprendre » n'est pas un chemin de
+  code distinct de « démarrer », c'est le cas où des lignes existent déjà. Ce qui reste dans
+  `src/jobs/` est une boucle sans jugement.
+- **Un run se conclut depuis un plan frais, jamais depuis celui qui a produit la passe.** Le plan
+  décrit l'état d'*avant* les écritures : le lire après coup déclare ouvert un run terminé, à
+  chaque fois. Constaté en écrivant le test de parcours de J2-01, pas en relisant le code.
+- **Une panne définitive dépense tout le budget d'essais**, elle ne pose pas de drapeau. La reprise
+  ne voit qu'un statut et un compteur — c'est tout ce que le schéma conserve —, donc une panne
+  définitive qui laisserait des essais au compteur serait reprise à chaque passe, indéfiniment.
 - La résolution d'URL est un **processus à états** (`candidat → vérifié → invalide → à revoir`),
   pas une simple colonne. Ses règles vivent dans `src/lib/resolve/` en logique pure : ce qu'on
   peut requêter et dans quel ordre (`attempt`), ce que vaut une observation (`verdict`), quelles

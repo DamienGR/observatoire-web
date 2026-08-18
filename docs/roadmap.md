@@ -79,6 +79,33 @@ plafonné : on peut merger les PR au fil de l'eau sans surveiller un quota.
 
 ---
 
+## Jalon 2 — Mesure sur 20 communes, fiche entité, surface d'ops
+
+Épreuve visée : une API tierce capricieuse, l'idempotence, et le pilotage sans shell.
+
+Vingt communes et non mille : le jalon éprouve la *boucle*, pas le volume. Le passage à l'échelle
+est le jalon 3, et il n'apprend rien tant que la reprise n'est pas éprouvée sur un échantillon
+qu'on peut lire en entier.
+
+| ID | Tâche | Statut | Dépend de | Notes |
+|---|---|---|---|---|
+| J2-01 | Planification et reprise d'un scan — `src/lib/scan/` | `terminé` | J1-06 | Logique pure, test-first : politique (les cinq nombres et leur validation), éligibilité et échantillon, liste de travail depuis les lignes déjà écrites, conclusion d'un essai et d'un run. Le test de parcours éprouve la propriété du §8 — démarrer, interrompre, reprendre, sans doublon ni perte. 95 tests, 98,83 % de branches, **96,00 % de score de mutation** sur le module ; les survivants restants sont tous de la prose de message d'erreur (journal 027) |
+| J2-02 | Client PSI : requête, parsing Zod, extraction des métriques et des `finding` | `à faire` | J2-01 | **Commence par capturer sa fixture**, ce qu'aucune session ne peut faire seule : le quota PSI sans clé est nul (mesuré, cf. journal 027) et `PSI_API_KEY` est un secret de dépôt. Le chemin est un `workflow_dispatch` sur la branche de la PR. C'est aussi cette tâche qui décide quelles pannes PSI sont transitoires — `src/lib/scan/progress.ts` prend le verdict en entrée plutôt que de le deviner |
+| J2-03 | Signaux complémentaires depuis le HTML | `à faire` | J1-05 | Déclaration d'accessibilité, mentions légales, politique de confidentialité, en-têtes de sécurité, CMS. Passe par le client gardé de `src/lib/fetch/` : ce sont des URLs que l'annuaire nous a données (§7) |
+| J2-04 | Écriture d'un scan en base — `src/db/scan.ts` | `à faire` | J2-01, J2-02 | Le pendant impur de J2-01 : appliquer une liste de travail, prendre un bail, écrire une mesure et ses `finding`. Idempotence éprouvée en intégration sur branche Neon, pas seulement en unitaire |
+| J2-05 | Job de scan et son workflow `workflow_dispatch` | `à faire` | J2-04, J2-03 | `src/jobs/scan.ts` + `.github/workflows/scan.yml`, environment `production`. Rend compte avant d'agir, comme `migrate.yml` |
+| J2-06 | Surface d'ops authentifiée | `à faire` | J2-04 | Jeton porteur en en-tête, comparaison en temps constant, tout mutant en `POST`, journalisation, idempotence (`CLAUDE.md` §8). Débloque le provisionnement d'`OPS_TOKEN`, qui n'a jusqu'ici aucun consommateur |
+| J2-07 | Fiche entité `/commune/[code_insee]` | `à faire` | J2-04 | Premier gabarit dynamique du site : politique de cache `donnees` et tag de purge à déclarer au registre, un parcours E2E de plus, pas un par commune (§5) |
+
+**Ce que ce jalon ne tranche pas.** Le score composite reste une décision ouverte (`brief.md` §11)
+et le schéma n'a délibérément aucune colonne pour lui. Une fiche entité affiche les signaux
+mesurés et leur date, pas une note agrégée.
+
+**Parallélisable après J2-01** : J2-02 et J2-03 touchent des répertoires disjoints. J2-06 et J2-07
+attendent tous deux J2-04, mais ne se gênent pas entre eux.
+
+---
+
 ## Jalons suivants
 
 Non décomposés à ce stade, et c'est délibéré : détailler maintenant produirait une fausse
@@ -87,7 +114,7 @@ précision qu'il faudrait défaire. Chaque jalon est décomposé au moment de l'
 
 | Jalon | Livrable | Statut |
 |---|---|---|
-| 2 | Mesure sur 20 communes, fiche entité, surface d'ops | `à faire` |
+| 2 | Mesure sur 20 communes, fiche entité, surface d'ops | `en cours` — décomposé ci-dessus |
 | 3 | Passage à 1 000 communes, scan par lots, reprise sur incident | `à faire` |
 | 4 | Publication : classements, cache edge, purge ciblée | `à faire` |
 | 5 | Méthodologie v2 appliquée à l'historique | `à faire` |
