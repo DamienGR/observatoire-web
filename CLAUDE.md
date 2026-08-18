@@ -296,20 +296,33 @@ deux, et on ne pilote pas le projet à la couverture.
   Seuil de départ : **80 %** sur le scoring, annoncé avant d'avoir mesuré et donc arbitraire —
   le module de scoring n'existe pas encore, il n'y a rien à seuiller.
 
-**La première exécution réelle a eu lieu le 12/8** et remplace l'estimation par des chiffres :
-**75,57 %** sur `src/lib/`, 1 957 mutants, 1 475 tués, 443 survivants, **6 min 24 s** sur quatre
-cœurs. Trois lectures à garder, parce qu'elles changent l'usage qu'on fait du score :
+**Mesuré, et deux fois plutôt qu'une.** La première exécution réelle a eu lieu le 12/8 et donnait
+75,57 % ; sa lecture était fausse, et l'exercice de la corriger le 18/8 vaut mieux que le chiffre.
+L'état actuel de `src/lib/` : **82,50 %**, 1 669 mutants, 1 377 tués, 258 survivants,
+**3 min 34 s** sur quatre cœurs.
 
-- **41 % des survivants sont des mutations de chaînes de caractères** (183 sur 443), c'est-à-dire
-  de la prose de message d'erreur. Le score global est donc en partie une mesure de « assères-tu
-  tes phrases », pas de « détecterais-tu une régression ». On lit les scores **par fichier**, et
-  on ne court pas après le chiffre global.
+Quatre lectures, parce qu'elles changent l'usage qu'on fait du score :
+
+- **Les mutants *statiques* sont ignorés** (`ignoreStatic`), et ce n'est pas un adoucissement. Le
+  code exécuté au chargement d'un module — ici les tables de plages du garde SSRF, analysées à
+  l'import par le parseur que le garde utilise — produit des mutants que Vitest ne peut pas tuer :
+  il ne réimporte pas le module entre deux mutants, donc la ligne mutée n'est jamais réévaluée.
+  Les compter en survivants ajoutait 184 faux positifs et plafonnait le score. **Vérifié à la
+  main** : appliquer ces mutations soi-même fait échouer la suite entière (journal 024).
+- **Ce code-là n'est donc mesuré par aucun test de mutation.** Son filet est plus grossier — le
+  module refuse de se construire — et c'est écrit en dette plutôt que noyé dans un pourcentage.
+- **41 % des survivants restants sont des mutations de chaînes de caractères**, c'est-à-dire de la
+  prose de message d'erreur. On lit les scores **par fichier** et on ne court pas après le chiffre
+  global.
 - **Le module écrit en test-first le plus strictement obtient le meilleur score** : `resolve/` à
-  90,34 %, `arbitrate.ts` à 100 %. Les plus bas sont les constructeurs de messages, écrits après
-  coup. La doctrine du test-first du §5 n'est plus une préférence, elle est mesurée.
-- **`fetch/address.ts` est à 49,16 %**, le plus bas du dépôt, sur le garde SSRF que ce même §5
-  classe deuxième priorité de test. Cf. `docs/roadmap.md` : c'est un ticket, pas une ligne à
-  corriger en passant.
+  91,82 %. Les plus bas sont les constructeurs de messages, écrits après coup. La doctrine du
+  test-first n'est plus une préférence, elle est mesurée sur son propre code.
+
+**Et la couche a payé son installation le jour même.** Un mutant survivant que personne ne savait
+expliquer a mené à un contournement SSRF réel — la forme IPv4-compatible `::a.b.c.d` de RFC 4291,
+que `classifyAddress` laissait passer —, dans le module classé deuxième priorité de test ci-dessus
+et dont 34 tests tabulaires n'avaient rien vu. C'est l'argument du §5 en une phrase : la couverture
+dit ce qu'on a oublié d'exécuter, la mutation dit ce qu'on a oublié de vérifier.
 
 ---
 
