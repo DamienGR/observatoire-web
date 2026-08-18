@@ -3227,3 +3227,92 @@ en plus et neuf lignes de code en moins.
 calculer. La tentation était de mapper les statuts PSI tout de suite — 429 et 5xx transitoires, 400
 définitif —, ce qui aurait été plausible, non observé, et rangé dans le seul endroit que ce dépôt
 traite comme du fait constaté. C'est J2-02 qui l'écrira, avec la charge réelle sous les yeux.
+
+---
+
+## 028 — Le chiffre était faux depuis deux semaines, et rien ne pouvait le dire
+
+**18 août 2026** · jalon 2 · branche `claude/jalon-2-n554ts`
+
+### Contexte
+
+Le `git push` du ticket précédent a affiché en passant : « GitHub found 6 vulnerabilities on
+DamienGR/observatoire-web's default branch (4 high, 2 moderate) ». La table de dette annonçait
+**0 haute / 2 modérées** depuis le 5 août. Les deux ne peuvent pas être vrais.
+
+C'est la table qui avait tort, et elle avait tort de trois façons : le nombre, la sévérité, et
+jusqu'au chemin de dépendance — elle situait `qs` « dans l'outillage Netlify » alors qu'il est tiré
+par `@stryker-mutator/core`. Personne n'a menti. Personne n'avait regardé depuis le jour où la
+ligne a été écrite.
+
+**C'est la même forme de panne que J1-11, J1-17 et J1-18** — le contrat décrit un contrôle, rien ne
+l'exécute — avec une variante plus vicieuse : ici le contrôle avait bel et bien été fait une fois,
+et son résultat est resté écrit comme s'il valait encore. Un chiffre daté dans un document est un
+chiffre qui a l'air vivant. La ligne de dette le disait elle-même, sans que ce soit lu comme une
+tâche : « à revoir quand un `pnpm audit` propre deviendra une exigence de CI plutôt qu'un contrôle
+manuel ».
+
+### Trois corrigeables, et trois qui n'ont pas de correctif
+
+`nanoid` (haute, dans le graphe de production via `postcss`), `qs` (modérée) et `esbuild` (modérée)
+se corrigent par override — trois correctifs de patch. Le cas `esbuild` méritait une vérification
+plutôt qu'une confiance : la version vulnérable est la 0.18.20, tirée par `drizzle-kit` via
+`@esbuild-kit/*`, une chaîne dépréciée que son auteur a fondue dans `tsx`. Forcer 0.25 pouvait
+casser le chargeur qui lit `drizzle.config.ts`. `pnpm db:check` l'exerce précisément — il lit un
+fichier TypeScript par ce chargeur — et il passe.
+
+Les trois autres — `image-size` deux fois, `extract-zip` — publient `<0.0.0` comme version
+corrigée : **il n'existe aucun correctif**, donc ni bump ni override ne peut les atteindre. Toutes
+sous `@netlify/dev*`, le serveur de développement local. Plutôt que de l'affirmer, je l'ai mesuré
+sur `.netlify/v1/`, l'artefact que Netlify déploie réellement : **zéro occurrence**. Et ce dépôt
+n'a de toute façon pas de shell pour lancer `netlify dev` (§3).
+
+### Ce que l'audit ne peut pas voir, et qui est dans le bundle
+
+En cherchant `image-size` dans le bundle déployé, j'ai trouvé une occurrence — mais pas celle que
+l'advisory désigne. `astro` embarque une **copie vendorisée** d'`image-size` sous
+`astro/dist/assets/utils/vendor/`, et elle contient `icns.js`, `jxl.js` et `heif.js` : exactement
+les trois parseurs nommés par les deux advisories que je venais de classer « hors production ».
+
+Aucun outil d'audit ne peut la signaler. Un audit inspecte des paquets ; ceci est du code recopié
+dans un autre paquet. **La question « cette advisory est-elle dans mon bundle ? » et la question
+« ce paquet est-il dans mon graphe ? » ne sont pas la même question**, et je ne l'aurais pas
+découvert en lisant l'arbre de dépendances — seulement en lisant les octets déployés.
+
+Sa seule porte d'entrée est `/_image`, que le manifeste confirme comme route servie en production,
+qu'Astro enregistre que le site utilise des images ou non. Non exploitable aujourd'hui, et vérifié
+dans le bundle plutôt que supposé : `image.domains` et `image.remotePatterns` sont vides, le
+gestionnaire répond `403 Forbidden` à toute source distante, et le site ne sert aucune image locale.
+
+### Une mitigation essayée, mesurée, et retirée
+
+`image.service: { entrypoint: 'astro/assets/services/noop' }` semblait la réponse évidente. Je l'ai
+appliquée et reconstruite : **mêmes routes, mêmes vingt-et-un parseurs vendorisés, même bundle à
+4,1 Mo**. Le service `noop` change ce que fait `transform`, pas ce qui est empaqueté ni ce qui est
+routé.
+
+Elle a donc été retirée. C'est la leçon du favicon de l'entrée 026, dans l'autre sens : là je
+livrais une hypothèse *avec* le test qui la départagerait ; ici le test a répondu non, et garder le
+réglage aurait laissé dans `astro.config.mjs` trois mots qu'une session future aurait lus comme une
+mitigation en place. **Un réglage qui ne change rien est pire qu'un réglage absent** : il répond à
+la question avant qu'elle soit posée.
+
+### Le garde-fou, et pourquoi il n'est pas sur le chemin des PR
+
+`scripts/audit.mjs` échoue sur toute advisory absente du registre `ACCEPTED` — et, tout autant, sur
+une entrée du registre qui ne correspond plus à rien. La seconde moitié est celle qui rend le
+dispositif honnête, et c'est la forme du registre de politiques de cache du §10 : une liste
+d'exceptions qui ne fait que grandir devient une liste de choses qui *étaient* vraies, et le jour
+où le paquet est corrigé, l'argument survit au défaut qu'il décrivait — puis couvre le suivant.
+Les deux sens ont été éprouvés en rendant le garde rouge exprès, comme le veut le commentaire de
+`src/db/schema.ts` : un garde dont personne n'a entendu l'alarme n'est pas un garde.
+
+Il tourne **hebdomadairement, jamais sur une PR**, et c'est le §5 qui tranche plutôt que le confort :
+une advisory est publiée par un tiers, donc ce job rougit un jour où personne n'a touché au code.
+C'est mot pour mot le « échoue pour des raisons étrangères au diff » qui apprend à tout le monde à
+ignorer une CI rouge — la panne la plus grave dans un projet où la CI est le seul juge. Une panne du
+registre npm est distinguée d'une trouvaille, comme la suite de contrats distingue l'indisponibilité
+de la dérive.
+
+Ce que ça ajoute à Dependabot, qui tourne déjà : Dependabot répond « voici un correctif ». Rien ne
+répondait à l'autre moitié — **ce qui n'a pas de correctif, et pourquoi on le porte quand même**.

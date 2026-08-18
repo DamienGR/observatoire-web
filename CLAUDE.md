@@ -82,6 +82,7 @@ pnpm test:integration            # Vitest, projet intégration (DATABASE_URL req
 pnpm test:e2e                    # Playwright + axe-core (BASE_URL requis)
 pnpm test:contract               # Vraies API tierces — planifié, hors du chemin des PR
 pnpm test:mutation               # Stryker sur src/lib/ — hors du chemin des PR
+pnpm audit:ci                    # Advisories non acceptées — planifié, hors du chemin des PR
 
 pnpm db:generate                 # Génère une migration depuis le schéma Drizzle
 pnpm db:migrate                  # Applique les migrations (DATABASE_URL requis)
@@ -392,6 +393,21 @@ des recommandations.
 - CodeQL activé sur `main` et sur les PR.
 - Lockfile committé, `--frozen-lockfile` en CI. Aucune dépendance ajoutée sans justification
   dans la description de PR.
+- **Une advisory se corrige, ou s'accepte par écrit — jamais en silence.** `pnpm audit:ci`
+  (`scripts/audit.mjs`, workflow `audit.yml`, hebdomadaire) échoue sur toute advisory absente
+  du registre `ACCEPTED`, **et** sur une entrée du registre qui ne correspond plus à rien : une
+  liste d'exceptions qui ne fait que grandir devient une liste de choses qui *étaient* vraies, et
+  le jour où le paquet est corrigé, l'argument survit au défaut qu'il décrivait et couvre le
+  suivant. Chaque entrée porte ce qui rend l'advisory inatteignable **ici**, mesuré sur
+  `.netlify/v1/` — l'artefact réellement déployé —, et la condition de son retrait. Hors du
+  chemin des PR pour la raison du §5 : une advisory est publiée par un tiers, donc ce job rougit
+  un jour où personne n'a touché au code.
+- **Ce qu'un audit ne voit pas.** Il inspecte des paquets, pas du code recopié. `astro` embarque
+  une copie *vendorisée* d'`image-size` — `icns`, `jxl` et `heif` compris, les trois parseurs
+  nommés par les advisories que le dépôt accepte — et cette copie est dans le bundle SSR déployé.
+  Aucun outil ne peut la signaler. Sa seule porte d'entrée est `/_image`, route qu'Astro
+  enregistre que le site utilise des images ou non ; elle répond **403** à toute source distante
+  (`image.domains` et `image.remotePatterns` vides) et le site ne sert aucune image locale.
 
 ### Récupération de contenu tiers (crawl) — risque SSRF
 

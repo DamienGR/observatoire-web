@@ -1,0 +1,65 @@
+name: Audit
+
+# The dependency audit CLAUDE.md §7 asks for, held by a registry rather than by
+# someone remembering to look. `scripts/audit.mjs` fails on any advisory that is
+# not accepted with a written reason, and equally on an accepted entry that no
+# longer matches anything — an allowlist that only grows is a list of things
+# that used to be true.
+#
+# NEVER on `pull_request`, and the reason is §5's, not convenience: a new
+# advisory is published by a third party, so this job goes red on a day nobody
+# touched the code. That is exactly the "fails for reasons foreign to the diff"
+# which teaches everyone to ignore a red CI — the worst failure available in a
+# project where CI is the only judge.
+#
+# Dependabot already opens pull requests for what has a fix. This answers the
+# other half, which nothing answered: what has *no* fix, and why we carry it.
+# The debt table said "0 high / 2 moderate" on 4 August; on 18 August the real
+# figure was 4 high and 2 moderate. Nobody had lied, nobody had looked.
+on:
+  schedule:
+    # Mondays, 06:09 UTC — after mutation (04:23) and contracts (05:17), and off
+    # the hour because GitHub queues everything written `0 * * * *`.
+    - cron: '9 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ASTRO_TELEMETRY_DISABLED: '1'
+
+concurrency:
+  group: audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: audit (no unaccepted advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # `pnpm audit` reads the lockfile, and installing costs seconds against a
+      # warm cache. It is done anyway rather than assumed unnecessary: this job
+      # runs unattended once a week, and a guess that fails there is a guess
+      # nobody sees fail for six days.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit the dependency graph
+        run: pnpm audit:ci
