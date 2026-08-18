@@ -14,34 +14,76 @@ import { SHELL_ROUTES, expectedStatus } from './routes.js';
  */
 
 /**
+ * Netlify injects a deploy-preview banner into every preview it builds: a
+ * `<div data-netlify-deploy-id … style="position:fixed">` and an iframe of
+ * app.netlify.com. Our own CSP blocks both, and says so on the console.
+ *
+ * That is the CSP doing its job, on markup nobody here wrote and that
+ * production never receives. Failing on it would make this suite red forever
+ * for a reason foreign to every diff — the one failure mode CLAUDE.md §5 calls
+ * the worst available.
+ *
+ * The second pattern is broad enough to hide an inline style of our own, which
+ * is why the test below asserts separately that the document declares none
+ * outside that injected banner. An exclusion is only safe when something else
+ * checks what it excludes.
+ */
+const PREVIEW_BANNER_NOISE = [
+  /Framing 'https:\/\/app\.netlify\.com/,
+  /Applying inline style violates/,
+];
+
+/** The 404 page answers 404, and Chromium logs its own navigation failure. */
+const OWN_STATUS_NOISE = 'Failed to load resource: the server responded with a status of 404';
+
+/**
  * A site that ships no JavaScript should have nothing to say on the console.
  *
  * This exists because the first Lighthouse budget scored best-practices 0.92 on
- * every page, and `errors-in-console` was one of the two audits paying for it —
- * on pages that run no script at all. The likely cause was an undeclared
- * favicon, which browsers request unprompted, but nobody in a cloud session can
- * open a console to find out (docs/journal.md 025). This turns the hypothesis
- * into something CI answers, and keeps answering.
+ * every page, with `errors-in-console` among the audits paying for it — on
+ * pages that run no script at all. The supposed cause was an undeclared
+ * favicon; the test was written to settle that rather than to confirm it, and
+ * it did: the favicon was one cause and the rest was Netlify's banner
+ * (docs/journal.md 026).
  *
- * It asserts what the page *causes*, so a message names itself in the failure
- * rather than sending the next session to guess again.
+ * It keeps its value now that the question is answered. Milestone 4 brings the
+ * first interactive island, and this is what will notice the day it throws.
  */
 test.describe('the console stays quiet', () => {
   for (const route of SHELL_ROUTES) {
-    test(`${route} logs no browser error`, async ({ page }) => {
+    test(`${route} logs no browser error of its own`, async ({ page }) => {
       const errors: string[] = [];
+      const ignored = (text: string): boolean =>
+        PREVIEW_BANNER_NOISE.some((pattern) => pattern.test(text)) ||
+        (route === '/404' && text.includes(OWN_STATUS_NOISE));
 
       page.on('console', (message) => {
-        if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+        if (message.type() === 'error' && !ignored(message.text())) {
+          errors.push(`console: ${message.text()}`);
+        }
       });
       // An exception that escaped to the window. Impossible today with no
       // script on the page, which is exactly why it is worth pinning.
-      page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
+      page.on('pageerror', (error) => {
+        errors.push(`pageerror: ${error.message}`);
+      });
 
       await page.goto(route);
       await page.waitForLoadState('networkidle');
 
       expect(errors, `${route} logged ${String(errors.length)} error(s)`).toEqual([]);
+    });
+
+    test(`${route} declares no inline style of its own`, async ({ page }) => {
+      // What makes the exclusion above honest. §7 bans `unsafe-inline`, so an
+      // inline style we shipped would be silently dropped by the browser: the
+      // page would render differently from the template and nothing would say
+      // so — the console message being the only trace, and now filtered.
+      await page.goto(route);
+
+      const ours = await page.locator('[style]:not([data-netlify-deploy-id])').all();
+
+      expect(ours, `${route} carries an inline style the CSP will drop`).toHaveLength(0);
     });
   }
 });

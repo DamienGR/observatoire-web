@@ -3024,3 +3024,48 @@ fichiers de documentation que personne ne relit ligne à ligne.
 La leçon n'est pas « faire attention ». C'est que **`git fetch` doit précéder chaque création de
 branche**, y compris et surtout quand on vient de merger soi-même il y a dix minutes — c'est
 précisément le moment où l'on est le plus sûr de connaître l'état de `main`, et le plus faux.
+
+### Post-scriptum : l'hypothèse était incomplète, et le test l'a dit
+
+Écrit après le premier passage en CI. Les sept pages ont échoué, ce qui est le meilleur résultat
+possible : le test avait été écrit pour trancher, pas pour confirmer, et il a tranché contre moi.
+
+Trois causes, là où j'en supposais une :
+
+| Ce qui écrit dans la console | Ce que c'est |
+|---|---|
+| `/favicon.ico` en 404 | ma supposition, **exacte**, et corrigée : l'erreur ne reste que sur `/404` |
+| `Failed to load resource: … 404` sur `/404` | le statut de la page elle-même, légitime |
+| `Applying inline style violates … 'style-src 'self''` | **la bannière de deploy preview de Netlify** |
+| `Framing 'https://app.netlify.com' violates … 'default-src 'self''` | la même bannière |
+
+Le `curl` le montre sans ambiguïté :
+
+```
+<div data-netlify-deploy-id="…" data-netlify-site-id="…" style="position:fixed">
+```
+
+Netlify injecte cette bannière dans chaque deploy preview. Elle porte un style en ligne et ouvre
+une iframe vers son propre domaine, et **notre CSP bloque les deux**. Autrement dit : le site ne
+faisait rien de mal, la CSP faisait exactement son travail, et ce que Lighthouse comptait comme des
+« erreurs de console » venait pour l'essentiel d'un tiers qui modifie la page qu'on mesure.
+
+Deux conséquences qui dépassent ce ticket.
+
+**Le budget Lighthouse mesure une preview que Netlify altère.** Le score `best-practices` relevé
+en PR est plafonné par du balisage tiers. Les deux issues coûtent quelque chose — mesurer la
+production, mais alors le budget ne garde plus un diff *avant* son merge ; ou soustraire ces
+audits, et se fier à une liste. C'est en dette, à trancher quand le plafond gênera.
+
+**Une exclusion n'est honnête que si autre chose vérifie ce qu'elle exclut.** Le filtre qui ignore
+« inline style violates » ignorerait aussi un style en ligne que *nous* aurions écrit — et le §7
+interdisant `unsafe-inline`, un tel style serait silencieusement supprimé par le navigateur : la
+page rendrait autrement que le gabarit, sans que rien ne le dise, la seule trace étant précisément
+le message qu'on vient de filtrer. D'où un second test par page, qui assère que le document ne
+porte aucun attribut `style` en dehors de la `div` injectée par Netlify.
+
+C'est la deuxième fois de la journée qu'une supposition écrite avec assurance se révèle fausse —
+la première portait sur le garde SSRF (entrée 024). Les deux fois, ce qui a corrigé n'est pas une
+relecture mais une exécution. Et cette fois, contrairement à la première, le doute était déjà dans
+la PR : les deux moitiés — l'icône et le test — avaient été livrées ensemble **parce que** je ne
+savais pas laquelle des deux avait raison.
