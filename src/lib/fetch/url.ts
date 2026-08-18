@@ -15,14 +15,36 @@ export type UrlRejectionReason =
   | 'reserved-hostname'
   | 'blocked-address';
 
-export interface UrlCheck {
-  readonly ok: boolean;
-  readonly url?: URL;
-  readonly reason?: UrlRejectionReason;
-  readonly detail?: string;
-  /** Present when the host was an IP literal and could be judged immediately. */
+/** The host was an IP literal and could be judged without a resolver. */
+interface JudgedAddress {
   readonly address?: AddressVerdict;
 }
+
+/** A URL the guard accepts. `url` is parsed, so callers never re-parse it. */
+export interface UrlAccepted extends JudgedAddress {
+  readonly ok: true;
+  readonly url: URL;
+}
+
+/** A URL the guard refuses, and why. Both fields are always present. */
+export interface UrlRejected extends JudgedAddress {
+  readonly ok: false;
+  readonly reason: UrlRejectionReason;
+  readonly detail: string;
+}
+
+/**
+ * A discriminated union rather than one shape with everything optional.
+ *
+ * The earlier version declared `url`, `reason` and `detail` all optional, which
+ * made every caller write a branch TypeScript could not prove unreachable —
+ * `if (!ok || url === undefined)` in the client, `reason ?? 'malformed'` in the
+ * resolver. Both were dead code in a security guard, and the repository's own
+ * rule says the answer to that is to change the representation, not to add a
+ * test that pretends to cover it (docs/roadmap.md, "branches défensives et
+ * couverture").
+ */
+export type UrlCheck = UrlAccepted | UrlRejected;
 
 export interface CheckUrlOptions {
   /**

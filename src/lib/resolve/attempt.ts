@@ -1,4 +1,4 @@
-import { checkUrl, type UrlCheck, type UrlRejectionReason } from '../fetch/url.js';
+import { checkUrl, type UrlRejected, type UrlRejectionReason } from '../fetch/url.js';
 import type { ResolutionReason, StatutResolution } from './states.js';
 
 /**
@@ -60,8 +60,8 @@ function reject(reason: ResolutionReason): AttemptPlan {
  * 34 tests are not this ticket's to rewrite (CLAUDE.md §12). Noted in the debt
  * of docs/roadmap.md instead.
  */
-function rejectFromGuard(check: UrlCheck): AttemptPlan {
-  return reject(REJECTION_REASONS[check.reason ?? 'malformed']);
+function rejectFromGuard(check: UrlRejected): AttemptPlan {
+  return reject(REJECTION_REASONS[check.reason]);
 }
 
 /**
@@ -108,7 +108,7 @@ export function planAttempt(raw: string): AttemptPlan {
   // keeps §7 honest.
   const checked = checkUrl(raw, { allowHttp: true });
 
-  if (!checked.ok || checked.url === undefined) {
+  if (!checked.ok) {
     if (checked.reason === 'malformed' && !hasScheme(raw)) return planSchemeless(raw);
     return rejectFromGuard(checked);
   }
