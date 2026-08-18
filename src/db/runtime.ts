@@ -1,4 +1,5 @@
 import { createLogger } from '../lib/log/index.js';
+import { describeErrorChain } from '../lib/log/errors.js';
 import type { StatsSnapshot } from '../lib/stats/snapshot.js';
 import { serverEnv } from '../lib/env/runtime.js';
 import { connect, type Connection } from './client.js';
@@ -76,11 +77,13 @@ export async function loadStats(): Promise<StatsRead> {
   try {
     return { ok: true, snapshot: await readStats(siteConnection(url).db) };
   } catch (error) {
-    // The message, never the payload: this log is public on a public
-    // repository, and a connection string is never handed to a logger (§7).
-    logger.error('stats read failed', {
-      error: error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error',
-    });
+    // The message and its causes, never the payload: this log is public on a
+    // public repository, and a connection string is never handed to a logger
+    // (§7). The chain matters more here than anywhere: this page tells a
+    // visitor the figures could not be read and promises the incident is
+    // logged, and until now that log said `Failed query: …` without the reason
+    // Drizzle had wrapped one `cause` deeper (docs/journal.md 021).
+    logger.error('stats read failed', { error: describeErrorChain(error) });
 
     return { ok: false, reason: 'unavailable' };
   }
