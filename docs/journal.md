@@ -2648,3 +2648,144 @@ rejeu complet de la suite. L'option `ignoreStatic` diviserait la durée par dix.
 Elle retirerait aussi de la mesure la table de plages du garde SSRF, c'est-à-dire précisément ce
 que la section précédente vient de désigner comme le point faible du dépôt. Six minutes par semaine
 ne sont pas un problème ; un score qui monte parce qu'on a cessé de regarder en serait un.
+
+---
+
+## 024 — Le ticket a commencé par démentir le constat qui l'avait ouvert
+
+**18 août 2026** · jalon 1 · branche `claude/j1-11-w4yw73`
+
+### Contexte
+
+L'entrée 023 finissait sur une trouvaille : le garde SSRF, deuxième priorité de test du §5, était
+le pire score de mutation du dépôt à 49,16 %, et « une liste de plages peut être vidée sans qu'un
+test le remarque ». C'était écrit en dette, dans la feuille de route et dans une description de PR
+mergée. Le porteur a demandé de traiter ce ticket.
+
+La première chose faite a été de vérifier l'affirmation. Elle est fausse.
+
+### Vider la table casse tout, et Stryker dit le contraire
+
+```
+$ sed -i "s#\['10.0.0.0/8', 'private'\],#[],#" src/lib/fetch/address.ts
+$ pnpm exec vitest run --project unit src/lib/fetch/address.test.ts
+TypeError: Cannot read properties of undefined (reading 'split')
+      Tests  no tests
+```
+
+Toute la suite tombe, au chargement du module. Idem en remplaçant la chaîne CIDR par n'importe
+quoi : `Malformed CIDR range in the SSRF guard`. Le rapport de Stryker, lui, dit pour ce même
+mutant :
+
+```
+[Survived] ArrayDeclaration
+src/lib/fetch/address.ts:198:3
+-     ['10.0.0.0/8', 'private'],
++     [],
+Ran all tests for this mutant.
+```
+
+Il a exécuté tous les tests, et il compte le mutant comme survivant.
+
+**L'explication est dans le fichier lui-même, et c'est une bonne décision de conception qui la
+produit.** L'en-tête du module explique que les plages sont écrites en notation CIDR et
+« analysées par le parseur que le garde utilise », pour qu'une faute de frappe échoue à l'import
+plutôt que d'élargir silencieusement ce qu'on accepte de joindre. Conséquence : `parseIpv4`,
+`parseIpv6` et leurs auxiliaires s'exécutent **au chargement du module**. Stryker classe donc
+chacun de leurs mutants comme *statique* — 182 sur 297 pour ce seul fichier, 61 % — et Vitest ne
+réimporte pas un module entre deux mutants. Le commutateur de mutation est bien positionné, la
+ligne mutée n'est jamais réévaluée. Ces mutants sont **inertes** : ils ne peuvent pas être tués,
+quoi qu'on écrive comme test.
+
+Les 49,16 % ne mesuraient pas la faiblesse des tests. Ils mesuraient cette limite d'outil.
+
+### L'arbitrage `ignoreStatic`, pris à l'envers
+
+L'entrée 023 refusait `ignoreStatic` avec cet argument : « elle retirerait de la mesure la table de
+plages du garde SSRF, c'est-à-dire précisément ce que la section précédente vient de désigner comme
+le point faible ».
+
+L'argument est faux, et il l'était au moment où je l'ai écrit. Cette table **n'est pas dans la
+mesure** : ses mutants survivent quoi qu'il arrive. Refuser l'option ne la mesurait pas davantage,
+cela ajoutait 184 faux survivants au dépôt et plafonnait le score à un chiffre que rien ne pouvait
+faire monter. Mesuré sur l'ensemble de `src/lib/` :
+
+| | score | survivants | durée |
+|---|---|---|---|
+| avec les mutants statiques | 75,57 % | 443 | 6 min 24 |
+| sans | **82,38 %** | **259** | 3 min 58 |
+
+L'option est activée. Ce qu'il faut retenir du refus initial reste vrai sous une autre forme, et
+c'est maintenant une ligne de dette explicite plutôt qu'un pourcentage : **le code exécuté à
+l'import n'est mesuré par aucun test de mutation.** Son filet est plus grossier — le module refuse
+de se construire — mais il existe, et il a été vérifié à la main plutôt que supposé.
+
+### Ce qui était réellement non verrouillé
+
+Restaient les survivants portant une couverture par test, ceux que Stryker sait vraiment juger.
+Treize, dont trois désignaient des comportements que le module promet et qu'aucun test ne
+regardait :
+
+- **`effectiveAddress` n'était jamais assérée sur un verdict IPv6 pur.** Tout `formatIpv6` pouvait
+  être vidé — boucle sautée, séparateur retiré — sans qu'un test bronche. C'est pourtant le seul
+  artefact que le §7 demande à ce garde de produire : « logger l'adresse réellement jointe plutôt
+  que la forme écrite est ce qui rend un rejet diagnosable ».
+- **Aucune adresse de la suite ne portait d'espace**, donc `input.trim()` pouvait disparaître. Une
+  adresse rendue avec des blancs par un résolveur devenait `invalid` : refusée, donc pas un trou
+  dans le garde, mais un rejet qui nomme la mauvaise raison.
+- **`parseIpAddress` n'était jamais appelée avec un IPv6 malformé.** La garde `value === null` de
+  cette branche pouvait sauter, et ce qui la remplace est un plantage dans `toBytes`.
+
+Six tests, chacun éprouvé rouge contre le mutant qu'il vise avant le push.
+
+### Et le vrai défaut, trouvé en suivant un mutant
+
+Un survivant restait incompréhensible : `if (lastColon === -1) return null;` muté en
+`if (lastColon === +1)`. Quelle entrée a son dernier `:` en position 1 ? `::1.2.3.4`. Et de fil en
+aiguille :
+
+```
+::127.0.0.1        allowed=true   category=public
+::169.254.169.254  allowed=true   category=public
+::10.0.0.1         allowed=true   category=public
+```
+
+**Le garde laissait passer la forme *IPv4-compatible* de RFC 4291 §2.5.5.1.** Il traitait
+`::ffff:a.b.c.d` (IPv4-mapped), NAT64 et 6to4 — les trois que son en-tête cite —, et pas
+`::a.b.c.d`. Dépréciée au profit de la forme mappée, et **oubliée pour cette raison même**. Le
+commentaire du module appelle cette famille « le contournement classique, pas un cas exotique » ;
+il en avait un.
+
+Ce n'est pas théorique : le garde résout un nom d'hôte et juge ce que le résolveur rend. Un
+résolveur hostile rend ce qu'il veut, y compris un AAAA valant `::169.254.169.254`. Aucun scan
+réel n'a encore tourné — c'est le jalon 2 —, donc rien n'a été exploité ; le défaut est corrigé
+avant d'avoir un consommateur.
+
+Sept tests écrits **avant** le correctif, rouges d'abord, comme le §5 l'exige de toute correction
+de bug. Le correctif tient en deux gestes : `::/96` rejoint la table d'imbrications, et
+`classifyAddress` juge d'abord l'adresse IPv6 **nommée** avant de décoder une IPv4 imbriquée. Le
+second n'est pas cosmétique : `::` et `::1` habitent `::/96` sans être des adresses
+IPv4-compatibles, et les décoder les aurait rendus `0.0.0.0` et `0.0.0.1` — toujours bloqués, mais
+le journal aurait appelé la loopback « unspecified ».
+
+### Ce que cette séquence dit du dispositif
+
+Trois enseignements, dans l'ordre où ils sont arrivés.
+
+**Une mesure mal lue est pire qu'une mesure absente.** Le chiffre de 49,16 % était juste ; ma
+lecture était fausse, et elle est partie en dette, en feuille de route et en description de PR
+mergée. Ce qui l'a corrigée n'est pas une relecture : c'est un `sed` et une exécution de tests, qui
+coûtent trente secondes. La règle à en tirer est du même ordre que celle de l'entrée 014 : une
+contrainte qu'on n'a jamais vue refuser quelque chose est une contrainte qu'on espère — et un
+constat qu'on n'a jamais vu se vérifier est un constat qu'on croit.
+
+**La couche de mutation a payé son installation le jour même.** Pas par son score, qui est un
+artefact à moitié, mais parce qu'un survivant incompréhensible a mené à un contournement SSRF réel
+dans le module que le §5 classe deuxième priorité — un module écrit en test-first strict, dont
+34 tests tabulaires n'avaient rien vu. C'est exactement l'argument du §5 : la couverture dit ce
+qu'on a oublié d'exécuter, la mutation dit ce qu'on a oublié de vérifier.
+
+**Le test-first ne protège pas d'un angle mort de conception.** La table des plages a été écrite
+avant le code et n'a pas bougé, et c'est vrai. Elle énumérait les plages **interdites** avec soin,
+et le trou n'était pas dans cette liste : il était dans la liste, plus courte et moins relue, des
+formes d'écriture qui portent une IPv4 dans une IPv6.

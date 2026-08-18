@@ -38,7 +38,7 @@ export type AddressCategory =
   | 'reserved';
 
 /** How an IPv4 address was carried inside an IPv6 one, when it was. */
-export type AddressEmbedding = 'ipv4-mapped' | 'nat64' | '6to4';
+export type AddressEmbedding = 'ipv4-mapped' | 'ipv4-compatible' | 'nat64' | '6to4';
 
 export interface ParsedIpAddress {
   readonly version: 4 | 6;
@@ -228,6 +228,11 @@ const EMBEDDINGS: readonly (readonly [
   extractShift: bigint,
 ])[] = [
   ['::ffff:0:0/96', 'ipv4-mapped', 0n],
+  // RFC 4291 §2.5.5.1, deprecated in favour of the mapped form above — and
+  // forgotten here until 18 August 2026, when `::127.0.0.1` was allowed
+  // through as an ordinary public address. Deprecated is not unreachable: a
+  // hostile resolver answers whatever it likes.
+  ['::/96', 'ipv4-compatible', 0n],
   ['64:ff9b::/96', 'nat64', 0n],
   ['2002::/16', '6to4', 80n], // 6to4 carries the IPv4 right after the prefix
 ];
@@ -283,6 +288,15 @@ export function classifyAddress(input: string): AddressVerdict {
   const value = trimmed === '' ? null : parseIpv6(trimmed);
   if (value === null) return { allowed: false, category: 'invalid', effectiveAddress: input };
 
+  // A named IPv6 address is judged as itself; only then is an embedded IPv4
+  // decoded. The order matters since `::/96` joined the embeddings: `::` and
+  // `::1` live inside it without being IPv4-compatible addresses, and decoding
+  // them would still block them while calling loopback "unspecified".
+  const named = categorise(value, IPV6_RANGES);
+  if (named !== 'public') {
+    return { allowed: false, category: named, effectiveAddress: formatIpv6(value) };
+  }
+
   for (const embedding of EMBEDDING_RANGES) {
     if (value >> embedding.shift === embedding.prefix) {
       const ipv4 = (value >> embedding.extractShift) & 0xffffffffn;
@@ -297,8 +311,7 @@ export function classifyAddress(input: string): AddressVerdict {
     }
   }
 
-  const category = categorise(value, IPV6_RANGES);
-  return { allowed: category === 'public', category, effectiveAddress: formatIpv6(value) };
+  return { allowed: true, category: 'public', effectiveAddress: formatIpv6(value) };
 }
 
 /** Convenience wrapper for callers that only need the yes/no. */
