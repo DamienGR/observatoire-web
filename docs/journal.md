@@ -2880,3 +2880,28 @@ Il n'existe pas de garde-fou contre cette famille-là. Un test qui compare le §
 existait, `stryker.config.json` existait, et rien ne tournait. Ce qui a marché est plus bête et non
 automatisable : **exécuter une fois chaque commande que le contrat déclare.** À faire à la fin de
 chaque jalon, faute de mieux.
+
+### Ce que la première mesure réelle a dit
+
+| page | performance | bonnes pratiques | LCP | CLS | Speed Index | poids |
+|---|---|---|---|---|---|---|
+| `/` | 0,94 | 0,92 | 460 ms | 0 | **2 585 ms** | 6,5 ko |
+| `/stats` | 1,00 | 0,92 | 209 ms | 0 | **245 ms** | 4,8 ko |
+
+Le site tient tous ses budgets. Deux observations valent plus que ce constat.
+
+**Un facteur dix de Speed Index entre deux pages jumelles.** Même gabarit, poids comparable, et
+`/` met dix fois plus longtemps à se stabiliser visuellement que `/stats` — alors que son LCP est
+de 460 ms, donc que le plus gros élément arrive vite. L'hypothèse est la fonction SSR froide, `/`
+étant la première mesurée. Elle n'est **pas vérifiée**, et c'est exactement pourquoi le seuil n'a
+pas été resserré : le faire sur une observation unique fabriquerait un rouge intermittent — la CI
+qu'on apprend à ignorer. Le rapport enregistre désormais l'ordre de passage, pour que la question
+soit tranchable la prochaine fois plutôt que re-supposée.
+
+**L'instrument ne savait pas s'expliquer.** `best-practices` plafonne à 0,92 sur les deux pages, et
+le résumé ne disait pas ce que coûtaient les huit points. Un artefact qui affiche un chiffre sans
+sa cause oblige la session suivante à re-mesurer au lieu de lire — dans un dépôt où personne ne
+peut ouvrir un navigateur, c'est un aller-retour de CI perdu. Le script énumère maintenant les
+audits imparfaits, avec leur identifiant et leur intitulé, dans le log et dans l'artefact. C'est le
+même défaut que `describeErrorChain` corrigeait pour les jobs (entrée 021), au même endroit du
+raisonnement : ce qui est journalisé doit permettre d'agir, pas seulement de constater.

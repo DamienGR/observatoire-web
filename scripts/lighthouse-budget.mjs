@@ -180,6 +180,38 @@ try {
       }
     }
 
+    // Why a category is not 1.00, in the artefact rather than in a browser
+    // nobody here can open. The first real run scored best-practices 0.92 on
+    // both pages and the summary could not say what cost the eight points —
+    // an instrument that does not explain itself makes the next session
+    // re-measure instead of read (docs/journal.md 025).
+    const imperfect = [];
+
+    for (const category of Object.keys(BUDGET)) {
+      if (typeof BUDGET[category] !== 'number') continue;
+      if ((lhr.categories[category]?.score ?? 1) >= 1) continue;
+
+      for (const ref of lhr.categories[category]?.auditRefs ?? []) {
+        const audit = lhr.audits[ref.id];
+        if (audit === undefined) continue;
+        if (audit.score === null || audit.score === undefined || audit.score >= 1) continue;
+
+        imperfect.push({
+          category,
+          id: ref.id,
+          title: audit.title,
+          score: audit.score,
+          ...(audit.displayValue === undefined ? {} : { displayValue: audit.displayValue }),
+        });
+      }
+    }
+
+    for (const audit of imperfect) {
+      console.log(
+        `  --    ${audit.category}: ${audit.id} scored ${String(audit.score)} — ${audit.title}`,
+      );
+    }
+
     const weight = lhr.audits['total-byte-weight']?.numericValue;
 
     if (typeof weight !== 'number') {
@@ -193,7 +225,15 @@ try {
       pass(`total byte weight ${(weight / 1024).toFixed(1)} kB`);
     }
 
-    report.push({ path, url, scores, metrics, totalByteWeight: weight });
+    report.push({
+      path,
+      url,
+      order: report.length,
+      scores,
+      metrics,
+      totalByteWeight: weight,
+      imperfect,
+    });
   }
 } finally {
   await browser.close();
