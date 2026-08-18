@@ -1,5 +1,6 @@
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import { withVerifiedTls } from '../lib/db/sslmode.js';
 import * as schema from './schema.js';
 
 /**
@@ -47,7 +48,11 @@ export interface ConnectOptions {
  */
 export function connect(connectionString: string, options: ConnectOptions = {}): Connection {
   const pool = new pg.Pool({
-    connectionString,
+    // Every connection this repository opens goes through here, which is why
+    // the TLS mode is settled here too rather than at three call sites. Neon
+    // writes `sslmode=require`; `pg` 9 will read that as "encrypt, do not
+    // verify" without anything breaking (src/lib/db/sslmode.ts).
+    connectionString: withVerifiedTls(connectionString),
     max: options.maxConnections ?? 2,
     connectionTimeoutMillis: options.connectionTimeoutMs ?? 15_000,
     ...(options.statementTimeoutMs === undefined
