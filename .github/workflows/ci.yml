@@ -301,6 +301,72 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
+  # The Lighthouse budget CLAUDE.md §6.4 has required since day one, and that
+  # did not exist. The brief asks for it twice and calls it "exigence non
+  # négociable pour un site qui publie le score des autres" — so the gap was in
+  # the repository, not in the sentence.
+  #
+  # Its own job rather than folded into `e2e`, for the reason `deploy` and `e2e`
+  # are already apart: a budget failure must never have to be untangled from a
+  # Playwright failure, and both wait out the same preview build in parallel
+  # instead of queueing.
+  #
+  # Pull requests only. What it guards is a regression in a diff, and a merge to
+  # main has been through here already.
+  lighthouse:
+    name: lighthouse (performance budget on the preview)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The revision @playwright/test pins, so the browser is versioned with the
+      # repository. The script honours CHROME_PATH for the session container,
+      # which carries a different revision; CI sets nothing and gets the pin.
+      - name: Install the browser Playwright pins
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Resolve the Netlify deploy URL
+        id: netlify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+        run: node scripts/resolve-netlify-url.mjs
+
+      - name: Hold the site to its budget
+        run: node scripts/lighthouse-budget.mjs "${{ steps.netlify.outputs.url }}"
+
+      # The numbers, whatever the verdict. No session can measure them —
+      # `pnpm preview` does not run under the Netlify adapter and a session
+      # container cannot reach a public URL — so this artefact is the only
+      # instrument the budgets can be set against (CLAUDE.md §1).
+      - name: Upload the Lighthouse summary
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lighthouse-summary
+          path: reports/lighthouse/
+          retention-days: 30
+          if-no-files-found: warn
+
   # Production, on pushes to main. There is nothing to resolve here: Netlify
   # posts a commit status for deploy previews but not for production deploys —
   # measured on 7e36ec2, where the resolver polled five minutes and saw zero

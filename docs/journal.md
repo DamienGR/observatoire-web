@@ -2789,3 +2789,94 @@ qu'on a oublié d'exécuter, la mutation dit ce qu'on a oublié de vérifier.
 avant le code et n'a pas bougé, et c'est vrai. Elle énumérait les plages **interdites** avec soin,
 et le trou n'était pas dans cette liste : il était dans la liste, plus courte et moins relue, des
 formes d'écriture qui portent une IPv4 dans une IPv6.
+
+---
+
+## 025 — La commande contractuelle qui ne fonctionne pas, et le budget qu'on ne peut pas mesurer
+
+**18 août 2026** · jalon 1 · branche `claude/j1-11-w4yw73`
+
+### Contexte
+
+Le §6.4 fait de « budget Lighthouse tenu » une condition de merge depuis le premier jour. Le brief
+le demande deux fois, dont une en ces termes : « exigence non négociable pour un site qui publie le
+score des autres ». Il n'y avait aucun Lighthouse dans le dépôt.
+
+C'est le **troisième** de la même famille en une semaine, après `test:integration` que rien
+n'exécutait (J1-11) et `test:mutation` que rien n'appelait (J1-17). Les trois ont la même forme :
+le contrat décrit une couche, la couche n'existe pas, et rien ne peut le signaler puisque c'est
+précisément l'organe de signalement qui manque. Une case de *definition of done* qu'on coche par
+habitude est pire qu'une case absente : elle rassure.
+
+La question posée au porteur était « l'implémenter ou retirer la phrase ». Le §12 tranche sans
+qu'on ait à choisir : le brief l'emporte sur l'intention, et il appelle l'exigence non négociable.
+
+### La friction : rien ici ne peut voir le site
+
+Le réflexe de cette semaine est de mesurer avant d'écrire un seuil. Impossible.
+
+```
+$ pnpm preview
+[preview] The @astrojs/netlify adapter does not support the preview command.
+```
+
+`pnpm preview` est listée au §3 depuis le bootstrap, parmi des commandes déclarées
+**contractuelles**. Elle ne fonctionne pas, et personne ne s'en était aperçu parce que personne
+n'en avait eu besoin : la CI juge la deploy preview, pas un build local. Elle est marquée
+inopérante plutôt que retirée — un script supprimé en silence est un script qu'une session future
+réinvente.
+
+Les deux autres portes sont fermées aussi. `pnpm dev` sert le site **sans CSS**, la CSP bloquant la
+feuille en ligne (entrée 013), donc mesurer un rendu là serait mesurer autre chose. Et Chromium
+lancé depuis une session ne joint aucune URL publique (entrée 020).
+
+**Aucune session ne peut donc voir ce que ce site rend.** C'est une limite plus large que ce
+ticket, et elle méritait d'être écrite en toutes lettres : le dépôt sait mesurer une base de
+données jetable, une API tierce, un schéma — et pas sa propre page.
+
+### Ce qu'on peut éprouver quand on ne peut pas mesurer
+
+La séparation qui reste possible : **le harnais ici, les nombres en CI.**
+
+Un serveur `node:http` de trente lignes sert une page minimale sur `127.0.0.1`, et le script tourne
+contre elle. Trois familles d'assertions, chacune vue verte puis rouge :
+
+| Ce qu'on force | Ce qu'on observe |
+|---|---|
+| page légère | performance 1.00, LCP 203 ms, poids 1,0 ko — tout vert |
+| image de 700 ko | `FAIL total byte weight 701.2 kB, budget 300 kB`, sortie 1 |
+| budget performance à 0,99 | `FAIL performance 0.96, budget 0.99` |
+| budget LCP à 500 ms | `FAIL largest-contentful-paint 1068ms, budget 500ms` |
+
+Le script marche. Ce qu'il dira du vrai site, personne ici ne le sait, et les seuils sont donc
+écrits comme **alarmes de régression** — assez larges pour qu'un site sans JavaScript passe avec de
+la marge, assez serrés pour qu'une image non optimisée ou une police bloquante échoue bruyamment —
+avec la dette qui va avec : les resserrer sur la première exécution réelle. C'est exactement ce que
+le seuil de mutation à 80 % avait raté en étant annoncé avant d'être mesuré (entrée 023).
+
+### Deux choses que le budget n'assère pas, et pourquoi
+
+**L'accessibilité.** Lighthouse en fait un score ; axe-core tourne déjà sur les six pages, dans les
+deux palettes, sans filtre de tags (J1-12). L'audit de Lighthouse est un sous-ensemble du même
+moteur. L'ajouter donnerait une seconde source de rouge disant la même chose moins bien — et le §5
+est clair sur ce que coûte un échec de CI qu'on apprend à interpréter.
+
+**Le SEO.** Chaque page porte `noindex` tant que l'observatoire ne publie aucune mesure, et c'est
+un choix argumenté en dette : indexer un observatoire vide sous un nom qui sonne institutionnel est
+la confusion que le §9 du brief cherche à éviter. Lighthouse le note comme un échec, à juste titre.
+Assérer cette catégorie ferait échouer le build pour une décision délibérée — le meilleur moyen
+d'apprendre à ignorer un rouge.
+
+Reste ce que le brief nomme réellement quand il parle de budget : le poids et la vitesse.
+
+### Ce que ces trois tickets disent ensemble
+
+Trois couches promises, trois couches absentes, trouvées en une semaine parce qu'on a commencé à
+regarder. Aucune n'a été trouvée par la CI — la CI ne peut pas signaler l'absence d'un juge — mais
+par la lecture d'un contrat en face d'un `ls .github/workflows/`.
+
+Il n'existe pas de garde-fou contre cette famille-là. Un test qui compare le §3 aux scripts de
+`package.json`, ou le §5 aux workflows, attraperait le nom sans attraper le vide : `test:mutation`
+existait, `stryker.config.json` existait, et rien ne tournait. Ce qui a marché est plus bête et non
+automatisable : **exécuter une fois chaque commande que le contrat déclare.** À faire à la fin de
+chaque jalon, faute de mieux.
