@@ -40,5 +40,12 @@ overrides:
   # GHSA-67mh-4wv8-2f99 (modérée) — le serveur de développement d'esbuild
   # répond `Access-Control-Allow-Origin: *`. La version atteinte est 0.18.20,
   # tirée par drizzle-kit via @esbuild-kit/*, une chaîne dépréciée que son
-  # auteur a fondue dans tsx. Le graphe de production porte déjà 0.28.
-  esbuild: ^0.25.0
+  # auteur a fondue dans tsx.
+  #
+  # **Portée restreinte à cette chaîne, et c'est le point.** Écrit `esbuild:
+  # ^0.25.0` sans préfixe, l'override s'applique à tout le graphe : astro et
+  # vite résolvent 0.28.1 d'eux-mêmes et se retrouvaient **rétrogradés** en
+  # 0.25.12 pour corriger une advisory qui ne les concernait pas. Un override
+  # est une affirmation qu'on sait mieux que la plage déclarée par un paquet ;
+  # ici on ne le sait que de `@esbuild-kit/core-utils`.
+  '@esbuild-kit/core-utils>esbuild': ^0.25.0

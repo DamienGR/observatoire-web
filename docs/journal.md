@@ -3316,3 +3316,37 @@ de la dérive.
 
 Ce que ça ajoute à Dependabot, qui tourne déjà : Dependabot répond « voici un correctif ». Rien ne
 répondait à l'autre moitié — **ce qui n'a pas de correctif, et pourquoi on le porte quand même**.
+
+### Post-scriptum : une CI rouge qu'il a fallu mesurer pour ne pas corriger
+
+La PR est revenue rouge sur `e2e` et `lighthouse`. Playwright annonçait des violations axe-core en
+palette sombre ; le détail disait autre chose — `Expected: 200, Received: 500` sur `/accessibilite`
+et `/stats`, et un `ERR_ABORTED` sur `/methodologie`. **Le test nommait la mauvaise panne** : il
+échoue à l'assertion de statut, bien avant d'exécuter axe-core, et son titre continue de parler
+d'accessibilité.
+
+Le premier suspect était mon propre diff, et c'était un suspect sérieux : l'override `esbuild:
+^0.25.0`, écrit sans préfixe de portée, s'applique à **tout** le graphe — astro et vite résolvent
+0.28.1 d'eux-mêmes et se retrouvaient rétrogradés pour corriger une advisory qui ne les concernait
+pas. Un bundle SSR construit par un esbuild plus ancien que celui que vite attend est exactement le
+genre de cause qui produit des 500 qu'aucun build ne signale.
+
+Ce qui a tranché n'est pas une relecture mais deux mesures. La preview répondait 200 partout, en
+moins d'une seconde. Et surtout la **production** — le code de `main`, sans une ligne de ce diff —
+répondait au même instant `/accessibilite` en **timeout à 45 secondes** et `/` en 4,2 s. Cinq
+minutes plus tard, les deux étaient saines, y compris sous douze requêtes parallèles.
+
+Donc : démarrage à froid de la fonction Netlify pendant une mauvaise minute de la plateforme, qui a
+frappé les deux déploiements. Pas le diff. La règle du §5 dit quoi faire d'un échec pareil — ne pas
+pousser de correctif pour lui — et la tentation était forte de « stabiliser » l'E2E dans la foulée.
+
+**L'override a quand même été corrigé**, et c'est une distinction qui vaut d'être écrite : il
+n'était pas la cause, il était un défaut. Restreint à `@esbuild-kit/core-utils>esbuild`, astro et
+vite gardent 0.28 et l'advisory reste fermée. Un override est une affirmation qu'on sait mieux que
+la plage déclarée par un paquet ; ici on ne le sait que d'un seul.
+
+Ce que l'épisode laisse en dette est plus intéressant que l'épisode : **la couche E2E n'a aucune
+tolérance au démarrage à froid**, et rien dans son verdict ne distingue « le site est cassé » de
+« la fonction se réveille ». C'est la troisième forme de la même dette — après « rien ne distingue
+CI rouge de CI absente » et le job vert qui attendait onze minutes une installation de paquets. Un
+juge unique doit dire *de quoi* il juge.
