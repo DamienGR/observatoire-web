@@ -2905,3 +2905,38 @@ peut ouvrir un navigateur, c'est un aller-retour de CI perdu. Le script énumèr
 audits imparfaits, avec leur identifiant et leur intitulé, dans le log et dans l'artefact. C'est le
 même défaut que `describeErrorChain` corrigeait pour les jobs (entrée 021), au même endroit du
 raisonnement : ce qui est journalisé doit permettre d'agir, pas seulement de constater.
+
+### L'instrument s'explique, et dit trois choses
+
+Le passage suivant, avec les audits imparfaits énumérés, a rendu les huit points manquants
+lisibles :
+
+```
+--  best-practices: errors-in-console scored 0 — Browser errors were logged to the console
+--  best-practices: inspector-issues scored 0 — Issues were logged in the Issues panel
+--  performance: server-response-time scored 0 — Reduce initial server response time
+--  performance: render-blocking-insight scored 0.5 — Render-blocking requests
+```
+
+**Un site sans JavaScript qui écrit dans la console.** Il n'envoie aucun script au client ; il ne
+peut donc pas journaliser grand-chose de lui-même. Un `curl` sur la preview donne la cause
+probable : aucun `<link rel="icon">` dans le gabarit, et `/favicon.ico` répond **404 en
+`text/html`** — le navigateur le demande sans qu'on le lui dise. Probable, pas certain : ce qui
+trancherait est un test E2E écoutant `page.on('console')`, et personne ici ne peut ouvrir une
+console. C'est en dette avec cette réserve écrite, pas avec une certitude empruntée.
+
+**Une requête bloquante qui est le prix d'une décision, pas un défaut.** Le §7 interdit
+`unsafe-inline`, donc `build.inlineStylesheets` vaut `'never'`, donc la feuille de style est une
+requête séparée qui bloque le rendu. Lighthouse retirera ces points à chaque exécution, pour
+toujours. Cela méritait une ligne explicite : sans elle, une session future « corrige » l'audit en
+relâchant la CSP, c'est-à-dire échange une exigence de sécurité contre un score de performance —
+sur le site d'un observatoire qui note les autres.
+
+**Et la lenteur est sur la page la plus simple.** `/` est plus lente que `/stats`, qui interroge
+pourtant une base de données. `server-response-time` est à zéro sur `/` seulement, et `/` est la
+page mesurée en premier : le démarrage à froid de la fonction Netlify. Rien n'est corrigé ni
+seuillé là-dessus, parce que ce qu'il faut d'abord est une mesure qui sépare le froid du chaud.
+
+Les trois sont notées et aucune n'est traitée ici. Le §12 veut une session, un ticket, et celui-ci
+était « faire exister la couche » — elle a trouvé trois choses en deux exécutions, ce qui est
+l'argument pour l'avoir faite, pas une permission de l'élargir.
