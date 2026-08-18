@@ -2940,3 +2940,180 @@ seuillé là-dessus, parce que ce qu'il faut d'abord est une mesure qui sépare 
 Les trois sont notées et aucune n'est traitée ici. Le §12 veut une session, un ticket, et celui-ci
 était « faire exister la couche » — elle a trouvé trois choses en deux exécutions, ce qui est
 l'argument pour l'avoir faite, pas une permission de l'élargir.
+
+---
+
+## 026 — Quatre petits tickets, et une erreur de branche qui valait la peine d'être faite
+
+**18 août 2026** · jalon 1 · branche `claude/j1-11-w4yw73`
+
+Quatre dettes accumulées par les tickets précédents, groupées par le porteur. Le §12 veut une PR
+par ticket ; le regroupement ici est **délibéré et de sa main**, pas une dérive de périmètre, et les
+quatre commits restent séparables. Trois choses valent d'être notées.
+
+### `sslmode` : corriger une régression qui n'a pas encore eu lieu
+
+`pg` avertit sur chaque connexion que `require` cessera de signifier « vérifie le certificat » en
+version 9. Neon écrit `sslmode=require` dans toutes les chaînes qu'il fabrique. Le jour venu,
+**rien ne cassera** : la connexion marchera et vérifiera moins.
+
+C'est une forme de défaut pour laquelle le §7 n'a pas de règle — il interdit de désactiver TLS, pas
+de l'affaiblir par inadvertance à la faveur d'une montée de version mineure de notre point de vue.
+La correction est écrite maintenant, pendant que les deux lectures coïncident encore : si
+`verify-full` échouait contre Neon, on le saurait aujourd'hui par une CI rouge, alors qu'attendre
+`pg` 9 aurait signifié découvrir le problème le jour où il devient silencieux.
+
+Le module est volontairement étroit, et ce sont ses refus qui comptent : il n'ajoute pas `sslmode`
+là où rien n'en demande — le Postgres jetable d'une session ne parle pas TLS, et exiger un
+certificat vérifié y casserait chaque exécution d'intégration pour une raison étrangère à la
+production — et il ne passe pas outre un `disable` écrit exprès.
+
+### `UrlCheck` : la seule fois où retirer du code fait monter la couverture
+
+L'union discriminée était en dette depuis le 9 août, avec la bonne analyse déjà écrite : « la
+sortie est de changer la représentation, pas d'ajouter un test ». Le résultat est mesurable et
+plus net que prévu.
+
+Le compilateur a désigné chaque appelant qui s'appuyait sur la forme lâche — c'était le
+changement en train de faire son travail. Puis ESLint en a trouvé un **quatrième** que je n'avais
+pas vu, un `?? 'URL rejected by the guard'` devenu inatteignable. Au total :
+
+| | avant | après |
+|---|---|---|
+| branches comptées | 636 | 632 |
+| couverture de branches | 94,96 % | 95,25 % |
+| tests ajoutés | — | zéro |
+
+Quatre branches mortes dans un garde de sécurité, retirées sans écrire une ligne de test. C'est
+l'illustration exacte de ce que la dette « branches défensives et couverture » disait : quand
+`noUncheckedIndexedAccess` et un seuil de couverture tirent en sens inverse, ce n'est pas au test
+de céder.
+
+### Le favicon : traiter une hypothèse sans la promouvoir en fait
+
+L'entrée 025 supposait que les erreurs de console venaient d'une favicon absente. C'était une
+déduction — pas de JavaScript sur la page, donc peu de candidats — appuyée par un `curl` montrant
+`/favicon.ico` en 404. Rien de plus.
+
+La tentation était de déclarer une icône et de considérer l'affaire close. Deux choses l'ont
+empêchée : cette session a déjà écrit un constat faux qui est parti en dette et en PR mergée
+(entrée 024), et un correctif dont on ne sait pas s'il corrige quelque chose est un correctif qui
+ne peut pas être défait plus tard en connaissance de cause.
+
+Les deux moitiés sont donc livrées ensemble mais séparées : `public/favicon.svg` déclarée dans le
+gabarit, **et** un test E2E qui écoute `page.on('console')` et `page.on('pageerror')` sur chaque
+page. Si l'hypothèse était bonne, l'E2E passe. Sinon, il échoue **en nommant** l'erreur réelle,
+et l'icône reste utile par ailleurs. Dans les deux cas la CI tranche, ce qu'aucune session ne peut
+faire ici — personne ne peut ouvrir une console.
+
+L'icône elle-même est trois barres croissantes, une couleur plate reprise de `--link`. Ni
+logotype ni emblème : le pied de page dit « initiative indépendante » (§11.6 du contrat), et une
+icône d'allure officielle travaillerait contre cette phrase.
+
+### La friction : j'ai branché depuis un `main` périmé
+
+Le premier commit de cette série a été écrit sur un `origin/main` d'avant le merge de la PR
+précédente. Rien ne l'a signalé — `git checkout -B <branche> origin/main` fait exactement ce qu'on
+lui demande avec la référence qu'il a en cache, et `git log` affichait un commit plausible. La
+découverte est venue d'un `grep` qui ne trouvait pas une ligne de dette écrite une heure plus tôt.
+
+Coût réel : un `git rebase`, sans conflit. Coût potentiel : une PR qui aurait discrètement défait
+le travail Lighthouse en le rebasant à l'envers, ou une résolution de conflit inventée sur des
+fichiers de documentation que personne ne relit ligne à ligne.
+
+La leçon n'est pas « faire attention ». C'est que **`git fetch` doit précéder chaque création de
+branche**, y compris et surtout quand on vient de merger soi-même il y a dix minutes — c'est
+précisément le moment où l'on est le plus sûr de connaître l'état de `main`, et le plus faux.
+
+### Post-scriptum : l'hypothèse était incomplète, et le test l'a dit
+
+Écrit après le premier passage en CI. Les sept pages ont échoué, ce qui est le meilleur résultat
+possible : le test avait été écrit pour trancher, pas pour confirmer, et il a tranché contre moi.
+
+Trois causes, là où j'en supposais une :
+
+| Ce qui écrit dans la console | Ce que c'est |
+|---|---|
+| `/favicon.ico` en 404 | ma supposition, **exacte**, et corrigée : l'erreur ne reste que sur `/404` |
+| `Failed to load resource: … 404` sur `/404` | le statut de la page elle-même, légitime |
+| `Applying inline style violates … 'style-src 'self''` | **la bannière de deploy preview de Netlify** |
+| `Framing 'https://app.netlify.com' violates … 'default-src 'self''` | la même bannière |
+
+Le `curl` le montre sans ambiguïté :
+
+```
+<div data-netlify-deploy-id="…" data-netlify-site-id="…" style="position:fixed">
+```
+
+Netlify injecte cette bannière dans chaque deploy preview. Elle porte un style en ligne et ouvre
+une iframe vers son propre domaine, et **notre CSP bloque les deux**. Autrement dit : le site ne
+faisait rien de mal, la CSP faisait exactement son travail, et ce que Lighthouse comptait comme des
+« erreurs de console » venait pour l'essentiel d'un tiers qui modifie la page qu'on mesure.
+
+Deux conséquences qui dépassent ce ticket.
+
+**Le budget Lighthouse mesure une preview que Netlify altère.** Le score `best-practices` relevé
+en PR est plafonné par du balisage tiers. Les deux issues coûtent quelque chose — mesurer la
+production, mais alors le budget ne garde plus un diff *avant* son merge ; ou soustraire ces
+audits, et se fier à une liste. C'est en dette, à trancher quand le plafond gênera.
+
+**Une exclusion n'est honnête que si autre chose vérifie ce qu'elle exclut.** Le filtre qui ignore
+« inline style violates » ignorerait aussi un style en ligne que *nous* aurions écrit — et le §7
+interdisant `unsafe-inline`, un tel style serait silencieusement supprimé par le navigateur : la
+page rendrait autrement que le gabarit, sans que rien ne le dise, la seule trace étant précisément
+le message qu'on vient de filtrer. D'où un second test par page, qui assère que le document ne
+porte aucun attribut `style` en dehors de la `div` injectée par Netlify.
+
+C'est la deuxième fois de la journée qu'une supposition écrite avec assurance se révèle fausse —
+la première portait sur le garde SSRF (entrée 024). Les deux fois, ce qui a corrigé n'est pas une
+relecture mais une exécution. Et cette fois, contrairement à la première, le doute était déjà dans
+la PR : les deux moitiés — l'icône et le test — avaient été livrées ensemble **parce que** je ne
+savais pas laquelle des deux avait raison.
+
+### Et une deuxième correction, du même test
+
+Le test que j'avais écrit pour rendre l'exclusion honnête a échoué à son tour, sur les sept pages,
+avec « un élément porte un `style` et ce n'est pas la div de Netlify ». Le HTML servi n'en contient
+pourtant qu'un seul. La réponse était dans ce que je n'avais pas regardé :
+
+```
+</body> </html><div data-netlify-deploy-id="…" style="position:fixed">
+  <!-- This div is automatically inserted by Netlify for all Deploy Preview URLs. -->
+  <script async src="/.netlify/scripts/cdp"></script>
+</div>
+```
+
+Netlify ajoute sa bannière **après `</html>`**, et y charge un script servi depuis
+`/.netlify/scripts/cdp` — c'est-à-dire **notre propre origine**. `script-src 'self'` l'autorise
+donc, il s'exécute, et il injecte à l'exécution le balisage que mon sélecteur attrapait. La CSP
+n'était pas contournée : elle est simplement moins étroite qu'elle ne se lit, parce que la
+plateforme peut servir du script sous notre domaine. C'est noté en dette — sans conséquence connue,
+et à savoir avant de raisonner sur ce que `'self'` garantit.
+
+La correction du test est un changement de question. Je demandais « le DOM porte-t-il un style en
+ligne ? », ce qui inclut ce qu'un tiers y met après coup ; ce que je voulais savoir est « **servons-
+nous** un style en ligne ? ». L'assertion porte désormais sur les octets servis, tronqués à la
+bannière. Deux échecs de CI pour un test de vingt lignes, et les deux ont appris quelque chose que
+personne ici ne pouvait voir autrement.
+
+### Post-scriptum : un job vert qui a failli mourir de son propre délai
+
+La troisième exécution est passée, et son profil mérite d'être noté. `playwright install
+--with-deps chromium` a pris **11 minutes 2 secondes** — l'étape dure d'ordinaire vingt-cinq. Les
+quatre étapes précédentes avaient pris trois secondes chacune, et la suite de tests elle-même en a
+pris vingt et une. Le job a fini à 11 min 44, contre un `timeout-minutes: 15`.
+
+Rien n'a échoué. Rien n'a rien dit non plus : pendant onze minutes, l'API répondait `in_progress`,
+ce qui ressemble exactement à un test lent. C'est la dette « rien ne distingue *CI rouge* de *CI
+absente* » sous une troisième forme — ici ni rouge ni absente, mais **en train d'attendre autre
+chose que du travail**, et à trois minutes d'être tuée par un délai qui aurait alors accusé le
+diff.
+
+Deux choses en découlent. D'abord la cible du §5 — moins de dix minutes du push au verdict — a été
+crevée par une installation de paquets système, pas par des tests : le budget mesure ce que nous
+écrivons, pas ce dont nous dépendons. Ensuite le job `lighthouse` ajouté ce matin paie la même
+étape, donc la surface a doublé le jour même.
+
+Noté sans être corrigé, et la raison est celle que ce journal répète : une occurrence n'est pas une
+fréquence. Mettre le navigateur en cache ou retirer `--with-deps` sont des réponses plausibles à un
+motif qu'on a vu une fois.

@@ -195,7 +195,7 @@ export async function guardedFetch(
   for (let hop = 0; hop <= maxRedirects; hop += 1) {
     const checked = checkUrl(current, { allowHttp: options.allowHttp ?? false });
 
-    if (!checked.ok || checked.url === undefined) {
+    if (!checked.ok) {
       if (checked.reason === 'blocked-address' && checked.address !== undefined) {
         audit({
           type: 'blocked',
@@ -209,7 +209,7 @@ export async function guardedFetch(
           checked.address.effectiveAddress,
         );
       }
-      throw new UnsafeUrlError(checked.detail ?? 'URL rejected by the guard', current);
+      throw new UnsafeUrlError(checked.detail, current);
     }
 
     const url = checked.url;

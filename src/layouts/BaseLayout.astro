@@ -35,6 +35,14 @@ const canonical = Astro.site === undefined ? undefined : new URL(Astro.url.pathn
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title} — observatoire-web.fr</title>
     <meta name="description" content={description} />
+    {
+      /* Declared rather than left to chance: without it a browser asks for
+        /favicon.ico of its own accord, gets a 404, and logs an error to the
+        console — which is what cost this site the eight points of Lighthouse
+        best-practices while shipping zero JavaScript (docs/journal.md 025).
+        tests/e2e/shell.spec.ts asserts the console stays quiet. */
+    }
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     {canonical && <link rel="canonical" href={canonical.href} />}
     {
       /*

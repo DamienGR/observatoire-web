@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import { connect } from '../db/client.js';
 import { applyIngestion, type IngestionOutcome } from '../db/ingest.js';
 import { requireEnv, type Env } from '../lib/env/index.js';
+import { describeErrorChain } from '../lib/log/errors.js';
 import { serverEnv } from '../lib/env/runtime.js';
 import { buildIngestionPlan, type IngestionPlan } from '../lib/ingest/plan.js';
 import { fetchCommunes, fetchMairies } from '../lib/ingest/referentials.js';
@@ -146,7 +147,12 @@ try {
   await run(argv, logger);
 } catch (error) {
   // The message, never the payload: this log is public on a public repository.
-  const message = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error';
+  // The whole chain, because the first dispatch of this job proved what the
+  // outer message alone is worth: `Failed query: select count(*) from
+  // "commune"` said something went wrong and nothing about what, while
+  // `relation "commune" does not exist` was one `cause` away
+  // (docs/journal.md 021).
+  const message = describeErrorChain(error);
   logger.error('ingestion failed', { error: message });
 
   const reportPath = parseArguments(argv).reportPath;
