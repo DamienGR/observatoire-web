@@ -13,6 +13,39 @@ import { SHELL_ROUTES, expectedStatus } from './routes.js';
  * than trusting the component.
  */
 
+/**
+ * A site that ships no JavaScript should have nothing to say on the console.
+ *
+ * This exists because the first Lighthouse budget scored best-practices 0.92 on
+ * every page, and `errors-in-console` was one of the two audits paying for it —
+ * on pages that run no script at all. The likely cause was an undeclared
+ * favicon, which browsers request unprompted, but nobody in a cloud session can
+ * open a console to find out (docs/journal.md 025). This turns the hypothesis
+ * into something CI answers, and keeps answering.
+ *
+ * It asserts what the page *causes*, so a message names itself in the failure
+ * rather than sending the next session to guess again.
+ */
+test.describe('the console stays quiet', () => {
+  for (const route of SHELL_ROUTES) {
+    test(`${route} logs no browser error`, async ({ page }) => {
+      const errors: string[] = [];
+
+      page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+      });
+      // An exception that escaped to the window. Impossible today with no
+      // script on the page, which is exactly why it is worth pinning.
+      page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
+
+      await page.goto(route);
+      await page.waitForLoadState('networkidle');
+
+      expect(errors, `${route} logged ${String(errors.length)} error(s)`).toEqual([]);
+    });
+  }
+});
+
 test.describe('every page of the shell', () => {
   for (const route of SHELL_ROUTES) {
     test(`${route} is one document with an unbroken heading hierarchy`, async ({ page }) => {

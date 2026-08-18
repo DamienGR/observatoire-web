@@ -2940,3 +2940,87 @@ seuillé là-dessus, parce que ce qu'il faut d'abord est une mesure qui sépare 
 Les trois sont notées et aucune n'est traitée ici. Le §12 veut une session, un ticket, et celui-ci
 était « faire exister la couche » — elle a trouvé trois choses en deux exécutions, ce qui est
 l'argument pour l'avoir faite, pas une permission de l'élargir.
+
+---
+
+## 026 — Quatre petits tickets, et une erreur de branche qui valait la peine d'être faite
+
+**18 août 2026** · jalon 1 · branche `claude/j1-11-w4yw73`
+
+Quatre dettes accumulées par les tickets précédents, groupées par le porteur. Le §12 veut une PR
+par ticket ; le regroupement ici est **délibéré et de sa main**, pas une dérive de périmètre, et les
+quatre commits restent séparables. Trois choses valent d'être notées.
+
+### `sslmode` : corriger une régression qui n'a pas encore eu lieu
+
+`pg` avertit sur chaque connexion que `require` cessera de signifier « vérifie le certificat » en
+version 9. Neon écrit `sslmode=require` dans toutes les chaînes qu'il fabrique. Le jour venu,
+**rien ne cassera** : la connexion marchera et vérifiera moins.
+
+C'est une forme de défaut pour laquelle le §7 n'a pas de règle — il interdit de désactiver TLS, pas
+de l'affaiblir par inadvertance à la faveur d'une montée de version mineure de notre point de vue.
+La correction est écrite maintenant, pendant que les deux lectures coïncident encore : si
+`verify-full` échouait contre Neon, on le saurait aujourd'hui par une CI rouge, alors qu'attendre
+`pg` 9 aurait signifié découvrir le problème le jour où il devient silencieux.
+
+Le module est volontairement étroit, et ce sont ses refus qui comptent : il n'ajoute pas `sslmode`
+là où rien n'en demande — le Postgres jetable d'une session ne parle pas TLS, et exiger un
+certificat vérifié y casserait chaque exécution d'intégration pour une raison étrangère à la
+production — et il ne passe pas outre un `disable` écrit exprès.
+
+### `UrlCheck` : la seule fois où retirer du code fait monter la couverture
+
+L'union discriminée était en dette depuis le 9 août, avec la bonne analyse déjà écrite : « la
+sortie est de changer la représentation, pas d'ajouter un test ». Le résultat est mesurable et
+plus net que prévu.
+
+Le compilateur a désigné chaque appelant qui s'appuyait sur la forme lâche — c'était le
+changement en train de faire son travail. Puis ESLint en a trouvé un **quatrième** que je n'avais
+pas vu, un `?? 'URL rejected by the guard'` devenu inatteignable. Au total :
+
+| | avant | après |
+|---|---|---|
+| branches comptées | 636 | 632 |
+| couverture de branches | 94,96 % | 95,25 % |
+| tests ajoutés | — | zéro |
+
+Quatre branches mortes dans un garde de sécurité, retirées sans écrire une ligne de test. C'est
+l'illustration exacte de ce que la dette « branches défensives et couverture » disait : quand
+`noUncheckedIndexedAccess` et un seuil de couverture tirent en sens inverse, ce n'est pas au test
+de céder.
+
+### Le favicon : traiter une hypothèse sans la promouvoir en fait
+
+L'entrée 025 supposait que les erreurs de console venaient d'une favicon absente. C'était une
+déduction — pas de JavaScript sur la page, donc peu de candidats — appuyée par un `curl` montrant
+`/favicon.ico` en 404. Rien de plus.
+
+La tentation était de déclarer une icône et de considérer l'affaire close. Deux choses l'ont
+empêchée : cette session a déjà écrit un constat faux qui est parti en dette et en PR mergée
+(entrée 024), et un correctif dont on ne sait pas s'il corrige quelque chose est un correctif qui
+ne peut pas être défait plus tard en connaissance de cause.
+
+Les deux moitiés sont donc livrées ensemble mais séparées : `public/favicon.svg` déclarée dans le
+gabarit, **et** un test E2E qui écoute `page.on('console')` et `page.on('pageerror')` sur chaque
+page. Si l'hypothèse était bonne, l'E2E passe. Sinon, il échoue **en nommant** l'erreur réelle,
+et l'icône reste utile par ailleurs. Dans les deux cas la CI tranche, ce qu'aucune session ne peut
+faire ici — personne ne peut ouvrir une console.
+
+L'icône elle-même est trois barres croissantes, une couleur plate reprise de `--link`. Ni
+logotype ni emblème : le pied de page dit « initiative indépendante » (§11.6 du contrat), et une
+icône d'allure officielle travaillerait contre cette phrase.
+
+### La friction : j'ai branché depuis un `main` périmé
+
+Le premier commit de cette série a été écrit sur un `origin/main` d'avant le merge de la PR
+précédente. Rien ne l'a signalé — `git checkout -B <branche> origin/main` fait exactement ce qu'on
+lui demande avec la référence qu'il a en cache, et `git log` affichait un commit plausible. La
+découverte est venue d'un `grep` qui ne trouvait pas une ligne de dette écrite une heure plus tôt.
+
+Coût réel : un `git rebase`, sans conflit. Coût potentiel : une PR qui aurait discrètement défait
+le travail Lighthouse en le rebasant à l'envers, ou une résolution de conflit inventée sur des
+fichiers de documentation que personne ne relit ligne à ligne.
+
+La leçon n'est pas « faire attention ». C'est que **`git fetch` doit précéder chaque création de
+branche**, y compris et surtout quand on vient de merger soi-même il y a dix minutes — c'est
+précisément le moment où l'on est le plus sûr de connaître l'état de `main`, et le plus faux.
