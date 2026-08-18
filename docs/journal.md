@@ -2789,3 +2789,154 @@ qu'on a oublié d'exécuter, la mutation dit ce qu'on a oublié de vérifier.
 avant le code et n'a pas bougé, et c'est vrai. Elle énumérait les plages **interdites** avec soin,
 et le trou n'était pas dans cette liste : il était dans la liste, plus courte et moins relue, des
 formes d'écriture qui portent une IPv4 dans une IPv6.
+
+---
+
+## 025 — La commande contractuelle qui ne fonctionne pas, et le budget qu'on ne peut pas mesurer
+
+**18 août 2026** · jalon 1 · branche `claude/j1-11-w4yw73`
+
+### Contexte
+
+Le §6.4 fait de « budget Lighthouse tenu » une condition de merge depuis le premier jour. Le brief
+le demande deux fois, dont une en ces termes : « exigence non négociable pour un site qui publie le
+score des autres ». Il n'y avait aucun Lighthouse dans le dépôt.
+
+C'est le **troisième** de la même famille en une semaine, après `test:integration` que rien
+n'exécutait (J1-11) et `test:mutation` que rien n'appelait (J1-17). Les trois ont la même forme :
+le contrat décrit une couche, la couche n'existe pas, et rien ne peut le signaler puisque c'est
+précisément l'organe de signalement qui manque. Une case de *definition of done* qu'on coche par
+habitude est pire qu'une case absente : elle rassure.
+
+La question posée au porteur était « l'implémenter ou retirer la phrase ». Le §12 tranche sans
+qu'on ait à choisir : le brief l'emporte sur l'intention, et il appelle l'exigence non négociable.
+
+### La friction : rien ici ne peut voir le site
+
+Le réflexe de cette semaine est de mesurer avant d'écrire un seuil. Impossible.
+
+```
+$ pnpm preview
+[preview] The @astrojs/netlify adapter does not support the preview command.
+```
+
+`pnpm preview` est listée au §3 depuis le bootstrap, parmi des commandes déclarées
+**contractuelles**. Elle ne fonctionne pas, et personne ne s'en était aperçu parce que personne
+n'en avait eu besoin : la CI juge la deploy preview, pas un build local. Elle est marquée
+inopérante plutôt que retirée — un script supprimé en silence est un script qu'une session future
+réinvente.
+
+Les deux autres portes sont fermées aussi. `pnpm dev` sert le site **sans CSS**, la CSP bloquant la
+feuille en ligne (entrée 013), donc mesurer un rendu là serait mesurer autre chose. Et Chromium
+lancé depuis une session ne joint aucune URL publique (entrée 020).
+
+**Aucune session ne peut donc voir ce que ce site rend.** C'est une limite plus large que ce
+ticket, et elle méritait d'être écrite en toutes lettres : le dépôt sait mesurer une base de
+données jetable, une API tierce, un schéma — et pas sa propre page.
+
+### Ce qu'on peut éprouver quand on ne peut pas mesurer
+
+La séparation qui reste possible : **le harnais ici, les nombres en CI.**
+
+Un serveur `node:http` de trente lignes sert une page minimale sur `127.0.0.1`, et le script tourne
+contre elle. Trois familles d'assertions, chacune vue verte puis rouge :
+
+| Ce qu'on force | Ce qu'on observe |
+|---|---|
+| page légère | performance 1.00, LCP 203 ms, poids 1,0 ko — tout vert |
+| image de 700 ko | `FAIL total byte weight 701.2 kB, budget 300 kB`, sortie 1 |
+| budget performance à 0,99 | `FAIL performance 0.96, budget 0.99` |
+| budget LCP à 500 ms | `FAIL largest-contentful-paint 1068ms, budget 500ms` |
+
+Le script marche. Ce qu'il dira du vrai site, personne ici ne le sait, et les seuils sont donc
+écrits comme **alarmes de régression** — assez larges pour qu'un site sans JavaScript passe avec de
+la marge, assez serrés pour qu'une image non optimisée ou une police bloquante échoue bruyamment —
+avec la dette qui va avec : les resserrer sur la première exécution réelle. C'est exactement ce que
+le seuil de mutation à 80 % avait raté en étant annoncé avant d'être mesuré (entrée 023).
+
+### Deux choses que le budget n'assère pas, et pourquoi
+
+**L'accessibilité.** Lighthouse en fait un score ; axe-core tourne déjà sur les six pages, dans les
+deux palettes, sans filtre de tags (J1-12). L'audit de Lighthouse est un sous-ensemble du même
+moteur. L'ajouter donnerait une seconde source de rouge disant la même chose moins bien — et le §5
+est clair sur ce que coûte un échec de CI qu'on apprend à interpréter.
+
+**Le SEO.** Chaque page porte `noindex` tant que l'observatoire ne publie aucune mesure, et c'est
+un choix argumenté en dette : indexer un observatoire vide sous un nom qui sonne institutionnel est
+la confusion que le §9 du brief cherche à éviter. Lighthouse le note comme un échec, à juste titre.
+Assérer cette catégorie ferait échouer le build pour une décision délibérée — le meilleur moyen
+d'apprendre à ignorer un rouge.
+
+Reste ce que le brief nomme réellement quand il parle de budget : le poids et la vitesse.
+
+### Ce que ces trois tickets disent ensemble
+
+Trois couches promises, trois couches absentes, trouvées en une semaine parce qu'on a commencé à
+regarder. Aucune n'a été trouvée par la CI — la CI ne peut pas signaler l'absence d'un juge — mais
+par la lecture d'un contrat en face d'un `ls .github/workflows/`.
+
+Il n'existe pas de garde-fou contre cette famille-là. Un test qui compare le §3 aux scripts de
+`package.json`, ou le §5 aux workflows, attraperait le nom sans attraper le vide : `test:mutation`
+existait, `stryker.config.json` existait, et rien ne tournait. Ce qui a marché est plus bête et non
+automatisable : **exécuter une fois chaque commande que le contrat déclare.** À faire à la fin de
+chaque jalon, faute de mieux.
+
+### Ce que la première mesure réelle a dit
+
+| page | performance | bonnes pratiques | LCP | CLS | Speed Index | poids |
+|---|---|---|---|---|---|---|
+| `/` | 0,94 | 0,92 | 460 ms | 0 | **2 585 ms** | 6,5 ko |
+| `/stats` | 1,00 | 0,92 | 209 ms | 0 | **245 ms** | 4,8 ko |
+
+Le site tient tous ses budgets. Deux observations valent plus que ce constat.
+
+**Un facteur dix de Speed Index entre deux pages jumelles.** Même gabarit, poids comparable, et
+`/` met dix fois plus longtemps à se stabiliser visuellement que `/stats` — alors que son LCP est
+de 460 ms, donc que le plus gros élément arrive vite. L'hypothèse est la fonction SSR froide, `/`
+étant la première mesurée. Elle n'est **pas vérifiée**, et c'est exactement pourquoi le seuil n'a
+pas été resserré : le faire sur une observation unique fabriquerait un rouge intermittent — la CI
+qu'on apprend à ignorer. Le rapport enregistre désormais l'ordre de passage, pour que la question
+soit tranchable la prochaine fois plutôt que re-supposée.
+
+**L'instrument ne savait pas s'expliquer.** `best-practices` plafonne à 0,92 sur les deux pages, et
+le résumé ne disait pas ce que coûtaient les huit points. Un artefact qui affiche un chiffre sans
+sa cause oblige la session suivante à re-mesurer au lieu de lire — dans un dépôt où personne ne
+peut ouvrir un navigateur, c'est un aller-retour de CI perdu. Le script énumère maintenant les
+audits imparfaits, avec leur identifiant et leur intitulé, dans le log et dans l'artefact. C'est le
+même défaut que `describeErrorChain` corrigeait pour les jobs (entrée 021), au même endroit du
+raisonnement : ce qui est journalisé doit permettre d'agir, pas seulement de constater.
+
+### L'instrument s'explique, et dit trois choses
+
+Le passage suivant, avec les audits imparfaits énumérés, a rendu les huit points manquants
+lisibles :
+
+```
+--  best-practices: errors-in-console scored 0 — Browser errors were logged to the console
+--  best-practices: inspector-issues scored 0 — Issues were logged in the Issues panel
+--  performance: server-response-time scored 0 — Reduce initial server response time
+--  performance: render-blocking-insight scored 0.5 — Render-blocking requests
+```
+
+**Un site sans JavaScript qui écrit dans la console.** Il n'envoie aucun script au client ; il ne
+peut donc pas journaliser grand-chose de lui-même. Un `curl` sur la preview donne la cause
+probable : aucun `<link rel="icon">` dans le gabarit, et `/favicon.ico` répond **404 en
+`text/html`** — le navigateur le demande sans qu'on le lui dise. Probable, pas certain : ce qui
+trancherait est un test E2E écoutant `page.on('console')`, et personne ici ne peut ouvrir une
+console. C'est en dette avec cette réserve écrite, pas avec une certitude empruntée.
+
+**Une requête bloquante qui est le prix d'une décision, pas un défaut.** Le §7 interdit
+`unsafe-inline`, donc `build.inlineStylesheets` vaut `'never'`, donc la feuille de style est une
+requête séparée qui bloque le rendu. Lighthouse retirera ces points à chaque exécution, pour
+toujours. Cela méritait une ligne explicite : sans elle, une session future « corrige » l'audit en
+relâchant la CSP, c'est-à-dire échange une exigence de sécurité contre un score de performance —
+sur le site d'un observatoire qui note les autres.
+
+**Et la lenteur est sur la page la plus simple.** `/` est plus lente que `/stats`, qui interroge
+pourtant une base de données. `server-response-time` est à zéro sur `/` seulement, et `/` est la
+page mesurée en premier : le démarrage à froid de la fonction Netlify. Rien n'est corrigé ni
+seuillé là-dessus, parce que ce qu'il faut d'abord est une mesure qui sépare le froid du chaud.
+
+Les trois sont notées et aucune n'est traitée ici. Le §12 veut une session, un ticket, et celui-ci
+était « faire exister la couche » — elle a trouvé trois choses en deux exécutions, ce qui est
+l'argument pour l'avoir faite, pas une permission de l'élargir.

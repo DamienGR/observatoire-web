@@ -69,7 +69,7 @@ pnpm install --frozen-lockfile   # Installation (toujours --frozen-lockfile en C
 pnpm dev                         # Serveur de développement
 pnpm build                       # Build de production (site)
 pnpm build:jobs                  # Compile src/jobs/ et ses dépendances vers dist-jobs/
-pnpm preview                     # Sert le build local
+pnpm preview                     # Sert le build local — INOPÉRANT, cf. ci-dessous
 
 pnpm typecheck                   # astro check + tsc --noEmit — zéro erreur exigé
 pnpm lint                        # ESLint, zéro warning (--max-warnings=0)
@@ -97,6 +97,13 @@ corriger. Il n'inclut **délibérément pas** `test:integration`, `test:e2e`, `t
 `test:mutation` :
 ces couches ont leur propre place dans le pipeline (§5) et alourdiraient une commande dont tout
 l'intérêt est d'être exécutable à chaque commit sans y penser.
+
+**`pnpm preview` ne fonctionne pas, et c'est écrit ici plutôt que découvert deux fois.**
+`@astrojs/netlify` refuse la commande — « the adapter does not support the preview command »,
+constaté le 18/8. Le nom reste dans ce fichier parce que le §3 est contractuel et qu'un script
+retiré en silence est un script qu'une session future réinvente ; il est marqué inopérant à la
+place. Conséquence pratique : **aucune session ne peut servir le build**, donc aucune ne peut
+mesurer ce que le site rend vraiment. C'est la CI qui mesure, ici comme ailleurs.
 
 `build:jobs` est dans `verify` pour une raison précise : les jobs de `src/jobs/` sont le seul
 TypeScript que rien d'autre ne compile — Astro construit le site, Vitest transpile les tests, et un
@@ -213,7 +220,8 @@ sans que personne ne le remarque, et c'est ainsi qu'on se retrouve avec une CI d
 | Unitaire (Vitest, zéro I/O) | `src/lib/` — l'essentiel des tests | **< 30 s**, échec de CI au-delà de 60 s | Chaque push |
 | Intégration (branche Neon éphémère, transport HTTP intercepté) | `src/db/`, jobs, endpoints, migrations en dry-run | **< 4 min** | Chaque push |
 | E2E et accessibilité (Playwright sur la deploy preview) | 5 à 8 parcours, un par gabarit de page | **< 6 min** | Chaque PR |
-| Mutation, Lighthouse complet, contrats API réels | voir plus bas | non borné | Planifié |
+| Budget Lighthouse (sur la deploy preview) | `/` et `/stats`, un gabarit chacun | **< 5 min** | Chaque PR |
+| Mutation, Lighthouse **complet**, contrats API réels | voir plus bas | non borné | Planifié |
 
 Les **contrats d'API** sont le projet Vitest `contract` (`tests/contract/`), le seul sans garde
 anti-I/O : il interroge `geo.api.gouv.fr` et l'annuaire DILA pour vérifier que les fixtures gelées
@@ -336,6 +344,12 @@ Une PR n'est mergeable que si **tous** ces points sont vrais :
 3. Les budgets de temps du §5 sont tenus. Une couche qui dépasse son budget est un problème à
    traiter dans la PR, pas un seuil à relever.
 4. Aucune régression d'accessibilité : E2E Playwright verts, budget Lighthouse tenu.
+   Le budget est tenu par `scripts/lighthouse-budget.mjs` et le job `lighthouse` de `ci.yml`,
+   sur la deploy preview. Il porte sur **le poids et la vitesse** : score performance et bonnes
+   pratiques, quatre métriques (LCP, TBT, CLS, Speed Index) et le poids total transféré. Il
+   n'assère **ni l'accessibilité** — axe-core la couvre déjà sans filtre de tags sur chaque page
+   dans les deux palettes, et une seconde source dirait la même chose moins bien — **ni le SEO**,
+   que le `noindex` délibéré de chaque page fait échouer à juste titre.
 5. Toute migration de schéma est **versionnée, committée, réversible ou explicitement
    documentée comme non réversible**, et validée en dry-run sur une branche Neon éphémère.
 6. Aucun secret, aucune URL de base, aucun jeton dans le diff — y compris dans les tests,
