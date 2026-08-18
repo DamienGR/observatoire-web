@@ -1,8 +1,9 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "packageManager": "pnpm",
+  "plugins": ["@stryker-mutator/vitest-runner"],
   "testRunner": "vitest",
-  "vitest": { "configFile": "vitest.config.ts", "project": "unit" },
+  "vitest": { "configFile": "vitest.mutation.config.ts" },
   "mutate": ["src/lib/**/*.ts", "!src/lib/**/*.test.ts"],
   "reporters": ["html", "clear-text", "progress"],
   "htmlReporter": { "fileName": "reports/mutation/index.html" },

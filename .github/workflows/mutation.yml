@@ -1,0 +1,87 @@
+name: Mutation
+
+# The measure of quality CLAUDE.md §5 keeps apart from coverage: coverage says
+# "what did I forget", the mutation score says "would my tests notice a
+# regression". Restricted to src/lib/ — the pure logic — because that is where
+# a test can be meaningful without I/O.
+#
+# NEVER on `pull_request`, and §5 says so twice: this layer is listed as
+# unbounded, and it takes half an hour. A check that slow on the path of a
+# pull request is a check people learn to wait out, then to ignore.
+#
+# Informative until milestone 3, and blocking on the scoring module from
+# milestone 5, when methodology v2 makes the subject vital. Until then
+# `stryker.config.json` sets `break: null` on purpose: this job reports, it
+# does not gate.
+#
+# It exists because the command did not run anywhere. `pnpm test:mutation`,
+# `stryker.config.json` and both dependencies had been in the repository since
+# the bootstrap, and nothing ever invoked them — the same shape of gap as the
+# integration suite before J1-11. The first real run found the configuration
+# broken in two ways (docs/journal.md 023).
+on:
+  schedule:
+    # Mondays, 04:23 UTC — before the contract suite at 05:17, and off the hour
+    # because GitHub queues everything written `0 * * * *` and delivers it late.
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ASTRO_TELEMETRY_DISABLED: '1'
+
+concurrency:
+  group: mutation
+  cancel-in-progress: false
+
+jobs:
+  mutation:
+    name: mutation (Stryker on src/lib/)
+    runs-on: ubuntu-latest
+    # Measured, not guessed: 1 957 mutants over 35 files take about half an
+    # hour on the four cores a session container and a standard runner both
+    # have. The margin is for a slower runner, not for growth — if this job
+    # starts approaching the limit, the answer is in §5's warning about layers
+    # that grow without anyone noticing, not in a bigger number here.
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Stryker runs `vitest.mutation.config.ts`, which holds the unit project
+      # and nothing else. That is not tidiness: the runner has no option to
+      # select a project, and the `contract` project calls two government APIs
+      # for real — once per mutant. tests/unit/mutation-config.test.ts is what
+      # keeps that true.
+      - name: Run the mutation suite
+        run: pnpm test:mutation
+
+      # The report is the whole output of this job, and from a cloud-only
+      # session an artefact is the only way to read it (CLAUDE.md §1). Uploaded
+      # on failure too: a run that stopped halfway still names the survivors it
+      # found before stopping.
+      - name: Upload the mutation report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          retention-days: 30
+          if-no-files-found: warn
