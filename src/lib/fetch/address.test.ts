@@ -150,6 +150,54 @@ describe('classifyAddress — malformed input', () => {
   });
 });
 
+/**
+ * Three behaviours the module promises and no test checked, found by reading
+ * the surviving mutants of the first mutation run rather than by re-reading the
+ * code (docs/journal.md 024).
+ *
+ * They are the *real* survivors of `address.ts` — the ones Stryker covered
+ * per-test. The bulk of the file's survivors are static mutants that Vitest
+ * cannot kill, and no test can change that; these three could be, and are.
+ */
+describe('classifyAddress — what the verdict says, not just yes or no', () => {
+  it('names the effective address of a rejected IPv6, formatted as IPv6', () => {
+    // Nothing asserted this: `effectiveAddress` was only ever checked on the
+    // embedded IPv4 cases. The whole of `formatIpv6` could be emptied — the
+    // loop skipped, the separator dropped — without a test noticing, and the
+    // rejection log is the one artefact §7 asks this guard to produce.
+    expect(classifyAddress('fe80::1').effectiveAddress).toBe('fe80:0:0:0:0:0:0:1');
+    expect(classifyAddress('::1').effectiveAddress).toBe('0:0:0:0:0:0:0:1');
+    expect(classifyAddress('2001:db8::1').effectiveAddress).toBe('2001:db8:0:0:0:0:0:1');
+  });
+
+  it('names the effective address of an allowed IPv6 too', () => {
+    expect(classifyAddress('2606:4700:4700::1111').effectiveAddress).toBe(
+      '2606:4700:4700:0:0:0:0:1111',
+    );
+  });
+
+  it('separates the hextets — a joined-up form is a different address', () => {
+    // `hextets.join(':')` mutated to `join('')` survived. `fe8000000000001`
+    // is not an address anybody can look up in an incident.
+    expect(classifyAddress('fe80::1').effectiveAddress).toContain(':');
+  });
+
+  it('trims surrounding whitespace before judging', () => {
+    // `input.trim()` could be dropped entirely and every test still passed: no
+    // address in the suite carried a space. A resolver handing back a padded
+    // string would then have been classified `invalid` — refused, so not a
+    // hole in the guard, but a rejection naming the wrong reason.
+    expect(classifyAddress(' 127.0.0.1 ').category).toBe('loopback');
+    expect(classifyAddress('\t169.254.169.254\n').category).toBe('cloud-metadata');
+    expect(classifyAddress('  1.1.1.1  ').allowed).toBe(true);
+    expect(classifyAddress(' ::1 ').category).toBe('loopback');
+  });
+
+  it('refuses a whitespace-only input rather than reading it as empty', () => {
+    expect(classifyAddress('   ').category).toBe('invalid');
+  });
+});
+
 describe('parseIpAddress', () => {
   it('expands :: and returns 16 bytes for IPv6', () => {
     const parsed = parseIpAddress('::1');
@@ -175,6 +223,15 @@ describe('parseIpAddress', () => {
 
   it('returns null rather than throwing on malformed input', () => {
     expect(parseIpAddress('nope')).toBeNull();
+  });
+
+  it('returns null on a malformed IPv6, not a half-built object', () => {
+    // The IPv4 branch was covered by 'nope'; the IPv6 one never was, so the
+    // `value === null` guard on that side could be removed without a failure —
+    // and what replaces it is a crash inside `toBytes`, in a security guard.
+    expect(parseIpAddress('gggg::1')).toBeNull();
+    expect(parseIpAddress('1::2::3')).toBeNull();
+    expect(parseIpAddress('::ffff:999.0.0.1')).toBeNull();
   });
 });
 
