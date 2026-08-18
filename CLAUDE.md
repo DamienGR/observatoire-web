@@ -293,8 +293,23 @@ deux, et on ne pilote pas le projet à la couverture.
 - **Mutation (Stryker)** : restreint à `src/lib/`, hebdomadaire en cron plus `workflow_dispatch`
   à la demande, **jamais sur le chemin d'une PR**. Informatif jusqu'au jalon 3 ; **bloquant sur
   le module de scoring à partir du jalon 5**, quand la méthodologie v2 rendra le sujet vital.
-  Seuil de départ : **80 %** sur le scoring, à confirmer après la première exécution réelle —
-  annoncer un chiffre avant d'avoir mesuré serait arbitraire.
+  Seuil de départ : **80 %** sur le scoring, annoncé avant d'avoir mesuré et donc arbitraire —
+  le module de scoring n'existe pas encore, il n'y a rien à seuiller.
+
+**La première exécution réelle a eu lieu le 12/8** et remplace l'estimation par des chiffres :
+**75,57 %** sur `src/lib/`, 1 957 mutants, 1 475 tués, 443 survivants, **6 min 24 s** sur quatre
+cœurs. Trois lectures à garder, parce qu'elles changent l'usage qu'on fait du score :
+
+- **41 % des survivants sont des mutations de chaînes de caractères** (183 sur 443), c'est-à-dire
+  de la prose de message d'erreur. Le score global est donc en partie une mesure de « assères-tu
+  tes phrases », pas de « détecterais-tu une régression ». On lit les scores **par fichier**, et
+  on ne court pas après le chiffre global.
+- **Le module écrit en test-first le plus strictement obtient le meilleur score** : `resolve/` à
+  90,34 %, `arbitrate.ts` à 100 %. Les plus bas sont les constructeurs de messages, écrits après
+  coup. La doctrine du test-first du §5 n'est plus une préférence, elle est mesurée.
+- **`fetch/address.ts` est à 49,16 %**, le plus bas du dépôt, sur le garde SSRF que ce même §5
+  classe deuxième priorité de test. Cf. `docs/roadmap.md` : c'est un ticket, pas une ligne à
+  corriger en passant.
 
 ---
 

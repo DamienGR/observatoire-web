@@ -1,7 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import { contractProject, integrationProject, unitProject } from './vitest.shared.js';
 
 /**
- * Two strictly separated projects (CLAUDE.md §5).
+ * Two strictly separated projects (CLAUDE.md §5), plus the scheduled one.
  *
  * - `unit`   — zero I/O, enforced by a setup guard, budget < 30 s.
  * - `integration` — ephemeral Neon branch, needs DATABASE_URL, budget < 4 min.
@@ -11,64 +12,15 @@ import { defineConfig } from 'vitest/config';
  * `contract` has none: §5 lists it as unbounded, and a wall-clock kill on a job
  * whose whole purpose is to observe a third party would report our impatience
  * as their drift.
+ *
+ * The projects themselves are defined in `vitest.shared.ts`, because
+ * `vitest.mutation.config.ts` needs the unit one on its own — see the comment
+ * there for why that is not a matter of taste.
  */
-
-/**
- * Mirrors the `~/*` paths entry in tsconfig.json and the Vite alias in
- * astro.config.mjs. It is declared per project on purpose: a `resolve.alias` at
- * the root of this file is NOT inherited by `projects` entries — each project is
- * its own Vite config — so the root-level version resolves nothing while looking
- * exactly like a working declaration. tests/unit/path-alias.test.ts is what
- * keeps that from being rediscovered the hard way.
- */
-const resolve = {
-  alias: {
-    '~': new URL('./src/', import.meta.url).pathname,
-  },
-};
-
 export default defineConfig({
   test: {
     globals: true,
-    projects: [
-      {
-        resolve,
-        test: {
-          name: 'unit',
-          environment: 'node',
-          globals: true,
-          include: ['src/**/*.test.ts', 'tests/unit/**/*.test.ts'],
-          setupFiles: ['tests/setup/no-io.ts'],
-        },
-      },
-      {
-        resolve,
-        test: {
-          name: 'integration',
-          environment: 'node',
-          globals: true,
-          include: ['tests/integration/**/*.test.ts'],
-          setupFiles: ['tests/setup/integration-env.ts'],
-          testTimeout: 30_000,
-        },
-      },
-      {
-        resolve,
-        test: {
-          name: 'contract',
-          environment: 'node',
-          globals: true,
-          include: ['tests/contract/**/*.test.ts'],
-          // The only project with no anti-I/O guard: reaching the real APIs is
-          // the entire point. It runs on a schedule (.github/workflows/
-          // contracts.yml) and never on the path of a pull request — CLAUDE.md
-          // §5 makes that inviolable, because a CI that fails for reasons
-          // foreign to the diff is a CI everyone learns to ignore.
-          testTimeout: 60_000,
-          retry: 1,
-        },
-      },
-    ],
+    projects: [unitProject, integrationProject, contractProject],
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'lcov'],
