@@ -40,12 +40,14 @@ jobs:
   mutation:
     name: mutation (Stryker on src/lib/)
     runs-on: ubuntu-latest
-    # Measured, not guessed: 1 957 mutants over 35 files take about half an
-    # hour on the four cores a session container and a standard runner both
-    # have. The margin is for a slower runner, not for growth — if this job
-    # starts approaching the limit, the answer is in §5's warning about layers
-    # that grow without anyone noticing, not in a bigger number here.
-    timeout-minutes: 60
+    # Measured, not guessed: 1 957 mutants over 35 files took 6 min 24 s on the
+    # four cores a session container and a standard runner both have. Stryker's
+    # own early estimate said 26 minutes and was wrong by a factor of four —
+    # which is the reason to wait for the end rather than write down a
+    # prediction. The margin here is for a slower runner, not for growth: if
+    # this job starts approaching the limit, the answer is in §5's warning
+    # about layers that grow without anyone noticing, not in a bigger number.
+    timeout-minutes: 30
 
     steps:
       - name: Checkout

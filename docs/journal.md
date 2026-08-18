@@ -2552,3 +2552,99 @@ L'avertissement est antérieur à cette PR — `ingest` et `migrate` connectent 
 il n'était visible nulle part avant qu'un job tourne en CI à chaque push. Noté plutôt que corrigé
 au passage : réécrire une query string de connexion mérite sa propre PR, pas une ligne glissée dans
 celle-ci (§12).
+
+---
+
+## 023 — Une commande que personne n'avait jamais lancée, et ce qu'elle a dit du dépôt
+
+**12 août 2026** · jalon 1 · branche `claude/j1-11-w4yw73`
+
+### Contexte
+
+Toutes les tâches numérotées du jalon 1 étaient `terminé`. Restait une phrase du §5 sans réalité :
+« Mutation (Stryker) : restreint à `src/lib/`, **hebdomadaire en cron plus `workflow_dispatch`** ».
+`stryker.config.json`, `pnpm test:mutation` et les deux dépendances étaient là depuis le bootstrap.
+Aucun workflow ne les appelait.
+
+C'est mot pour mot la situation que J1-11 venait de corriger pour les tests d'intégration, et le
+dépôt a donc maintenant deux exemplaires de la même leçon : **une commande que le contrat promet
+et que rien n'exécute n'est pas « presque faite », elle est fausse.** Elle est même pire qu'absente,
+parce que sa présence dans le §5 fait croire que la couche existe.
+
+### La configuration était cassée deux fois, et de façon indétectable
+
+Elle n'avait jamais tourné, donc rien n'avait jamais dit qu'elle était fausse. `pnpm verify` ne la
+lit pas, `astro check` non plus, ESLint encore moins : c'est un fichier JSON que seul Stryker
+comprend.
+
+**Premier défaut — le plugin ne se chargeait pas.** Stryker découvre ses plugins en globbant
+`node_modules/@stryker-mutator/*`. Sous pnpm, ce répertoire ne contient que des liens symboliques
+vers le magasin, et le glob ne les suit pas. Résultat :
+
+```
+Cannot find TestRunner plugin "vitest". In fact, no TestRunner plugins were loaded.
+```
+
+Le message est bon — il dit *aucun*, pas *pas celui-là* —, mais il envoie vérifier une installation
+qui est correcte. Nommer le plugin explicitement (`"plugins": ["@stryker-mutator/vitest-runner"]`)
+le fait résoudre par Node plutôt que par un glob, et Node, lui, suit les liens.
+
+**Second défaut — et celui-là fait plus que casser.** La configuration sélectionnait le projet
+unitaire avec `"vitest": { "project": "unit" }`. Cette clé n'existe pas. Le type d'options généré
+du runner, lu dans `node_modules`, accepte `dir`, `related` et `configFile`, et rien d'autre.
+
+Ce n'est pas une faute de frappe sans conséquence. Pointé sur `vitest.config.ts`, le runner charge
+**tous** les projets, et le troisième est `contract` — le seul du dépôt sans garde anti-I/O, celui
+qui interroge `geo.api.gouv.fr` et l'annuaire DILA pour de vrai. Une fois par mutant. Il y a
+1 957 mutants. Soit environ deux mille appels à deux API publiques, depuis un cron hebdomadaire
+que personne ne regarde, et **rien dans un rapport de mutation ne l'aurait signalé**.
+
+Le §5 interdit bien moins que cela. La correction est un `vitest.mutation.config.ts` qui ne
+contient que le projet unitaire ; les définitions de projets sont passées dans `vitest.shared.ts`
+et importées par les deux fichiers, parce que ce qui dériverait dans une copie est précisément la
+garde anti-I/O et l'alias `~` — les deux échouent en silence, et l'entrée 007 raconte déjà ce que
+coûte le second. `tests/unit/mutation-config.test.ts` l'assère dans les deux sens, chemin rouge
+éprouvé avant le push.
+
+### Ce que la mesure a dit, une fois qu'elle a pu tourner
+
+**75,57 %** sur `src/lib/`. 1 957 mutants, 1 475 tués, 443 survivants, 4 en dépassement de délai.
+**6 minutes 24**, alors que Stryker annonçait 26 minutes au bout d'une minute — une estimation
+fausse d'un facteur quatre, ce qui est la raison d'attendre la fin plutôt que d'écrire un chiffre
+prédit dans un `timeout-minutes`.
+
+Trois choses valent le détour, et aucune n'était le chiffre global.
+
+**Le test-first se voit dans le score.** `src/lib/resolve/` — le module dont la note de J1-06 dit
+que les 73 tests ont tous été écrits avant le code — obtient **90,34 %**, et `arbitrate.ts`
+**100 %**. Les plus bas sont les constructeurs de messages d'erreur, écrits après coup partout dans
+le dépôt. La doctrine du §5 n'était jusqu'ici qu'un argument ; elle est maintenant mesurée sur son
+propre code.
+
+**41 % des survivants sont des chaînes de caractères.** 183 sur 443 : de la prose de message
+d'erreur qu'aucun test n'assère mot pour mot. Le score global est donc, pour une bonne part, une
+mesure de « assères-tu tes phrases » et non de « détecterais-tu une régression ». Le §5 dit qu'on
+ne pilote pas le projet à la couverture ; il faudra dire la même chose du score de mutation global,
+ou exclure cette classe de mutants. La décision attend le jalon 5, elle est en dette.
+
+**Le pire score du dépôt est le garde SSRF.** `src/lib/fetch/address.ts` : **49,16 %**, 144
+survivants. C'est le module que le §5 classe deuxième priorité de test, et dont la note de J1-05 dit
+avec raison que sa table de plages a été écrite avant le code et n'a pas bougé. La répartition des
+survivants dit ce que la note ne pouvait pas savoir : 32 `ArrayDeclaration` — une liste de plages
+peut être **vidée** sans qu'un test s'en aperçoive — et 51 mutants d'égalité ou de condition sur
+l'arithmétique CIDR, c'est-à-dire des bornes non épinglées. Les tests vérifient *qu'*une adresse est
+rejetée ; ils verrouillent mal *pourquoi*.
+
+Rien de tout cela n'est corrigé ici : le §12 dit une session, un ticket, et celui-ci était
+« faire tourner la couche », pas « réécrire les tests du garde SSRF ». Mais c'est exactement le
+genre de chose pour laquelle la couche existe, et elle l'a trouvée à sa première exécution.
+
+### Une tentation refusée
+
+Stryker signale que les mutants *statiques* — ceux du code exécuté au chargement du module, donc
+les tables de constantes dont ce dépôt est plein — consomment **91 %** du temps, chacun forçant un
+rejeu complet de la suite. L'option `ignoreStatic` diviserait la durée par dix.
+
+Elle retirerait aussi de la mesure la table de plages du garde SSRF, c'est-à-dire précisément ce
+que la section précédente vient de désigner comme le point faible du dépôt. Six minutes par semaine
+ne sont pas un problème ; un score qui monte parce qu'on a cessé de regarder en serait un.
