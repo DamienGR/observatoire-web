@@ -74,16 +74,25 @@ test.describe('the console stays quiet', () => {
       expect(errors, `${route} logged ${String(errors.length)} error(s)`).toEqual([]);
     });
 
-    test(`${route} declares no inline style of its own`, async ({ page }) => {
+    test(`${route} serves no inline style of its own`, async ({ page }) => {
       // What makes the exclusion above honest. §7 bans `unsafe-inline`, so an
       // inline style we shipped would be silently dropped by the browser: the
       // page would render differently from the template and nothing would say
       // so — the console message being the only trace, and now filtered.
-      await page.goto(route);
+      //
+      // Asserted on the **served HTML** rather than on the live DOM, and that
+      // is the whole point. Netlify appends its banner after `</html>` and has
+      // it load `/.netlify/scripts/cdp` — a script served from our own origin,
+      // which `script-src 'self'` therefore allows — and that script injects
+      // more inline-styled markup once the page is running. The question here
+      // is what this repository ships, so it is asked of the bytes it ships.
+      const response = await page.request.get(route);
+      const html = await response.text();
 
-      const ours = await page.locator('[style]:not([data-netlify-deploy-id])').all();
+      const bannerAt = html.indexOf('<div data-netlify-deploy-id');
+      const ours = bannerAt === -1 ? html : html.slice(0, bannerAt);
 
-      expect(ours, `${route} carries an inline style the CSP will drop`).toHaveLength(0);
+      expect(ours, `${route} serves an inline style the CSP will drop`).not.toContain('style="');
     });
   }
 });

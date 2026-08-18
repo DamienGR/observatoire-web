@@ -3069,3 +3069,29 @@ la première portait sur le garde SSRF (entrée 024). Les deux fois, ce qui a co
 relecture mais une exécution. Et cette fois, contrairement à la première, le doute était déjà dans
 la PR : les deux moitiés — l'icône et le test — avaient été livrées ensemble **parce que** je ne
 savais pas laquelle des deux avait raison.
+
+### Et une deuxième correction, du même test
+
+Le test que j'avais écrit pour rendre l'exclusion honnête a échoué à son tour, sur les sept pages,
+avec « un élément porte un `style` et ce n'est pas la div de Netlify ». Le HTML servi n'en contient
+pourtant qu'un seul. La réponse était dans ce que je n'avais pas regardé :
+
+```
+</body> </html><div data-netlify-deploy-id="…" style="position:fixed">
+  <!-- This div is automatically inserted by Netlify for all Deploy Preview URLs. -->
+  <script async src="/.netlify/scripts/cdp"></script>
+</div>
+```
+
+Netlify ajoute sa bannière **après `</html>`**, et y charge un script servi depuis
+`/.netlify/scripts/cdp` — c'est-à-dire **notre propre origine**. `script-src 'self'` l'autorise
+donc, il s'exécute, et il injecte à l'exécution le balisage que mon sélecteur attrapait. La CSP
+n'était pas contournée : elle est simplement moins étroite qu'elle ne se lit, parce que la
+plateforme peut servir du script sous notre domaine. C'est noté en dette — sans conséquence connue,
+et à savoir avant de raisonner sur ce que `'self'` garantit.
+
+La correction du test est un changement de question. Je demandais « le DOM porte-t-il un style en
+ligne ? », ce qui inclut ce qu'un tiers y met après coup ; ce que je voulais savoir est « **servons-
+nous** un style en ligne ? ». L'assertion porte désormais sur les octets servis, tronqués à la
+bannière. Deux échecs de CI pour un test de vingt lignes, et les deux ont appris quelque chose que
+personne ici ne pouvait voir autrement.
