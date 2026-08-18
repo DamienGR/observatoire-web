@@ -3095,3 +3095,25 @@ ligne ? », ce qui inclut ce qu'un tiers y met après coup ; ce que je voulais s
 nous** un style en ligne ? ». L'assertion porte désormais sur les octets servis, tronqués à la
 bannière. Deux échecs de CI pour un test de vingt lignes, et les deux ont appris quelque chose que
 personne ici ne pouvait voir autrement.
+
+### Post-scriptum : un job vert qui a failli mourir de son propre délai
+
+La troisième exécution est passée, et son profil mérite d'être noté. `playwright install
+--with-deps chromium` a pris **11 minutes 2 secondes** — l'étape dure d'ordinaire vingt-cinq. Les
+quatre étapes précédentes avaient pris trois secondes chacune, et la suite de tests elle-même en a
+pris vingt et une. Le job a fini à 11 min 44, contre un `timeout-minutes: 15`.
+
+Rien n'a échoué. Rien n'a rien dit non plus : pendant onze minutes, l'API répondait `in_progress`,
+ce qui ressemble exactement à un test lent. C'est la dette « rien ne distingue *CI rouge* de *CI
+absente* » sous une troisième forme — ici ni rouge ni absente, mais **en train d'attendre autre
+chose que du travail**, et à trois minutes d'être tuée par un délai qui aurait alors accusé le
+diff.
+
+Deux choses en découlent. D'abord la cible du §5 — moins de dix minutes du push au verdict — a été
+crevée par une installation de paquets système, pas par des tests : le budget mesure ce que nous
+écrivons, pas ce dont nous dépendons. Ensuite le job `lighthouse` ajouté ce matin paie la même
+étape, donc la surface a doublé le jour même.
+
+Noté sans être corrigé, et la raison est celle que ce journal répète : une occurrence n'est pas une
+fréquence. Mettre le navigateur en cache ou retirer `--with-deps` sont des réponses plausibles à un
+motif qu'on a vu une fois.
