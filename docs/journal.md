@@ -3497,3 +3497,36 @@ qu'**aucune session ne peut vérifier**, puisque rien ici n'est un runner Action
 payé pour une hypothèse promue en fait (entrées 026 et 028) ; celle-ci reste une dette, avec son
 correctif proposé, jusqu'à ce que quelqu'un puisse l'éprouver. Le §12 dit la même chose autrement :
 une dérive de périmètre s'ouvre en issue, elle ne s'absorbe pas dans la PR courante.
+
+### Ce que le préchauffage a rendu visible, et qui n'était pas son objet
+
+Le run suivant est passé au vert de bout en bout — le miroir `apt` s'était rétabli — et le job
+`lighthouse` a donné le chiffre qui manquait depuis la PR #43. Sur une preview **préchauffée** :
+
+| Page | Performance | LCP | Speed Index | Poids |
+|---|---|---|---|---|
+| `/` | **1,00** | 220 ms | **245 ms** | 6,5 ko |
+| `/stats` | **1,00** | 251 ms | **260 ms** | 4,9 ko |
+
+À comparer aux mêmes pages, non préchauffées : `/` faisait **2 585 ms** de *speed index* pour une
+performance de 0,94 (PR #43), et `/stats` **6 659 ms** — l'échec de budget du 18/8 (PR #45).
+**Facteur 10 sur l'une, 25 sur l'autre, sans une ligne de code applicatif changée.**
+
+Deux dettes tombent avec ces chiffres, et aucune des deux n'était le sujet du ticket :
+
+- « le Speed Index de `/` est inexpliqué » : il l'est. Ce n'était pas `/`, c'était **la première
+  route touchée**, quelle qu'elle soit.
+- « `/` répond plus lentement que `/stats`, et l'inverse serait attendu » : la ligne demandait
+  « une mesure qui distingue le froid du chaud, pas un chiffre ». Le journal du préchauffage
+  *est* cette mesure — 4 024 ms sur la première route, 140 à 233 ms sur les cinq dernières.
+
+Ce qui reste ouvert change de nature : le budget de 3 400 ms ne mord plus sur rien, puisque les
+deux pages tiennent 245 et 260 ms. Le resserrer est une décision à argumenter dans une PR (§6.3),
+pas un chiffre à ajuster ici — et une seule exécution à chaud ne suffit pas à la fonder. C'est
+exactement l'erreur que la ligne de dette du 18/8 refusait déjà de commettre.
+
+**Un détail que seule la comparaison des deux jobs montre** : le préchauffage a coûté 7 429 ms dans
+`e2e` et **1 259 ms** dans `lighthouse`, sur le même déploiement. Le second n'a pas payé le
+démarrage à froid parce que le premier l'avait déjà payé. Le coût est donc réel, unique, et il
+échoit à qui arrive le premier — ce qui est précisément pourquoi il ne devait pas échoir à une suite
+de tests.
