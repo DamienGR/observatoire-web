@@ -3442,3 +3442,58 @@ seuil » ; le motif s'est répété le 18, et la fréquence est désormais visib
 chaque tentative, chaque route réessayée, et la plus lente de la passe. Une ligne écrite deux
 semaines plus tôt a décrit à l'avance et le symptôme et le remède ; ce qui manquait n'était pas
 l'analyse, c'était l'occasion.
+
+### Post-scriptum : la mesure, enfin prise là où elle pouvait l'être
+
+Le premier run de la PR #47 a donné le chiffre que la session ne pouvait pas produire. Préchauffage
+sur `deploy-preview-47`, sept routes, **7 429 ms au total, zéro réessai** :
+
+| Route | Première réponse |
+|---|---|
+| `/` | **4 024 ms** |
+| `/stats` | **2 492 ms** |
+| `/methodologie` | 208 ms |
+| `/mentions-legales` | 233 ms |
+| `/accessibilite` | 164 ms |
+| `/droit-de-reponse` | 140 ms |
+| `/404` | 166 ms |
+
+Puis la suite : **49 tests, 48 passés et 1 sauté, 22,8 s** pour un budget de 360 s — les sept tests
+de disponibilité ajoutés ne coûtent rien de mesurable.
+
+Ces 7,4 s sont exactement ce que la couche payait auparavant *dans* son budget, avec deux workers
+frappant des routes froides en parallèle. Et le facteur **25** entre la première route touchée et
+les suivantes tranche au passage une dette laissée ouverte par la PR #43 : « le Speed Index de `/`
+est inexpliqué », avec pour hypothèse non vérifiée la fonction froide, `/` étant mesurée en
+premier. L'hypothèse était juste, et ce n'est plus une hypothèse. Le coût n'appartient pas à `/` :
+il appartient à **la première route touchée**, quelle qu'elle soit.
+
+### Et une friction qui a coûté plus que le correctif : `apt` a tué deux jobs
+
+Le run devant produire ces chiffres est mort avant d'y arriver. `e2e` et `lighthouse` ont été
+annulés à leur `timeout-minutes: 15`, tous deux dans `pnpm exec playwright install --with-deps
+chromium`, sur le même `apt-get update` :
+
+```
+Ign:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease      (× répété)
+Get:5 https://archive.ubuntu.com/ubuntu noble-security InRelease
+08:58:42 … puis rien jusqu'à 09:13:23   ##[error]The operation was canceled.
+```
+
+**14 minutes de silence**, deux fois, sur une étape que ce diff ne touche pas. Relancé une fois :
+`e2e` est passé en 1 min 43 s, `lighthouse` a rebloqué au mot près (`09:21:07 → 09:35:19`). Donc
+trois occurrences sur quatre exécutions — reproductible, pas un aléa.
+
+C'est la **troisième forme de la dette de l'entrée 026**, « un job vert qui a failli mourir de son
+propre délai », et elle a franchi le seuil : de « a failli » à « a tué deux jobs », dont celui
+chargé de mesurer le correctif des deux premières formes. L'ironie est complète et vaut d'être
+écrite : un ticket sur les CI qui rougissent pour des raisons étrangères au diff a été mis en
+échec par une CI qui rougissait pour une raison étrangère au diff.
+
+**Ce qui n'a pas été fait, et pourquoi.** Retirer `--with-deps` — l'image `ubuntu-latest` embarque
+les bibliothèques que Chromium réclame — serait le correctif évident. Il n'est pas dans cette PR :
+c'est un changement à l'installation du navigateur de *tous* les jobs, fondé sur une hypothèse
+qu'**aucune session ne peut vérifier**, puisque rien ici n'est un runner Actions. Ce dépôt a déjà
+payé pour une hypothèse promue en fait (entrées 026 et 028) ; celle-ci reste une dette, avec son
+correctif proposé, jusqu'à ce que quelqu'un puisse l'éprouver. Le §12 dit la même chose autrement :
+une dérive de périmètre s'ouvre en issue, elle ne s'absorbe pas dans la PR courante.
