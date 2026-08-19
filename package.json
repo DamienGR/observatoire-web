@@ -24,6 +24,7 @@
     "test:e2e": "node scripts/budget.mjs 360 playwright test",
     "test:contract": "vitest run --project contract",
     "test:mutation": "stryker run",
+    "audit:ci": "node scripts/audit.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:check": "drizzle-kit check",

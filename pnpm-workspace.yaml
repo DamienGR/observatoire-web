@@ -25,3 +25,27 @@ overrides:
   #
   # Remove this entry once ipx ships a release accepting 0.35.
   sharp: ^0.35.3
+
+  # GHSA-2v37-7h3g-55p8 (haute) — nanoid boucle indéfiniment quand un générateur
+  # personnalisé reçoit une taille nulle. Tiré par postcss, présent dans le
+  # graphe de production. Correctif disponible en 3.3.18, correctif de patch.
+  nanoid: ^3.3.18
+
+  # GHSA-q8mj-m7cp-5q26 (modérée) — qs.stringify lève un TypeError sur une
+  # entrée nulle en format `comma`. Tiré par typed-rest-client sous
+  # @stryker-mutator/core, donc hors du graphe de production. Corrigé quand
+  # même : un correctif de patch qui ne coûte rien n'a pas besoin d'un débat.
+  qs: ^6.15.2
+
+  # GHSA-67mh-4wv8-2f99 (modérée) — le serveur de développement d'esbuild
+  # répond `Access-Control-Allow-Origin: *`. La version atteinte est 0.18.20,
+  # tirée par drizzle-kit via @esbuild-kit/*, une chaîne dépréciée que son
+  # auteur a fondue dans tsx.
+  #
+  # **Portée restreinte à cette chaîne, et c'est le point.** Écrit `esbuild:
+  # ^0.25.0` sans préfixe, l'override s'applique à tout le graphe : astro et
+  # vite résolvent 0.28.1 d'eux-mêmes et se retrouvaient **rétrogradés** en
+  # 0.25.12 pour corriger une advisory qui ne les concernait pas. Un override
+  # est une affirmation qu'on sait mieux que la plage déclarée par un paquet ;
+  # ici on ne le sait que de `@esbuild-kit/core-utils`.
+  '@esbuild-kit/core-utils>esbuild': ^0.25.0

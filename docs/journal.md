@@ -3117,3 +3117,236 @@ crevée par une installation de paquets système, pas par des tests : le budget 
 Noté sans être corrigé, et la raison est celle que ce journal répète : une occurrence n'est pas une
 fréquence. Mettre le navigateur en cache ou retirer `--with-deps` sont des réponses plausibles à un
 motif qu'on a vu une fois.
+
+---
+
+## 027 — Le jalon 2 commence par une chose qu'aucune session ne peut faire
+
+**18 août 2026** · jalon 2 · branche `claude/jalon-2-n554ts`
+
+### Contexte
+
+Ouvrir le jalon 2, donc d'abord le décomposer — le §12 veut qu'un jalon soit découpé au moment où
+on l'attaque, pas trois semaines avant. Sept tâches en sont sorties, et l'ordre a été décidé par
+une contrainte à laquelle je ne m'attendais pas.
+
+### La friction : la fixture PSI ne peut pas être capturée depuis une session
+
+Le raisonnement naturel plaçait le client PageSpeed Insights en premier : tout le jalon en dépend.
+La doctrine du §5 est claire sur la façon de l'écrire — pour une API tierce, **on observe le
+comportement réel, puis on fige l'observation en fixture**. On n'écrit pas le test d'abord quand la
+spécification est « ce que PSI fait vraiment ».
+
+Sauf qu'observer demande d'appeler l'API, et une session n'a aucune clé : `PSI_API_KEY` est un
+secret de dépôt, et rien de la sorte n'existe dans le conteneur (vérifié, pas supposé). Restait
+l'appel sans clé. Il répond, et ce qu'il répond mérite d'être noté :
+
+```
+HTTP 429 — "quota_limit_value": "0", "quota_unit": "1/d/{project}"
+```
+
+Zéro requête par jour. Le mode sans clé de PSI n'est pas un quota réduit, c'est un quota nul —
+l'API existe pour être appelée avec une clé, point. La réponse a mis 0,65 seconde à arriver : c'est
+la seule chose que cette session aura mesurée de PageSpeed Insights.
+
+**Ce n'est pas une impasse, c'est un ordre de tâches.** J2-02 commencera par capturer sa fixture
+via un `workflow_dispatch` — un workflow présent sur `main` peut être déclenché sur n'importe quelle
+référence et s'exécute alors dans la version *de cette branche*, ce qui donne à une PR l'accès à un
+secret de dépôt sans rien élargir. C'est la même famille de contournement que le job `deploy` du
+5/8 : ce que la session ne peut pas voir, la CI le voit pour elle.
+
+D'où le ticket réellement pris ici : **J2-01, la planification et la reprise d'un scan**, dont la
+spécification est connaissable sans rien appeler. C'est du reste ce que le §5 range troisième par
+valeur parmi les choses à tester.
+
+### Ce que la conception a appris à l'écriture, et non à la relecture
+
+Trois décisions ne se seraient pas prises en lisant le contrat. Toutes trois sont nées d'un test.
+
+**Un run se conclut depuis un plan frais.** Le test de parcours composait les quatre modules —
+démarrer, interrompre, reprendre — et concluait le run depuis le plan qui avait produit la dernière
+passe. Rouge, deux fois, et pour la bonne raison : ce plan décrit l'état d'*avant* les écritures
+qu'il a déclenchées. Le lire après coup déclare ouvert un run terminé, à chaque fois. La correction
+tient en une méthode (`inspect`) qui planifie sans dispatcher, et c'est exactement ce que la surface
+d'ops fera pour afficher l'état d'un run. Un piège découvert en composant, invisible dans chacun des
+quatre modules pris seul.
+
+**Une panne définitive dépense tout le budget d'essais.** Le schéma ne conserve d'une mesure qu'un
+statut et un compteur ; la reprise ne voit rien d'autre. Une URL que PSI refusera toujours ne peut
+donc pas être marquée « ne plus demander » par un drapeau — il n'y a pas de colonne pour lui, et en
+ajouter une pour ça serait ajouter une colonne pour un booléen que le compteur exprime déjà.
+Consommer le budget entier est la façon d'écrire « définitif » dans le vocabulaire que la reprise
+sait lire. Quatre essais à une requête par seconde, ce sont quatre secondes qu'une autre commune
+n'a pas.
+
+**Une ligne `running` est reprise même quand ses essais sont épuisés.** C'est le seul état qu'aucune
+passe ultérieure ne peut résoudre autrement : le worker est mort, personne n'écrira le résultat, et
+refuser la reprise laisserait la ligne bloquée pour toujours. Le bail — quinze minutes — est ce qui
+distingue « une requête est en vol » de « le runner a été tué », et c'est une distinction qu'un
+scan piloté sans shell ne peut pas faire autrement.
+
+### Une invariante qui a corrigé le code plutôt que l'inverse
+
+`ScanProgress` promet six compartiments qui totalisent le nombre de cibles. Un test l'assère, pour
+tous les statuts que la colonne peut porter. Il a échoué sur un cas que j'avais écrit moi-même :
+un run annulé rapportait zéro travail restant, parce que je comptais les tâches *dispatchées*
+plutôt que le travail *dû*. Un run annulé à mi-parcours devenait indiscernable d'un run terminé.
+
+Ce qui a tranché n'est pas un avis sur la meilleure sémantique, c'est que l'une des deux tenait
+l'invariante et l'autre non. J'ai changé le code, puis le test qui l'avait fixé de travers. C'est
+le troisième cas de la semaine où l'assertion la plus utile n'est pas « la fonction retourne x »
+mais « ces nombres s'additionnent ».
+
+### La couche de mutation a de nouveau payé, et pas là où je regardais
+
+Stryker restreint à `src/lib/scan/` : **92,80 %** au premier passage, 236 mutants, 41 secondes.
+Dix-sept survivants, dont huit de prose de message — la proportion que l'entrée 024 avait déjà
+mesurée. Les neuf autres se répartissaient en deux familles, et c'est la seconde qui surprend.
+
+**Trois trous réels**, tous des bornes que la couverture de branches disait pourtant couvertes :
+le retry qui se déclenche à l'instant exact où le backoff expire, la direction du comparateur de
+code INSEE — indécidable sur deux éléments, un tri à deux ne pose qu'une question et un comparateur
+qui répond toujours la même chose peut tomber juste par hasard —, et le comptage des mesures
+orphelines, écrit avec une cible et un orphelin, donc indiscernable de son propre inverse.
+
+**Trois branches mortes**, et c'est la lecture qui vaut le détour. Un mutant qui survit ne dit pas
+toujours « il manque un test » : il peut dire « cette branche ne décide rien ». Le départage entre
+deux essais de même compte était réimplémenté à la main alors que `Array.prototype.sort` est stable
+depuis ES2019 et que la liste est déjà construite dans l'ordre voulu ; `slice(0, undefined)` rend
+déjà le tableau entier, donc le ternaire qui traitait la limite absente n'avait pas d'autre effet
+que d'exister ; et sur la frontière de `nextDispatchAt`, les deux branches produisaient le même
+instant. Les trois ont été **supprimées**, pas testées.
+
+**96,00 % après correction** — `worklist.ts` et `progress.ts` à 100 %, `policy.ts` à 85,19 % dont
+la totalité des survivants sont des chaînes de caractères. Le résultat net du passage : trois tests
+en plus et neuf lignes de code en moins.
+
+### Ce qui n'est pas dans ce ticket, et pourquoi c'est écrit
+
+`src/lib/scan/progress.ts` prend en entrée le verdict « transitoire ou définitif » au lieu de le
+calculer. La tentation était de mapper les statuts PSI tout de suite — 429 et 5xx transitoires, 400
+définitif —, ce qui aurait été plausible, non observé, et rangé dans le seul endroit que ce dépôt
+traite comme du fait constaté. C'est J2-02 qui l'écrira, avec la charge réelle sous les yeux.
+
+---
+
+## 028 — Le chiffre était faux depuis deux semaines, et rien ne pouvait le dire
+
+**18 août 2026** · jalon 2 · branche `claude/jalon-2-n554ts`
+
+### Contexte
+
+Le `git push` du ticket précédent a affiché en passant : « GitHub found 6 vulnerabilities on
+DamienGR/observatoire-web's default branch (4 high, 2 moderate) ». La table de dette annonçait
+**0 haute / 2 modérées** depuis le 5 août. Les deux ne peuvent pas être vrais.
+
+C'est la table qui avait tort, et elle avait tort de trois façons : le nombre, la sévérité, et
+jusqu'au chemin de dépendance — elle situait `qs` « dans l'outillage Netlify » alors qu'il est tiré
+par `@stryker-mutator/core`. Personne n'a menti. Personne n'avait regardé depuis le jour où la
+ligne a été écrite.
+
+**C'est la même forme de panne que J1-11, J1-17 et J1-18** — le contrat décrit un contrôle, rien ne
+l'exécute — avec une variante plus vicieuse : ici le contrôle avait bel et bien été fait une fois,
+et son résultat est resté écrit comme s'il valait encore. Un chiffre daté dans un document est un
+chiffre qui a l'air vivant. La ligne de dette le disait elle-même, sans que ce soit lu comme une
+tâche : « à revoir quand un `pnpm audit` propre deviendra une exigence de CI plutôt qu'un contrôle
+manuel ».
+
+### Trois corrigeables, et trois qui n'ont pas de correctif
+
+`nanoid` (haute, dans le graphe de production via `postcss`), `qs` (modérée) et `esbuild` (modérée)
+se corrigent par override — trois correctifs de patch. Le cas `esbuild` méritait une vérification
+plutôt qu'une confiance : la version vulnérable est la 0.18.20, tirée par `drizzle-kit` via
+`@esbuild-kit/*`, une chaîne dépréciée que son auteur a fondue dans `tsx`. Forcer 0.25 pouvait
+casser le chargeur qui lit `drizzle.config.ts`. `pnpm db:check` l'exerce précisément — il lit un
+fichier TypeScript par ce chargeur — et il passe.
+
+Les trois autres — `image-size` deux fois, `extract-zip` — publient `<0.0.0` comme version
+corrigée : **il n'existe aucun correctif**, donc ni bump ni override ne peut les atteindre. Toutes
+sous `@netlify/dev*`, le serveur de développement local. Plutôt que de l'affirmer, je l'ai mesuré
+sur `.netlify/v1/`, l'artefact que Netlify déploie réellement : **zéro occurrence**. Et ce dépôt
+n'a de toute façon pas de shell pour lancer `netlify dev` (§3).
+
+### Ce que l'audit ne peut pas voir, et qui est dans le bundle
+
+En cherchant `image-size` dans le bundle déployé, j'ai trouvé une occurrence — mais pas celle que
+l'advisory désigne. `astro` embarque une **copie vendorisée** d'`image-size` sous
+`astro/dist/assets/utils/vendor/`, et elle contient `icns.js`, `jxl.js` et `heif.js` : exactement
+les trois parseurs nommés par les deux advisories que je venais de classer « hors production ».
+
+Aucun outil d'audit ne peut la signaler. Un audit inspecte des paquets ; ceci est du code recopié
+dans un autre paquet. **La question « cette advisory est-elle dans mon bundle ? » et la question
+« ce paquet est-il dans mon graphe ? » ne sont pas la même question**, et je ne l'aurais pas
+découvert en lisant l'arbre de dépendances — seulement en lisant les octets déployés.
+
+Sa seule porte d'entrée est `/_image`, que le manifeste confirme comme route servie en production,
+qu'Astro enregistre que le site utilise des images ou non. Non exploitable aujourd'hui, et vérifié
+dans le bundle plutôt que supposé : `image.domains` et `image.remotePatterns` sont vides, le
+gestionnaire répond `403 Forbidden` à toute source distante, et le site ne sert aucune image locale.
+
+### Une mitigation essayée, mesurée, et retirée
+
+`image.service: { entrypoint: 'astro/assets/services/noop' }` semblait la réponse évidente. Je l'ai
+appliquée et reconstruite : **mêmes routes, mêmes vingt-et-un parseurs vendorisés, même bundle à
+4,1 Mo**. Le service `noop` change ce que fait `transform`, pas ce qui est empaqueté ni ce qui est
+routé.
+
+Elle a donc été retirée. C'est la leçon du favicon de l'entrée 026, dans l'autre sens : là je
+livrais une hypothèse *avec* le test qui la départagerait ; ici le test a répondu non, et garder le
+réglage aurait laissé dans `astro.config.mjs` trois mots qu'une session future aurait lus comme une
+mitigation en place. **Un réglage qui ne change rien est pire qu'un réglage absent** : il répond à
+la question avant qu'elle soit posée.
+
+### Le garde-fou, et pourquoi il n'est pas sur le chemin des PR
+
+`scripts/audit.mjs` échoue sur toute advisory absente du registre `ACCEPTED` — et, tout autant, sur
+une entrée du registre qui ne correspond plus à rien. La seconde moitié est celle qui rend le
+dispositif honnête, et c'est la forme du registre de politiques de cache du §10 : une liste
+d'exceptions qui ne fait que grandir devient une liste de choses qui *étaient* vraies, et le jour
+où le paquet est corrigé, l'argument survit au défaut qu'il décrivait — puis couvre le suivant.
+Les deux sens ont été éprouvés en rendant le garde rouge exprès, comme le veut le commentaire de
+`src/db/schema.ts` : un garde dont personne n'a entendu l'alarme n'est pas un garde.
+
+Il tourne **hebdomadairement, jamais sur une PR**, et c'est le §5 qui tranche plutôt que le confort :
+une advisory est publiée par un tiers, donc ce job rougit un jour où personne n'a touché au code.
+C'est mot pour mot le « échoue pour des raisons étrangères au diff » qui apprend à tout le monde à
+ignorer une CI rouge — la panne la plus grave dans un projet où la CI est le seul juge. Une panne du
+registre npm est distinguée d'une trouvaille, comme la suite de contrats distingue l'indisponibilité
+de la dérive.
+
+Ce que ça ajoute à Dependabot, qui tourne déjà : Dependabot répond « voici un correctif ». Rien ne
+répondait à l'autre moitié — **ce qui n'a pas de correctif, et pourquoi on le porte quand même**.
+
+### Post-scriptum : une CI rouge qu'il a fallu mesurer pour ne pas corriger
+
+La PR est revenue rouge sur `e2e` et `lighthouse`. Playwright annonçait des violations axe-core en
+palette sombre ; le détail disait autre chose — `Expected: 200, Received: 500` sur `/accessibilite`
+et `/stats`, et un `ERR_ABORTED` sur `/methodologie`. **Le test nommait la mauvaise panne** : il
+échoue à l'assertion de statut, bien avant d'exécuter axe-core, et son titre continue de parler
+d'accessibilité.
+
+Le premier suspect était mon propre diff, et c'était un suspect sérieux : l'override `esbuild:
+^0.25.0`, écrit sans préfixe de portée, s'applique à **tout** le graphe — astro et vite résolvent
+0.28.1 d'eux-mêmes et se retrouvaient rétrogradés pour corriger une advisory qui ne les concernait
+pas. Un bundle SSR construit par un esbuild plus ancien que celui que vite attend est exactement le
+genre de cause qui produit des 500 qu'aucun build ne signale.
+
+Ce qui a tranché n'est pas une relecture mais deux mesures. La preview répondait 200 partout, en
+moins d'une seconde. Et surtout la **production** — le code de `main`, sans une ligne de ce diff —
+répondait au même instant `/accessibilite` en **timeout à 45 secondes** et `/` en 4,2 s. Cinq
+minutes plus tard, les deux étaient saines, y compris sous douze requêtes parallèles.
+
+Donc : démarrage à froid de la fonction Netlify pendant une mauvaise minute de la plateforme, qui a
+frappé les deux déploiements. Pas le diff. La règle du §5 dit quoi faire d'un échec pareil — ne pas
+pousser de correctif pour lui — et la tentation était forte de « stabiliser » l'E2E dans la foulée.
+
+**L'override a quand même été corrigé**, et c'est une distinction qui vaut d'être écrite : il
+n'était pas la cause, il était un défaut. Restreint à `@esbuild-kit/core-utils>esbuild`, astro et
+vite gardent 0.28 et l'advisory reste fermée. Un override est une affirmation qu'on sait mieux que
+la plage déclarée par un paquet ; ici on ne le sait que d'un seul.
+
+Ce que l'épisode laisse en dette est plus intéressant que l'épisode : **la couche E2E n'a aucune
+tolérance au démarrage à froid**, et rien dans son verdict ne distingue « le site est cassé » de
+« la fonction se réveille ». C'est la troisième forme de la même dette — après « rien ne distingue
+CI rouge de CI absente » et le job vert qui attendait onze minutes une installation de paquets. Un
+juge unique doit dire *de quoi* il juge.

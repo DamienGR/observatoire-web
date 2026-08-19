@@ -79,6 +79,33 @@ plafonné : on peut merger les PR au fil de l'eau sans surveiller un quota.
 
 ---
 
+## Jalon 2 — Mesure sur 20 communes, fiche entité, surface d'ops
+
+Épreuve visée : une API tierce capricieuse, l'idempotence, et le pilotage sans shell.
+
+Vingt communes et non mille : le jalon éprouve la *boucle*, pas le volume. Le passage à l'échelle
+est le jalon 3, et il n'apprend rien tant que la reprise n'est pas éprouvée sur un échantillon
+qu'on peut lire en entier.
+
+| ID | Tâche | Statut | Dépend de | Notes |
+|---|---|---|---|---|
+| J2-01 | Planification et reprise d'un scan — `src/lib/scan/` | `terminé` | J1-06 | Logique pure, test-first : politique (les cinq nombres et leur validation), éligibilité et échantillon, liste de travail depuis les lignes déjà écrites, conclusion d'un essai et d'un run. Le test de parcours éprouve la propriété du §8 — démarrer, interrompre, reprendre, sans doublon ni perte. 95 tests, 98,83 % de branches, **96,00 % de score de mutation** sur le module ; les survivants restants sont tous de la prose de message d'erreur (journal 027) |
+| J2-02 | Client PSI : requête, parsing Zod, extraction des métriques et des `finding` | `à faire` | J2-01 | **Commence par capturer sa fixture**, ce qu'aucune session ne peut faire seule : le quota PSI sans clé est nul (mesuré, cf. journal 027) et `PSI_API_KEY` est un secret de dépôt. Le chemin est un `workflow_dispatch` sur la branche de la PR. C'est aussi cette tâche qui décide quelles pannes PSI sont transitoires — `src/lib/scan/progress.ts` prend le verdict en entrée plutôt que de le deviner |
+| J2-03 | Signaux complémentaires depuis le HTML | `à faire` | J1-05 | Déclaration d'accessibilité, mentions légales, politique de confidentialité, en-têtes de sécurité, CMS. Passe par le client gardé de `src/lib/fetch/` : ce sont des URLs que l'annuaire nous a données (§7) |
+| J2-04 | Écriture d'un scan en base — `src/db/scan.ts` | `à faire` | J2-01, J2-02 | Le pendant impur de J2-01 : appliquer une liste de travail, prendre un bail, écrire une mesure et ses `finding`. Idempotence éprouvée en intégration sur branche Neon, pas seulement en unitaire |
+| J2-05 | Job de scan et son workflow `workflow_dispatch` | `à faire` | J2-04, J2-03 | `src/jobs/scan.ts` + `.github/workflows/scan.yml`, environment `production`. Rend compte avant d'agir, comme `migrate.yml` |
+| J2-06 | Surface d'ops authentifiée | `à faire` | J2-04 | Jeton porteur en en-tête, comparaison en temps constant, tout mutant en `POST`, journalisation, idempotence (`CLAUDE.md` §8). Débloque le provisionnement d'`OPS_TOKEN`, qui n'a jusqu'ici aucun consommateur |
+| J2-07 | Fiche entité `/commune/[code_insee]` | `à faire` | J2-04 | Premier gabarit dynamique du site : politique de cache `donnees` et tag de purge à déclarer au registre, un parcours E2E de plus, pas un par commune (§5) |
+
+**Ce que ce jalon ne tranche pas.** Le score composite reste une décision ouverte (`brief.md` §11)
+et le schéma n'a délibérément aucune colonne pour lui. Une fiche entité affiche les signaux
+mesurés et leur date, pas une note agrégée.
+
+**Parallélisable après J2-01** : J2-02 et J2-03 touchent des répertoires disjoints. J2-06 et J2-07
+attendent tous deux J2-04, mais ne se gênent pas entre eux.
+
+---
+
 ## Jalons suivants
 
 Non décomposés à ce stade, et c'est délibéré : détailler maintenant produirait une fausse
@@ -87,7 +114,7 @@ précision qu'il faudrait défaire. Chaque jalon est décomposé au moment de l'
 
 | Jalon | Livrable | Statut |
 |---|---|---|
-| 2 | Mesure sur 20 communes, fiche entité, surface d'ops | `à faire` |
+| 2 | Mesure sur 20 communes, fiche entité, surface d'ops | `en cours` — décomposé ci-dessus |
 | 3 | Passage à 1 000 communes, scan par lots, reprise sur incident | `à faire` |
 | 4 | Publication : classements, cache edge, purge ciblée | `à faire` |
 | 5 | Méthodologie v2 appliquée à l'historique | `à faire` |
@@ -122,7 +149,10 @@ Ce qu'on a laissé volontairement de côté, pour ne pas l'oublier.
 | ~~Plafond Dependabot atteint sur npm~~ | 5/8 → constaté le 5/8 | Hypothèse confirmée dans la minute suivant le merge : libérer le plafond a fait apparaître trois majeures d'outillage jusque-là invisibles (`typescript`, `astro-eslint-parser`, `globals`). **Un plafond atteint ne se distingue pas d'un dépôt à jour.** Cf. journal 006 |
 | ~~Réglages Astro 7 à revoir dans J1-09~~ | 5/8 → soldé le 6/8 | `compressHTML` remis à `true`, et pas par prudence : sous `'jsx'`, un retour à la ligne entre un élément en ligne et le texte voisin est **supprimé** au lieu d'être réduit à une espace, alors que Prettier formate les `.astro` avec la sémantique HTML — où ce même retour *est* une espace — et reflow librement à 100 colonnes. Les deux se contredisent, et le résultat est un `méthodologiepour` produit par une passe de formatage que personne ne relit. Quant à `src/fetch.ts` : **constaté** sans objet, le module du projet est `src/lib/fetch/` |
 | `git ls-remote` est disponible depuis le conteneur | 5/8 | Corrige une affirmation de l'entrée 002 du journal : résoudre une étiquette en SHA est possible sans authentification, et c'est ce qui permet de contrôler les pins d'actions tierces (§7). Une limite supposée, jamais testée, avait été inscrite comme un fait |
-| Advisories résiduelles — `esbuild` et `qs` | 5/8 | `sharp` est soldée (ligne suivante). Restent deux modérées, toutes deux transitives et non atteignables depuis la surface publique : `esbuild` n'est exposé qu'en développement, `qs` sert au parsing de query strings dans l'outillage Netlify. `pnpm audit` est à **0 haute / 2 modérées**. À revoir quand un `pnpm audit` propre deviendra une exigence de CI plutôt qu'un contrôle manuel |
+| ~~Advisories résiduelles — `esbuild` et `qs`~~ | 5/8 → soldé le 18/8 | Corrigées par override (`esbuild` ^0.25, `qs` ^6.15.2), avec `nanoid` ^3.3.18 qui s'était ajoutée entre-temps. **La note d'origine était fausse sur deux points**, et c'est le plus intéressant : le chiffre annoncé — 0 haute / 2 modérées — valait 4 hautes et 2 modérées au 18/8, et `qs` n'est pas « dans l'outillage Netlify » mais sous `@stryker-mutator/core`. Personne n'avait menti ; personne n'avait regardé. C'est cette ligne qui a produit `audit.yml` |
+| L'E2E et Lighthouse échouent sur une instabilité de plateforme, pas sur le diff | 18/8 | La CI de la PR #45 est rouge sur `e2e` (deux 500 et un `ERR_ABORTED`) et sur `lighthouse` (`/stats` à 6 659 ms de *speed index* pour un budget de 3 400). **Mesuré, pas supposé** : cinq minutes après, la **production** — donc le code de `main`, sans le diff — répondait `/accessibilite` en timeout à 45 s et `/` en 4,2 s. Cinq minutes plus tard encore, preview et production étaient toutes deux à 200 en moins d'une seconde, y compris sous douze requêtes parallèles. C'est un démarrage à froid de la fonction Netlify, agravé par une mauvaise minute de la plateforme. Ce que ça révèle vraiment : **la couche E2E n'a aucune tolérance au démarrage à froid**, et rien ne distingue « le site est cassé » de « la fonction se réveille » — la même famille que la dette « rien ne distingue CI rouge de CI absente ». À traiter par un préchauffage explicite avant la suite, ou par une nouvelle tentative sur 5xx dans le seul `page.goto` — pas en relevant un budget |
+| Advisories sans correctif — `image-size` ×2, `extract-zip` | 18/8 | Trois hautes dont l'advisory publie `<0.0.0` comme version corrigée : aucun bump ni override ne peut les atteindre. Toutes trois sous `@netlify/dev*`, le serveur de développement local — **0 occurrence dans `.netlify/v1/`**, l'artefact déployé, et ce dépôt n'a pas de shell pour lancer `netlify dev`. Acceptées par écrit dans `scripts/audit.mjs`, qui rougit si l'une d'elles disparaît de l'audit sans être retirée du registre |
+| `/_image` : une route publique dont le site n'a aucun usage | 18/8 | Astro enregistre `/_image` que le site utilise des images ou non, et le bundle SSR embarque une copie **vendorisée** d'`image-size` avec `icns`, `jxl` et `heif` — les trois parseurs des advisories ci-dessus, invisibles à tout audit puisqu'ils ne sont pas un paquet. Non exploitable aujourd'hui : 403 sur toute source distante (allowlist vide) et aucune image locale servie. `image.service: noop` a été **essayé et retiré** — mêmes routes, mêmes parseurs, même taille de bundle : un réglage qui ne change rien mais qui se lirait comme une mitigation. À reprendre le jour où le site servira une image, ou si Astro expose un moyen de ne pas enregistrer la route |
 | ~~`sharp` : CVE libvips (haute)~~ | 5/8 → soldé le 5/8 | Corrigée par un `overrides` pnpm vers `^0.35.3` (GHSA-f88m-g3jw-g9cj, quatre CVE libvips, aucun rétroportage en 0.34.x). **La note d'origine se trompait de risque** : `astro@7.1.6` déclare `^0.34.0 \|\| ^0.35.0`, la version est donc dans sa plage supportée. Le paquet réellement dépassé est `ipx@3.1.1` (`^0.34.3`), tiré par `@netlify/images` — chemin d'image CDN que ce site n'emprunte pas. Retirer l'entrée dès qu'`ipx` accepte 0.35. Cf. journal 008 |
 | ~~Alias `~` non miroité dans Vitest~~ | 5/8 → soldé le 5/8 | Miroité **par projet** dans `vitest.config.ts` : un `resolve.alias` à la racine du fichier n'est pas hérité par les entrées `projects`, chacune étant une config Vite à part entière. La version racine ne résout donc rien tout en ayant l'air correcte — piège vérifié, pas déduit. Tenu par `tests/unit/path-alias.test.ts`, qui compare la liaison obtenue par l'alias à celle obtenue par chemin relatif. Cf. journal 007 |
 | Montées de TypeScript plafonnées à 6.0.x | 5/8 | `typescript-eslint@8.66.0` déclare le pair `>=4.8.4 <6.1.0` et `@astrojs/check@0.9.10` accepte `^5 \|\| ^6`. TS 7 est déjà en `latest` mais casserait les deux. Le déblocage viendra de `typescript-eslint` 9, pas de nous : ne pas confondre « aucune PR Dependabot » avec « à jour ». Cf. journal 006 |
