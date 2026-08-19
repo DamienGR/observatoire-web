@@ -36,6 +36,37 @@ export const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
 };
 
 /**
+ * The addresses a deployment check can actually visit.
+ *
+ * Derived from the registry rather than listed, in both directions on purpose.
+ * CLAUDE.md §5 wants "un parcours E2E par gabarit de page, pas un par commune"
+ * — this is the layer that grows without anyone noticing — so a page added to
+ * the registry is covered without anyone remembering a second file, and a
+ * dynamic route, the one that would multiply the layer by the number of
+ * communes, has no single address and cannot enter here at all.
+ *
+ * It lives beside the registry rather than in `tests/e2e/` because the warm-up
+ * job of `src/jobs/warm-preview.ts` needs the same list, and `tsconfig.jobs.json`
+ * compiles `src/` alone. Two copies of "every page of the shell" is exactly the
+ * drift the registry exists to prevent.
+ */
+export const SHELL_ROUTES: readonly string[] = Object.keys(ROUTE_POLICIES).filter(
+  (pattern) => !pattern.includes('['),
+);
+
+/**
+ * The status a route answers with.
+ *
+ * Everything answers 200 except `/404`, which answers 404 at its own address —
+ * measured, not assumed: Astro matches the not-found route and renders it with
+ * the status it stands for. Asserting 200 everywhere would make the not-found
+ * page the one page whose check proved nothing.
+ */
+export function expectedStatus(route: string): number {
+  return route === '/404' ? 404 : 200;
+}
+
+/**
  * What answers a path no route declares: an error page, a redirect, an asset
  * the CDN did not intercept. None of it should outlive the request that caused
  * it, and inheriting whatever default the edge applies is how a 404 ends up

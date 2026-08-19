@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { CACHE_POLICIES } from './cache.js';
 import {
+  expectedStatus,
   matchRoute,
   ROUTE_POLICIES,
   routePatternFromPageFile,
+  SHELL_ROUTES,
   UNMATCHED_ROUTE_POLICY,
 } from './routes.js';
 
@@ -116,5 +118,39 @@ describe('UNMATCHED_ROUTE_POLICY', () => {
     // What answers a path no route declares is an error page or a redirect.
     // Storing it at the edge would outlive the reason it was produced.
     expect(UNMATCHED_ROUTE_POLICY.cache).toBe('uncached');
+  });
+});
+
+describe('SHELL_ROUTES', () => {
+  it('holds every static route of the registry, and only those', () => {
+    // The list the E2E suite and the warm-up job both visit. Derived rather
+    // than written, so a page added to the registry is covered without anyone
+    // remembering either consumer.
+    expect([...SHELL_ROUTES].sort()).toEqual(
+      Object.keys(ROUTE_POLICIES)
+        .filter((pattern) => !pattern.includes('['))
+        .sort(),
+    );
+  });
+
+  it('leaves out the dynamic routes, which have no address to visit', () => {
+    // The bound §5 puts on this layer: a route that multiplies with the data
+    // cannot enter here at all, because a pattern is not an address.
+    expect(SHELL_ROUTES.some((route) => route.includes('['))).toBe(false);
+  });
+});
+
+describe('expectedStatus', () => {
+  it('expects 404 from the not-found page at its own address', () => {
+    // Measured, not assumed: Astro matches the route and renders it with the
+    // status it stands for. Expecting 200 here would make the one page whose
+    // job is to fail the one page whose check proves nothing.
+    expect(expectedStatus('/404')).toBe(404);
+  });
+
+  it('expects 200 from every other page of the shell', () => {
+    for (const route of SHELL_ROUTES.filter((candidate) => candidate !== '/404')) {
+      expect(expectedStatus(route)).toBe(200);
+    }
   });
 });

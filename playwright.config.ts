@@ -28,6 +28,11 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
+  // Still one, deliberately. Issue #46 rules out raising it: a replay hides a
+  // real outage exactly as well as it hides a cold start, and it replays
+  // *immediately*, when waking a function takes seconds. What answers the cold
+  // start instead is the warm-up job the workflow runs before this suite, plus
+  // the bounded, named wait of tests/e2e/preview.ts.
   retries: process.env.CI ? 1 : 0,
   timeout: 30_000,
   // Artefacts are the only way to "see" the product from a cloud session
