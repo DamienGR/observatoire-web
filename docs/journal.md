@@ -3611,3 +3611,32 @@ seul.
 Ce que ça ajoute au §12 : « une session = un ticket = une PR » est écrit comme une règle de
 lisibilité de l'historique. Ce ticket montre qu'elle est aussi une règle de **mesure** — la seule
 qui permette à un juge unique de dire de quoi il juge.
+
+### Post-scriptum : la mesure, le jour même
+
+Le run de la PR #49 a rendu son verdict en **1 min 32 s** du push au dernier job, et il a répondu
+aux deux questions séparément.
+
+| | avant | maintenant |
+|---|---|---|
+| Étape d'installation, `e2e` | ~25 s au mieux · **11 min 02** le 18/8 · **annulée à 15 min** le 19/8 | **10 s** |
+| Étape d'installation, `lighthouse` | idem | **10 s** |
+| Job `e2e` complet | — | 1 min 29 s |
+| Job `lighthouse` complet | — | 1 min 11 s |
+
+Dix secondes, au lieu de vingt-cinq dans le meilleur cas antérieur : ce qui a disparu n'est pas le
+téléchargement du navigateur, c'est `apt-get update`. Les deux jobs ont mesuré la même valeur à la
+seconde près, ce qui est attendu — ils exécutent désormais la même commande sans dépendance de
+plateforme.
+
+**Et l'hypothèse est vérifiée.** `lighthouse` a passé son budget et `e2e` a exécuté sa suite en
+36 s, or les deux commencent par `chromium.launch()` : l'image `ubuntu-latest` porte bien les
+bibliothèques partagées que réclame le Chromium de Playwright. Ce n'était pas démontrable en
+session, ça l'était en une PR de deux lignes — c'est tout le propos de l'entrée.
+
+Une nuance qui vaut d'être écrite plutôt que tue : **une exécution ne fait pas une garantie**. Ce
+qui est prouvé est que l'image du 22/8 porte ces bibliothèques ; une image de runner qui en
+retirerait une casserait le lancement du navigateur. Le filet est que cet échec-là est franc et
+immédiat — Playwright nomme la bibliothèque manquante — et que le retour arrière est d'une ligne.
+C'est la différence exacte entre cette dépendance et celle qu'on vient de retirer : `apt` échouait
+en quinze minutes de silence.
