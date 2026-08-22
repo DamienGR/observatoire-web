@@ -3530,3 +3530,84 @@ exactement l'erreur que la ligne de dette du 18/8 refusait déjà de commettre.
 démarrage à froid parce que le premier l'avait déjà payé. Le coût est donc réel, unique, et il
 échoit à qui arrive le premier — ce qui est précisément pourquoi il ne devait pas échoir à une suite
 de tests.
+
+---
+
+## 030 — Retirer une dépendance qu'on ne peut pas éprouver, et laisser la CI trancher
+
+**22 août 2026** · jalon 2 · branche `ccr-d920552e-x5kkh1`
+
+### Contexte
+
+L'entrée 029 se termine sur une dette qu'elle refuse de solder, et le ticket #48 est cette dette
+devenue son propre ticket. Le rappel de la mesure, parce que c'est elle qui autorise le
+changement : sur la PR #47, `e2e` et `lighthouse` ont été **annulés à leur `timeout-minutes: 15`**
+sans exécuter une assertion, tous deux figés dans `pnpm exec playwright install --with-deps
+chromium`, après la même ligne d'`apt-get update`. Trois occurrences sur quatre exécutions, deux
+runners, trente-cinq minutes d'écart.
+
+Le ticket nomme **deux défauts distincts**, et c'est sa contribution principale — ils ont deux
+correctifs indépendants et deux niveaux de certitude opposés :
+
+1. On dépend d'`apt` pour lancer un navigateur.
+2. Un blocage de plateforme **consomme les quinze minutes du job** au lieu d'échouer vite en se
+   nommant. Le verdict dit `The operation was canceled`, ce qui ne distingue en rien un miroir
+   Ubuntu injoignable d'une suite lente.
+
+Le second est le plus coûteux, et il est le seul des deux dont le correctif ne repose sur aucune
+hypothèse.
+
+### Ce qui a été écrit
+
+Deux lignes de YAML par job, et rien d'autre :
+
+```diff
+       - name: Install the browser Playwright pins
+-        run: pnpm exec playwright install --with-deps chromium
++        timeout-minutes: 5
++        run: pnpm exec playwright install chromium
+```
+
+`timeout-minutes: 5` **ne dépend d'aucune hypothèse** : l'étape dure ordinairement vingt-cinq
+secondes, cinq minutes sont un plafond large, et un blocage échoue désormais sous le nom de
+l'étape qui bloque. C'est la thèse du ticket #46 — un budget doit mesurer ce qu'il prétend
+mesurer — appliquée à l'étape qui avait mis ce ticket en échec.
+
+Le retrait de `--with-deps` repose, lui, sur une hypothèse : l'image `ubuntu-latest` porte les
+bibliothèques partagées que réclame le Chromium de Playwright. **Aucune session ne peut la
+vérifier** — rien ici n'est un runner Actions —, et c'est exactement pour ça que l'entrée 029 ne
+l'avait pas appliqué.
+
+### Ce qui a changé entre 029 et ici, et ce n'est pas la certitude
+
+Rien n'a rendu l'hypothèse vérifiable. Ce qui a changé est le **cadre** : l'entrée 029 aurait dû
+absorber ce changement dans une PR qui défendait autre chose, où un échec de démarrage de Chromium
+se serait ajouté à un diff déjà chargé et se serait lu comme une régression du préchauffage. Ici,
+la PR ne défend que ces deux lignes. Si l'hypothèse est fausse, `e2e` et `lighthouse` échouent
+**dans la minute** avec le message que Playwright écrit dans ce cas — il nomme la bibliothèque
+manquante —, et le seul diff en cause est celui qui l'a causé.
+
+C'est la méthode de l'entrée 026, appliquée un cran plus loin. Le favicon y était livré avec le
+test qui aurait démenti son hypothèse ; ici, **le test existait déjà** : c'est le job dont la
+première étape est de lancer le navigateur. Ce qui manquait n'était pas un test, c'était une PR
+assez petite pour que son verdict ne veuille dire qu'une chose.
+
+Deux garde-fous rendent l'échec supportable s'il survient :
+
+- Il est **franc et immédiat**. Playwright refuse de lancer un navigateur dont il manque une
+  bibliothèque, et il la nomme. Il ne rend pas des pages à moitié.
+- Il est **réversible en une ligne**. Remettre `--with-deps` rétablit exactement l'état
+  antérieur — et le `timeout-minutes` de cinq minutes, qui ne dépend de rien, survivrait à ce
+  retour en bornant la dette qui reste.
+
+### La friction, et elle est la même qu'aux entrées 020, 022 et 029
+
+Aucune session n'est un runner Actions, donc la moitié des changements d'infrastructure de ce
+dépôt sont **écrits à l'aveugle et jugés une fois**. La sortie n'est pas de trouver un moyen de
+les éprouver en session — il n'y en a pas —, c'est de **calibrer la taille du diff sur la
+confiance qu'on a dans ce qu'il contient**. Un changement qu'on ne peut pas éprouver doit voyager
+seul.
+
+Ce que ça ajoute au §12 : « une session = un ticket = une PR » est écrit comme une règle de
+lisibilité de l'historique. Ce ticket montre qu'elle est aussi une règle de **mesure** — la seule
+qui permette à un juge unique de dire de quoi il juge.

@@ -268,8 +268,21 @@ jobs:
       # and three engines would triple the slowest layer to re-measure the same
       # markup. The revision is the one @playwright/test pins in the lockfile,
       # so the browser is versioned with the suite rather than with the runner.
+      #
+      # Without `--with-deps`, and bounded — the two halves of issue #48. The
+      # flag ran `apt-get update` on every job of every pull request, and on
+      # 19/8 that command hung for fourteen minutes and had `e2e` and
+      # `lighthouse` cancelled at their own `timeout-minutes: 15`, three times
+      # over four runs, on a step no diff touched (docs/journal.md 029). The
+      # `ubuntu-latest` image already carries the shared libraries Chromium
+      # asks for, so the download alone is enough; if that is wrong the browser
+      # refuses to launch and Playwright names the missing library in seconds,
+      # which is a frank failure rather than a silent one. The five minutes are
+      # the second half and stand on their own: a download that normally takes
+      # twenty-five seconds must fail under a legible name, not eat the job.
       - name: Install the browser Playwright pins
-        run: pnpm exec playwright install --with-deps chromium
+        timeout-minutes: 5
+        run: pnpm exec playwright install chromium
 
       # The warm-up below is TypeScript, and nothing else here compiles it
       # (CLAUDE.md §3). Before the resolve step, so the compilation overlaps the
@@ -358,8 +371,13 @@ jobs:
       # The revision @playwright/test pins, so the browser is versioned with the
       # repository. The script honours CHROME_PATH for the session container,
       # which carries a different revision; CI sets nothing and gets the pin.
+      #
+      # No `--with-deps` and a bound of its own, for the reason spelled out in
+      # `e2e` above: this is the second job issue #48 saw cancelled after
+      # fourteen minutes of silence inside `apt-get update`.
       - name: Install the browser Playwright pins
-        run: pnpm exec playwright install --with-deps chromium
+        timeout-minutes: 5
+        run: pnpm exec playwright install chromium
 
       # The warm-up below is TypeScript, and nothing else here compiles it
       # (CLAUDE.md §3). Before the resolve step, so the compilation overlaps the
