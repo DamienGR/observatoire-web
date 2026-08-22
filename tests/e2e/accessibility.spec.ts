@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type TestInfo } from '@playwright/test';
-import { SHELL_ROUTES, expectedStatus } from './routes.js';
+import { gotoReady } from './preview.js';
+import { SHELL_ROUTES } from './routes.js';
 
 /**
  * axe-core on every page of the shell, in both colour schemes.
@@ -57,13 +58,13 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
     for (const route of SHELL_ROUTES) {
       test(`${route} raises no axe-core violation`, async ({ page }, testInfo) => {
-        const response = await page.goto(route);
-
         // A page that never arrived produces zero violations, and zero
         // violations on nothing is the reassuring green §5 calls the worst
-        // possible CI failure.
-        expect(response, `no response for ${route}`).not.toBeNull();
-        expect(response?.status(), `unexpected status for ${route}`).toBe(expectedStatus(route));
+        // possible CI failure. `gotoReady` refuses to return such a page — and,
+        // just as importantly, it fails saying the preview did not answer
+        // rather than leaving this test's name to describe the failure
+        // (issue #46). The status claim itself lives in availability.spec.ts.
+        await gotoReady(page, route);
 
         const results = await new AxeBuilder({ page }).analyze();
 

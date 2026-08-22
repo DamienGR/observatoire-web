@@ -245,6 +245,19 @@ Deux garde-fous portent le reste : le job ne supprime que des noms qu'il a lui-m
 `ci-`, jamais la branche par défaut ni une branche protégée, et jamais une branche plus jeune que
 deux heures — celle-là appartient à une exécution en vol.
 
+**La couche E2E commence sur une preview chaude, et ne paie pas l'attente.** Le prédicat que les
+jobs partagent — `scripts/resolve-netlify-url.mjs` — prouve que *Netlify a publié un statut*, pas
+que la fonction est réveillée : le 18/8, `e2e` a commencé à rendre des pages contre une preview de
+sept secondes et a rapporté deux 500 sous un titre parlant d'accessibilité (journal 028 et 029).
+`src/jobs/warm-preview.ts` réveille donc **toutes** les routes du registre avant que quoi que ce
+soit ne mesure, en **étape de CI distincte** de `e2e` et de `lighthouse` : l'attente est ainsi hors
+du budget de six minutes, parce qu'un budget doit mesurer la suite et non l'humeur de la
+plateforme. La règle qui distingue une indisponibilité d'un défaut vit en logique pure dans
+`src/lib/preview/readiness.ts` et sert les deux consommateurs — le job, et le `gotoReady` de la
+suite, qui réessaie de façon **bornée** et échoue en disant que la preview n'a pas répondu.
+Augmenter `retries` est explicitement exclu : un rejeu masque une vraie panne aussi bien qu'un
+démarrage à froid.
+
 Le budget est appliqué par `scripts/budget.mjs`, qui enveloppe chaque couche de test : au-delà de
 la durée allouée, le processus est tué et la commande échoue. C'est ce qui rend le budget
 *mesuré* et non aspirationnel. Relever un plafond est une décision qui se discute dans la PR,

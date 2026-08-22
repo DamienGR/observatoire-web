@@ -1,8 +1,6 @@
-import { ROUTE_POLICIES } from '~/lib/http/routes.js';
-
 /**
- * The pages this suite visits, read from the cache registry rather than listed
- * here.
+ * The pages this suite visits, re-exported from the cache registry rather than
+ * listed here.
  *
  * CLAUDE.md §5 wants "un parcours E2E par gabarit de page, pas un par commune"
  * — the E2E layer is the one that grows without anyone noticing. Deriving the
@@ -11,19 +9,11 @@ import { ROUTE_POLICIES } from '~/lib/http/routes.js';
  * multiplies with data cannot appear here at all, because a dynamic route has
  * no single address to visit. The registry is itself compared to src/pages/ by
  * tests/unit/route-cache-policy.test.ts, so it cannot silently miss a page.
- */
-export const SHELL_ROUTES: readonly string[] = Object.keys(ROUTE_POLICIES).filter(
-  (pattern) => !pattern.includes('['),
-);
-
-/**
- * The status a route answers with.
  *
- * Everything answers 200 except `/404`, which answers 404 at its own address —
- * measured, not assumed: Astro matches the not-found route and renders it with
- * the status it stands for. Asserting 200 everywhere would have made the
- * not-found page the one page whose test proved nothing.
+ * The two moved into `src/lib/http/routes.ts` with issue #46: the warm-up job
+ * of `src/jobs/warm-preview.ts` visits the same pages, and `tsconfig.jobs.json`
+ * compiles `src/` alone. This file stays as the suite's own door onto them,
+ * because every spec already knows it by this name.
  */
-export function expectedStatus(route: string): number {
-  return route === '/404' ? 404 : 200;
-}
+
+export { SHELL_ROUTES, expectedStatus } from '~/lib/http/routes.js';

@@ -3350,3 +3350,183 @@ tolérance au démarrage à froid**, et rien dans son verdict ne distingue « le
 « la fonction se réveille ». C'est la troisième forme de la même dette — après « rien ne distingue
 CI rouge de CI absente » et le job vert qui attendait onze minutes une installation de paquets. Un
 juge unique doit dire *de quoi* il juge.
+
+---
+
+## 029 — Le préchauffage, ou comment ne pas facturer à la suite l'humeur de la plateforme
+
+**19 août 2026** · jalon 2 · branche `claude/ticket-46-nf14ev`
+
+### Contexte
+
+L'entrée 028 se termine sur une dette plutôt que sur un correctif : la CI avait rougi sur `e2e` et
+`lighthouse` pour un démarrage à froid de la fonction Netlify, la mesure l'avait prouvé, et le §5
+disait quoi faire d'un échec pareil — ne pas pousser de correctif pour lui. Ce ticket est l'autre
+moitié : traiter la dette, une fois, à froid, dans une PR qui n'a rien d'autre à défendre.
+
+Le défaut tenait en une ligne de chronologie. Netlify publie son statut de commit à 19:28:44 ;
+`e2e` résout l'URL cinq secondes plus tard ; à 19:28:51, quarante-deux tests commencent à rendre
+des pages contre une preview de **sept secondes**. Le prédicat que les trois jobs partagent,
+`scripts/resolve-netlify-url.mjs`, prouve que **Netlify a publié un statut** — pas que la fonction
+est chaude. Le job `deploy` compensait seul, et en réveillant exactement **une** route.
+
+### Ce qui a été écrit, et où
+
+Trois pièces, et la répartition est le vrai sujet :
+
+- **La règle** — ce qui distingue « le site est cassé » de « la fonction se réveille » — est en
+  logique pure dans `src/lib/preview/readiness.ts`, 40 tests écrits avant le code. Trois verdicts
+  et pas un quatrième : `ready`, `unavailable` (rien n'a été rendu, donc rien n'a été mesuré) et
+  `wrong` (le déploiement a répondu, définitivement, autre chose — c'est un défaut, on le dit tout
+  de suite).
+- **Le préchauffage** est un job compilé, `src/jobs/warm-preview.ts`, parce qu'il lit la liste des
+  routes dans le registre de `src/lib/http/routes.ts` — un `.mjs` de `scripts/` ne le pourrait pas,
+  et une seconde liste écrite à la main est exactement la dérive que le registre existe pour
+  empêcher. `SHELL_ROUTES` et `expectedStatus` ont donc déménagé de `tests/e2e/` vers le registre,
+  et la suite les rouvre par un simple ré-export.
+- **La tolérance en cours de suite** est `gotoReady`, dans `tests/e2e/preview.ts`. Une fonction peut
+  être recyclée entre deux tests ; `retries: 1` n'y répond pas, il rejoue *immédiatement* quand un
+  réveil se compte en secondes. `retries` reste à 1 : le ticket l'interdit et il a raison — un
+  réessai masque une vraie panne aussi bien qu'un démarrage à froid.
+
+**Le préchauffage est une étape de CI distincte, pas une `globalSetup`**, et c'est le point qui
+compte pour le §5 : l'attente n'est pas facturée au budget de six minutes de la couche. Un budget
+doit mesurer la suite, pas l'humeur de la plateforme. Le même job sert `lighthouse`, ce qu'une
+`globalSetup` Playwright n'aurait pas pu faire — et c'est là que le budget était réellement en jeu,
+`/stats` ayant été mesurée à 6 659 ms de *speed index* contre 3 400 parce que la fonction dormait.
+
+### La friction : rien ici ne peut atteindre une URL publique, donc tout s'éprouve contre un faux
+
+C'est la limite de l'entrée 020, rencontrée sous un nouvel angle. Aucune session ne peut joindre un
+hôte public — Chromium répond `ERR_CONNECTION_RESET`, et le `fetch` de Node n'honore pas le proxy du
+conteneur — et `pnpm preview` ne fonctionne pas sous l'adaptateur Netlify. Le code écrit ici a donc
+pour objet un déploiement que la session ne verra jamais.
+
+Le contournement est celui de J1-11 : un **serveur factice** de trente lignes, quatre modes — chaud,
+froid (les deux premières requêtes de chaque route répondent 500), mort (503 permanent), statut
+inattendu — plus un hôte qui ne résout pas. Le job et la suite ont été rejoués contre les cinq.
+
+| Scénario | Job de préchauffage | `availability.spec.ts` |
+|---|---|---|
+| Chaud | 7 routes, 110 ms au total | 7 tests verts en 4,9 s |
+| Froid (2 × 500 par route) | 7 routes réessayées, 21,2 s | 7 tests verts en 20,2 s |
+| Mort (503) | échoue en 15,1 s sur la première route | échoue en 4,7 s par test |
+| Statut inattendu | échoue **immédiatement**, sans réessai | — |
+| Hôte introuvable | échoue **immédiatement**, sans réessai | — |
+
+### Ce que la répétition a trouvé, et qu'aucune relecture n'aurait vu
+
+Sur l'hôte introuvable, le job échouait vite — le bon comportement — en écrivant :
+
+```
+GET / answered HTTP 0, expected 200. The deployment answered, so this is a failure of the
+page and not of its availability.
+```
+
+**Le déploiement n'avait rien répondu.** Le verdict était juste, la phrase mentait — c'est-à-dire
+exactement le défaut que ce ticket vient corriger, reproduit par le correctif lui-même : un rapport
+qui nomme une panne qui n'a pas eu lieu. Un message d'erreur est du code qui ne s'exécute que le
+jour où personne n'a le temps de le lire.
+
+Corrigé en commençant par le test, comme le §5 l'exige d'une correction de bug : une seule fonction
+`wrongAnswerMessage`, deux branches, et la seconde dit « could not be reached … this address will
+not answer on a later attempt ». La leçon est celle de la couche de mutation, dans un autre
+registre : **ce qu'on n'exécute pas, on ne le vérifie pas** — et une chaîne de caractères est du
+comportement.
+
+### Ce que ça laisse
+
+La dette « E2E : un flake au premier passage en CI » du 6 août est soldée du même coup. Elle disait
+« à reprendre si le motif se répète, en rendant la fréquence visible plutôt qu'en bougeant un
+seuil » ; le motif s'est répété le 18, et la fréquence est désormais visible — le job journalise
+chaque tentative, chaque route réessayée, et la plus lente de la passe. Une ligne écrite deux
+semaines plus tôt a décrit à l'avance et le symptôme et le remède ; ce qui manquait n'était pas
+l'analyse, c'était l'occasion.
+
+### Post-scriptum : la mesure, enfin prise là où elle pouvait l'être
+
+Le premier run de la PR #47 a donné le chiffre que la session ne pouvait pas produire. Préchauffage
+sur `deploy-preview-47`, sept routes, **7 429 ms au total, zéro réessai** :
+
+| Route | Première réponse |
+|---|---|
+| `/` | **4 024 ms** |
+| `/stats` | **2 492 ms** |
+| `/methodologie` | 208 ms |
+| `/mentions-legales` | 233 ms |
+| `/accessibilite` | 164 ms |
+| `/droit-de-reponse` | 140 ms |
+| `/404` | 166 ms |
+
+Puis la suite : **49 tests, 48 passés et 1 sauté, 22,8 s** pour un budget de 360 s — les sept tests
+de disponibilité ajoutés ne coûtent rien de mesurable.
+
+Ces 7,4 s sont exactement ce que la couche payait auparavant *dans* son budget, avec deux workers
+frappant des routes froides en parallèle. Et le facteur **25** entre la première route touchée et
+les suivantes tranche au passage une dette laissée ouverte par la PR #43 : « le Speed Index de `/`
+est inexpliqué », avec pour hypothèse non vérifiée la fonction froide, `/` étant mesurée en
+premier. L'hypothèse était juste, et ce n'est plus une hypothèse. Le coût n'appartient pas à `/` :
+il appartient à **la première route touchée**, quelle qu'elle soit.
+
+### Et une friction qui a coûté plus que le correctif : `apt` a tué deux jobs
+
+Le run devant produire ces chiffres est mort avant d'y arriver. `e2e` et `lighthouse` ont été
+annulés à leur `timeout-minutes: 15`, tous deux dans `pnpm exec playwright install --with-deps
+chromium`, sur le même `apt-get update` :
+
+```
+Ign:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease      (× répété)
+Get:5 https://archive.ubuntu.com/ubuntu noble-security InRelease
+08:58:42 … puis rien jusqu'à 09:13:23   ##[error]The operation was canceled.
+```
+
+**14 minutes de silence**, deux fois, sur une étape que ce diff ne touche pas. Relancé une fois :
+`e2e` est passé en 1 min 43 s, `lighthouse` a rebloqué au mot près (`09:21:07 → 09:35:19`). Donc
+trois occurrences sur quatre exécutions — reproductible, pas un aléa.
+
+C'est la **troisième forme de la dette de l'entrée 026**, « un job vert qui a failli mourir de son
+propre délai », et elle a franchi le seuil : de « a failli » à « a tué deux jobs », dont celui
+chargé de mesurer le correctif des deux premières formes. L'ironie est complète et vaut d'être
+écrite : un ticket sur les CI qui rougissent pour des raisons étrangères au diff a été mis en
+échec par une CI qui rougissait pour une raison étrangère au diff.
+
+**Ce qui n'a pas été fait, et pourquoi.** Retirer `--with-deps` — l'image `ubuntu-latest` embarque
+les bibliothèques que Chromium réclame — serait le correctif évident. Il n'est pas dans cette PR :
+c'est un changement à l'installation du navigateur de *tous* les jobs, fondé sur une hypothèse
+qu'**aucune session ne peut vérifier**, puisque rien ici n'est un runner Actions. Ce dépôt a déjà
+payé pour une hypothèse promue en fait (entrées 026 et 028) ; celle-ci reste une dette, avec son
+correctif proposé, jusqu'à ce que quelqu'un puisse l'éprouver. Le §12 dit la même chose autrement :
+une dérive de périmètre s'ouvre en issue, elle ne s'absorbe pas dans la PR courante.
+
+### Ce que le préchauffage a rendu visible, et qui n'était pas son objet
+
+Le run suivant est passé au vert de bout en bout — le miroir `apt` s'était rétabli — et le job
+`lighthouse` a donné le chiffre qui manquait depuis la PR #43. Sur une preview **préchauffée** :
+
+| Page | Performance | LCP | Speed Index | Poids |
+|---|---|---|---|---|
+| `/` | **1,00** | 220 ms | **245 ms** | 6,5 ko |
+| `/stats` | **1,00** | 251 ms | **260 ms** | 4,9 ko |
+
+À comparer aux mêmes pages, non préchauffées : `/` faisait **2 585 ms** de *speed index* pour une
+performance de 0,94 (PR #43), et `/stats` **6 659 ms** — l'échec de budget du 18/8 (PR #45).
+**Facteur 10 sur l'une, 25 sur l'autre, sans une ligne de code applicatif changée.**
+
+Deux dettes tombent avec ces chiffres, et aucune des deux n'était le sujet du ticket :
+
+- « le Speed Index de `/` est inexpliqué » : il l'est. Ce n'était pas `/`, c'était **la première
+  route touchée**, quelle qu'elle soit.
+- « `/` répond plus lentement que `/stats`, et l'inverse serait attendu » : la ligne demandait
+  « une mesure qui distingue le froid du chaud, pas un chiffre ». Le journal du préchauffage
+  *est* cette mesure — 4 024 ms sur la première route, 140 à 233 ms sur les cinq dernières.
+
+Ce qui reste ouvert change de nature : le budget de 3 400 ms ne mord plus sur rien, puisque les
+deux pages tiennent 245 et 260 ms. Le resserrer est une décision à argumenter dans une PR (§6.3),
+pas un chiffre à ajuster ici — et une seule exécution à chaud ne suffit pas à la fonder. C'est
+exactement l'erreur que la ligne de dette du 18/8 refusait déjà de commettre.
+
+**Un détail que seule la comparaison des deux jobs montre** : le préchauffage a coûté 7 429 ms dans
+`e2e` et **1 259 ms** dans `lighthouse`, sur le même déploiement. Le second n'a pas payé le
+démarrage à froid parce que le premier l'avait déjà payé. Le coût est donc réel, unique, et il
+échoit à qui arrive le premier — ce qui est précisément pourquoi il ne devait pas échoir à une suite
+de tests.

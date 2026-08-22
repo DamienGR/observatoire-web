@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { gotoReady } from './preview.js';
 
 /**
  * The one page of the site whose content comes from the database (J1-15).
@@ -43,9 +44,9 @@ function edgeKeptTheResponse(headers: Record<string, string>): boolean {
 }
 
 test('answers 200 and shows either its figures or why it cannot', async ({ page }) => {
-  const response = await page.goto('/stats');
+  const response = await gotoReady(page, '/stats');
 
-  expect(response?.status()).toBe(200);
+  expect(response.status()).toBe(200);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('État des données');
 
   const figures = page.getByRole('heading', { name: FIGURES });
@@ -60,8 +61,8 @@ test('answers 200 and shows either its figures or why it cannot', async ({ page 
 });
 
 test('is held at the edge only when it has data to hold', async ({ page }) => {
-  const response = await page.goto('/stats');
-  const headers = response?.headers() ?? {};
+  const response = await gotoReady(page, '/stats');
+  const headers = response.headers();
 
   const degraded = (await page.getByRole('heading', { name: UNAVAILABLE }).count()) > 0;
 
@@ -88,7 +89,7 @@ test('is held at the edge only when it has data to hold', async ({ page }) => {
 });
 
 test('presents the resolution states as a data table, captioned and scoped', async ({ page }) => {
-  await page.goto('/stats');
+  await gotoReady(page, '/stats');
 
   const table = page.getByRole('table');
   test.skip((await table.count()) === 0, 'no figures on this deployment');

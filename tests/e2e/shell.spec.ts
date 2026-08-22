@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { SHELL_ROUTES, expectedStatus } from './routes.js';
+import { gotoReady, requestReady } from './preview.js';
+import { SHELL_ROUTES } from './routes.js';
 
 /**
  * The page template, as served.
@@ -68,7 +69,7 @@ test.describe('the console stays quiet', () => {
         errors.push(`pageerror: ${error.message}`);
       });
 
-      await page.goto(route);
+      await gotoReady(page, route);
       await page.waitForLoadState('networkidle');
 
       expect(errors, `${route} logged ${String(errors.length)} error(s)`).toEqual([]);
@@ -86,7 +87,12 @@ test.describe('the console stays quiet', () => {
       // which `script-src 'self'` therefore allows — and that script injects
       // more inline-styled markup once the page is running. The question here
       // is what this repository ships, so it is asked of the bytes it ships.
-      const response = await page.request.get(route);
+      //
+      // Through `requestReady` and not a bare `page.request.get`: an error page
+      // carries none of the markup this looks for, so a 500 used to pass here
+      // vacuously — "no inline style" and "no page" reading exactly alike
+      // (issue #46).
+      const response = await requestReady(page, route);
       const html = await response.text();
 
       const bannerAt = html.indexOf('<div data-netlify-deploy-id');
@@ -100,10 +106,10 @@ test.describe('the console stays quiet', () => {
 test.describe('every page of the shell', () => {
   for (const route of SHELL_ROUTES) {
     test(`${route} is one document with an unbroken heading hierarchy`, async ({ page }) => {
-      const response = await page.goto(route);
-
-      expect(response, `no response for ${route}`).not.toBeNull();
-      expect(response?.status(), `unexpected status for ${route}`).toBe(expectedStatus(route));
+      // The status this route owes is asserted by availability.spec.ts, whose
+      // name says so; here it is a precondition, and `gotoReady` refuses to
+      // hand over a page that never arrived (issue #46).
+      await gotoReady(page, route);
 
       await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
       await expect(page).toHaveTitle(/\S+ — observatoire-web\.fr$/);
@@ -143,7 +149,7 @@ test.describe('every page of the shell', () => {
     const routeByTitle = new Map<string, string>();
 
     for (const route of SHELL_ROUTES) {
-      await page.goto(route);
+      await gotoReady(page, route);
       const title = await page.title();
       const owner = routeByTitle.get(title);
 
@@ -163,7 +169,7 @@ test.describe('keyboard', () => {
    * attribute is dropped.
    */
   test('the skip link is the first stop and moves focus into the content', async ({ page }) => {
-    await page.goto('/');
+    await gotoReady(page, '/');
 
     const skipLink = page.getByRole('link', { name: 'Aller au contenu principal' });
 
@@ -194,7 +200,7 @@ test.describe('keyboard', () => {
   });
 
   test('marks the current page in the main navigation', async ({ page }) => {
-    await page.goto('/methodologie');
+    await gotoReady(page, '/methodologie');
 
     const navigation = page.getByRole('navigation', { name: 'Navigation principale' });
 
@@ -210,9 +216,11 @@ test.describe('keyboard', () => {
 });
 
 test('an unknown address answers 404 with the not-found page', async ({ page }) => {
-  const response = await page.goto('/cette-adresse-nexiste-pas-e2e');
+  // The expected status is passed explicitly: this address is in no registry,
+  // so nothing can derive it.
+  const response = await gotoReady(page, '/cette-adresse-nexiste-pas-e2e', 404);
 
-  expect(response?.status()).toBe(404);
+  expect(response.status()).toBe(404);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page introuvable');
   await expect(page.getByRole('main').getByRole('link', { name: 'Accueil' })).toBeVisible();
 });

@@ -271,7 +271,13 @@ jobs:
       - name: Install the browser Playwright pins
         run: pnpm exec playwright install --with-deps chromium
 
-      # Deliberately after the two installs above: resolving polls until Netlify
+      # The warm-up below is TypeScript, and nothing else here compiles it
+      # (CLAUDE.md §3). Before the resolve step, so the compilation overlaps the
+      # poll rather than being added to it.
+      - name: Build the jobs
+        run: pnpm build:jobs
+
+      # Deliberately after the installs above: resolving polls until Netlify
       # reports the preview ready, so the wait overlaps with work that has to
       # happen anyway instead of being added to it.
       - name: Resolve the Netlify deploy URL
@@ -281,6 +287,18 @@ jobs:
           SHA: ${{ github.event.pull_request.head.sha }}
           REPO: ${{ github.repository }}
         run: node scripts/resolve-netlify-url.mjs
+
+      # What issue #46 was opened for. `scripts/resolve-netlify-url.mjs` proves
+      # Netlify **published a status**, not that the function is warm: on 18/8
+      # this suite started rendering pages against a preview seven seconds old,
+      # two routes answered 500, and Playwright reported it under a test name
+      # about accessibility (docs/journal.md 028).
+      #
+      # A step of its own, before the suite, and that is the point: the waiting
+      # is not charged to the six-minute budget §5 gives this layer. A budget
+      # has to measure the suite, not the platform's mood.
+      - name: Warm every route of the preview
+        run: node dist-jobs/jobs/warm-preview.js "${{ steps.netlify.outputs.url }}"
 
       - name: Run the end-to-end and accessibility suite
         env:
@@ -343,6 +361,12 @@ jobs:
       - name: Install the browser Playwright pins
         run: pnpm exec playwright install --with-deps chromium
 
+      # The warm-up below is TypeScript, and nothing else here compiles it
+      # (CLAUDE.md §3). Before the resolve step, so the compilation overlaps the
+      # poll rather than being added to it.
+      - name: Build the jobs
+        run: pnpm build:jobs
+
       - name: Resolve the Netlify deploy URL
         id: netlify
         env:
@@ -350,6 +374,15 @@ jobs:
           SHA: ${{ github.event.pull_request.head.sha }}
           REPO: ${{ github.repository }}
         run: node scripts/resolve-netlify-url.mjs
+
+      # The same warm-up as `e2e`, and here it is the budget itself that was at
+      # stake: on 18/8 `/stats` was measured at 6 659 ms of speed index against
+      # a budget of 3 400 because the function was cold, and issue #46 forbids
+      # the obvious answer — raising the threshold — for the reason §6.3 gives.
+      # The budget had not lied; the page really did take that long. It was
+      # being asked the wrong question.
+      - name: Warm every route of the preview
+        run: node dist-jobs/jobs/warm-preview.js "${{ steps.netlify.outputs.url }}"
 
       - name: Hold the site to its budget
         run: node scripts/lighthouse-budget.mjs "${{ steps.netlify.outputs.url }}"
