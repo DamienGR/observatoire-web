@@ -263,6 +263,15 @@ la durée allouée, le processus est tué et la commande échoue. C'est ce qui r
 *mesuré* et non aspirationnel. Relever un plafond est une décision qui se discute dans la PR,
 pas un chiffre qu'on ajuste en passant.
 
+**Toute étape de CI qui attend un tiers porte son propre `timeout-minutes`**, très en deçà de
+celui du job. Sans lui, un blocage de plateforme consomme le job entier et le verdict devient
+`The operation was canceled` — un message qui ne distingue pas un miroir de paquets injoignable
+d'une suite lente. Mesuré trois fois : onze minutes d'attente sur une installation de paquets le
+18/8, puis deux jobs tués à leur quart d'heure le 19/8 (journal 026, 029 et 030). Le plafond
+d'une étape n'est pas un budget de qualité comme ceux du tableau ci-dessus : il ne dit pas
+combien de temps ce travail *mérite*, il dit à partir de quand une attente cesse d'être une
+attente et doit se nommer.
+
 La pyramide est **volontairement large au milieu**. Les bugs intéressants de ce projet ne sont
 pas dans les fonctions pures mais aux frontières : reprise d'un scan interrompu, tagging du
 cache, migration sur données réelles. Le branching Neon rend les tests d'intégration assez peu
