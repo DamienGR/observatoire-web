@@ -3641,3 +3641,174 @@ retirerait une casserait le lancement du navigateur. Le filet est que cet échec
 immédiat — Playwright nomme la bibliothèque manquante — et que le retour arrière est d'une ligne.
 C'est la différence exacte entre cette dépendance et celle qu'on vient de retirer : `apt` échouait
 en quinze minutes de silence.
+
+---
+
+## 031 — Pour regarder quarante et une pages, il a d'abord fallu compiler notre propre client
+
+**23 août 2026** · jalon 2 · branche `claude/jalon-2-implementation-cfxej1`
+
+### Contexte
+
+J2-03, les signaux complémentaires : déclaration d'accessibilité, mentions légales, politique de
+confidentialité, trois en-têtes de sécurité, CMS. C'est la moitié d'une mesure que PageSpeed
+Insights ne donne pas, et elle a une propriété que la moitié PSI n'a pas — **ici, la règle de
+lecture *est* la mesure**. PSI rend un score ; personne n'a à décider ce qu'est un score. Pour la
+déclaration d'accessibilité, il n'existe aucune API : il existe un pied de page, et quelqu'un doit
+décider qu'un lien intitulé « Handicap et accessibilité » n'est pas une déclaration alors qu'un
+lien intitulé « Aide et accessibilité » en est une.
+
+Écrire cette règle depuis l'imagination, c'était écrire la mesure depuis l'imagination.
+
+### La friction : une session ne peut pas *regarder* une page
+
+Le dépôt sait déjà qu'aucune session ne peut servir son propre build (entrée 025, `pnpm preview`
+inopérant). Ce ticket a rencontré la version symétrique du même mur : **aucune session ne peut
+ouvrir le site d'une commune**. Pas de navigateur pour regarder un pied de page, pas de capture
+d'écran, rien qui ressemble à « va voir à quoi ça ressemble ». Il n'y a que `fetch`.
+
+Sauf que le §7 interdit `fetch` sur une URL non maîtrisée : toute requête sortante vers une URL
+que l'annuaire nous a donnée passe par le client gardé de `src/lib/fetch/`. La règle vaut pour le
+produit ; elle vaut aussi pour un relevé fait en session, parce qu'une session qui contourne sa
+propre règle apprend à la contourner. Or ce client est du TypeScript, et Node ne sait pas exécuter
+les sources de ce dépôt (dette du 7/8 : le *type stripping* ne résout pas `./x.js` vers un `.ts`).
+
+D'où l'enchaînement, qui est la friction de l'entrée en une phrase : **pour regarder quarante et
+une pages web, il a fallu d'abord lancer `pnpm build:jobs`, puis piloter depuis un script jetable
+le client HTTP que ce même ticket allait mettre à l'épreuve.** L'outil qui sert à regarder est
+l'outil qu'on teste. Ce n'est pas un contournement — c'est le seul chemin qui respecte le §7 —,
+mais c'est une inversion qu'aucun développement local ne rencontre : ailleurs on ouvre un
+navigateur, on regarde, puis on écrit le code.
+
+### Le relevé
+
+45 communes tirées du périmètre v1 (1 067 communes de plus de 10 000 habitants), échantillonnées
+par pas régulier sur la population décroissante — de Paris à Andrézieux-Bouthéon, pour ne pas
+écrire une règle qui ne vaudrait que pour les grandes villes et leurs agences. Les URL viennent de
+l'annuaire DILA, interrogé par code INSEE ; les pages d'accueil sont passées par `guardedFetch`.
+
+**41 pages sur 45.** Les quatre absentes disent déjà quelque chose :
+
+| Cas | Nombre | Ce que le module en fait |
+|---|---|---|
+| `503` d'un CDN devant le site, 121 octets de texte brut | 2 | `http-error`, panne transitoire |
+| `500` | 1 | `http-error`, panne transitoire |
+| Corps supérieur au plafond de 2 Mo du client gardé | 1 | `response-too-large`, panne **définitive** |
+
+La dernière ligne est un arbitrage, pas une évidence : une page d'accueil de plus de deux
+mégaoctets pèse deux mégaoctets à chaque essai, donc réessayer trois fois dépense le budget d'une
+commune qu'on aurait pu mesurer (§8, et `settleAttempt` de J2-01 qui en fait la conséquence).
+
+### Ce que le corpus a appris, et qu'aucun pied de page imaginé n'aurait dit
+
+**1. Le problème n'est pas de reconnaître les bons liens, c'est de refuser les mauvais.** Les
+libellés qui *contiennent* le mot « accessibilité » sans être une déclaration sont nombreux et
+variés : « Handicap et accessibilité », « Plan d'accessibilité voirie et espace public »,
+« Sécurité et accessibilité - ERP », « ADAP : commerce accessible », « Cours de Pilates
+accessibles à tous ». Une liste noire n'a pas de fin. La liste des façons d'écrire
+« Accessibilité : non conforme » en a une.
+
+D'où la forme retenue, qui est l'inverse de l'intuition : un lien est retenu quand son libellé ou
+son chemin **contient les mots qui nomment la page et rien d'autre** — chaque autre mot doit
+appartenir à un petit vocabulaire de connecteurs français et de qualificatifs (`conforme`,
+`partiellement`, `numerique`, `rgaa`…). Un vocabulaire fermé se lit, se teste en table, et se
+défend devant la commune qui demandera pourquoi.
+
+**2. `x-content-type-options: nosniff, nosniff`.** Un site le pose deux fois — l'origine et le CDN
+devant elle — et `Headers.get` recolle les doublons avec une virgule. Une égalité stricte aurait
+lu la commune qui se protège deux fois comme ne se protégeant pas.
+
+**3. Un `200` qui n'est pas une page.** Une commune répond 216 octets : un `<script>` qui pose un
+cookie et recharge, et un `<noscript>JavaScript requis. Accès refusé.` Le brief exclut le
+navigateur headless (§4), donc ce mur ne sera pas franchi. La question est ce qu'on en écrit :
+lire cette réponse comme « cette commune ne publie ni mentions légales ni déclaration
+d'accessibilité » serait une affirmation fausse sur un site que nous n'avons jamais vu, exactement
+ce que le §11.5 interdit. Le module refuse donc un document sans **aucun** lien
+(`empty-document`), et la mesure porte un échec plutôt qu'une absence.
+
+**4. Un nom de produit dans la prose n'est pas une empreinte.** Une première passe cherchait
+`SPIP` n'importe où dans le document : elle a classé un site WordPress en SPIP parce qu'une
+actualité mentionnait une migration. Les empreintes retenues sont des chemins (`/wp-content/`,
+`typo3conf`, `spip.php`) et des déclarations (`<meta name="generator">`, `X-Generator`), jamais un
+nom — un chemin est émis par le logiciel, un nom est écrit par n'importe qui.
+
+**5. Un lien peut porter deux signaux.** Lunel intitule une ancre « Mentions légales » et la pointe
+vers `/politique-de-confidentialite/`. Lire le libellé seul crédite la commune de mentions légales
+et manque sa politique de confidentialité ; lire le chemin seul fait l'inverse. Les deux pages
+existent. Le classement rend donc une **liste** de signaux et non un seul, et c'est la seule
+décision de conception de ce ticket qui n'a pas été trouvée par un test : elle a été trouvée en
+repassant le module fini sur le corpus et en cherchant, commune par commune, les désaccords.
+
+**6. Six CSP sur quinze ne déclarent que `frame-ancestors`.** La colonne est un booléen ; il dit
+« une politique est déclarée », pas « une bonne politique est déclarée ». Le noter ici plutôt que
+de le graduer : une note serait un morceau de score composite, et le score composite est une
+décision ouverte (§11 du brief) qu'un module d'extraction n'a pas à trancher au passage.
+
+### Le résultat, mesuré sur les 41 pages
+
+| Signal | Présent |
+|---|---|
+| Déclaration d'accessibilité | 27 |
+| Mentions légales | 39 |
+| Politique de confidentialité | 19 |
+| HSTS (`max-age` positif) | 20 |
+| CSP | 15 |
+| `nosniff` | 26 |
+
+CMS : **WordPress 22, TYPO3 8, Drupal 2, Joomla 1, SPIP 1**, et **7 non identifiés** — dont deux
+produits nommés mais inconnus de la table (`abc-cms`, `Moovapps Commerce Studio`) et cinq sites
+sans aucune empreinte.
+
+**Vérification à la main**, parce qu'un chiffre produit par le code qu'il évalue ne prouve rien :
+chaque page classée « pas de déclaration d'accessibilité » a été regrepée pour un `href` contenant
+`accessib`, chaque page classée « pas de mentions légales » pour `mention`, chaque page classée
+« pas de politique de confidentialité » pour `confidentialit|donnees-personnelles|vie-privee|rgpd`.
+**Aucun faux négatif, aucun faux positif.** Les deux seuls `href` contenant `accessib` sur des
+pages classées négatives sont « Cours de Pilates accessibles à tous » et « Handicap et
+accessibilité », tous deux refusés à dessein. Les deux ancres intitulées « Accessibilité » qui
+pointent vers `#` sont comptées absentes, également à dessein : il n'y a pas de page à lire au
+bout d'un `#`.
+
+### Ce qui n'a délibérément pas été fait : geler les 41 pages en fixtures
+
+Le §5 gèle les réponses des API tierces dans `tests/fixtures/`, et il aurait été facile d'y
+ajouter quelques pages d'accueil. Ç'aurait été une erreur de catégorie. Une fixture d'API est
+tenue honnête par un test de contrat hebdomadaire qui repose la même question à l'API ; il n'existe
+aucun équivalent pour le site d'une commune, et le §5 interdit à une PR de faire la moindre
+requête réelle. Une page HTML gelée serait donc **le site de quelqu'un, un mardi**, quelques
+mégaoctets versionnés que rien ne pourrait plus confronter à la réalité.
+
+Ce qui est gelé à la place, ce sont les **libellés et les chemins** observés, recopiés verbatim
+dans des tables `it.each`. C'est la spécification sous la forme que le §5 rend durable : la
+prochaine session ne verra pas les pages, elle verra la liste exacte de ce qui a été refusé et
+pourquoi.
+
+### Chiffres de la couche, et deux lignes de code que la mutation a fait disparaître
+
+222 tests unitaires, **100 % de branches** sur `src/lib/signals/`, suite complète en 8 s pour un
+budget de 60. Quatre branches que TypeScript sait inatteignables ont été supprimées plutôt que
+testées — `href.split(…)[0] ?? ''` et ses cousines —, dans la ligne de l'entrée 019 : une branche
+qu'aucun test ne peut atteindre est une branche à ne pas écrire.
+
+Stryker a ensuite été lancé sur le seul module (hors du chemin des PR, comme le veut le §5) :
+**83,75 %** au premier passage. Deux survivants disaient quelque chose, et ce qu'ils disaient n'est
+pas « il manque un test » :
+
+- `if (tokens.length === 0) return false;` en tête du comparateur de vocabulaire : **code mort**.
+  Aucun groupe de déclencheurs n'est vide, donc rien ne se déclenche sur rien, donc le garde ne
+  pouvait pas changer de réponse. Supprimé.
+- La branche qui traitait `/>` explicitement dans l'analyseur de balises : **indistinguable de son
+  absence**, parce qu'un `/` là où un nom d'attribut est attendu est déjà enjambé et que le tour de
+  boucle suivant trouve le `>`. Supprimée, avec le commentaire qui dit pourquoi — sinon quelqu'un
+  la réécrira.
+
+Plus un vrai manque : `pathSegments` est exporté et n'avait aucun test à lui. Après ces trois
+changements, **87,07 %** — et surtout **91,07 % sur `policies.ts`**, c'est-à-dire sur la partie qui
+décide de ce qui sera publié à côté du nom d'une commune. Le point bas est `html.ts` à 82,77 % :
+un analyseur syntaxique est fait de bornes redondantes, et c'est le fichier dont un survivant coûte
+le moins cher — il ne décide rien, il rapporte.
+
+C'est le deuxième ticket où la couche de mutation gagne son temps d'exécution (entrée 024 pour le
+premier), et cette fois-ci sans trouver de faille : elle a trouvé **deux lignes qui ne servaient à
+rien**. C'est une prise plus modeste et de même nature — un test de mutation dit ce que les tests ne
+vérifient pas, y compris quand la raison est que le code n'y est pour rien.

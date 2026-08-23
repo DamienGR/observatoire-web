@@ -517,6 +517,16 @@ Règles de cette surface :
 - **Une panne définitive dépense tout le budget d'essais**, elle ne pose pas de drapeau. La reprise
   ne voit qu'un statut et un compteur — c'est tout ce que le schéma conserve —, donc une panne
   définitive qui laisserait des essais au compteur serait reprise à chaque passe, indéfiniment.
+- **Les signaux complémentaires sont lus par des règles, pas par des expressions régulières
+  éparpillées.** Ils vivent dans `src/lib/signals/` : un scanner borné sur du HTML hostile
+  (`html`), le vocabulaire qui décide qu'un lien est une déclaration d'accessibilité, des mentions
+  légales ou une politique de confidentialité (`policies`), les trois en-têtes de sécurité et ce
+  que chaque booléen affirme vraiment (`headers`), les empreintes de CMS (`cms`), l'agrégation aux
+  noms des colonnes de `measurement` (`extract`), et la collecte, qui prend son transport par
+  injection et ne fait **qu'une** requête (`collect`). La règle qui les gouverne tous est celle du
+  §11.5 : un lien est retenu quand son libellé ou son chemin nomme la page **et rien d'autre**, et
+  une page qu'on n'a pas pu lire produit un échec daté, jamais une absence. Le vocabulaire vient
+  d'un relevé de 41 sites réels (journal 031) ; on l'élargit sur mesure, jamais sur intuition.
 - La résolution d'URL est un **processus à états** (`candidat → vérifié → invalide → à revoir`),
   pas une simple colonne. Ses règles vivent dans `src/lib/resolve/` en logique pure : ce qu'on
   peut requêter et dans quel ordre (`attempt`), ce que vaut une observation (`verdict`), quelles
