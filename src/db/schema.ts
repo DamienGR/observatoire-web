@@ -307,6 +307,15 @@ export const measurement = pgTable(
     hasHsts: boolean('has_hsts'),
     hasCsp: boolean('has_csp'),
     hasXContentTypeOptions: boolean('has_x_content_type_options'),
+    /**
+     * The one column where `null` carries two meanings, and it is written down
+     * rather than resolved: *not measured*, like every other column here, and
+     * *measured, no fingerprint recognised* — seven of the 41 sites surveyed on
+     * 23 August 2026 are in the second case, two of them declaring a product
+     * `src/lib/signals/cms.ts` does not know. `statut` and `error_code` already
+     * say whether the measurement happened, so a third value would only add a
+     * word to keep in step with them.
+     */
     cms: text('cms'),
 
     createdAt: timestamptz('created_at').notNull().defaultNow(),

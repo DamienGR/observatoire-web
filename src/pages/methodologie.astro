@@ -95,6 +95,36 @@ const sources = [
     automatique ne peut pas lever un doute qu'elle a elle-même signalé.
   </p>
 
+  <h2>Signaux lus directement dans la page</h2>
+  <p>
+    Une seule page est récupérée par commune, la page d'accueil, et elle est lue telle qu'elle est
+    servie : sans navigateur, sans exécution de script. Quatre choses y sont cherchées — un lien
+    vers une déclaration d'accessibilité, un lien vers les mentions légales, un lien vers une
+    politique de confidentialité, et l'outil de publication utilisé.
+  </p>
+  <p>
+    Un lien n'est retenu que si son intitulé ou son adresse <strong
+      >nomme la page et ne nomme rien d'autre</strong
+    >. Un lien « Handicap et accessibilité » ou « Plan d'accessibilité de la voirie » désigne un
+    contenu réel, mais pas une déclaration d'accessibilité, et n'est donc pas compté comme tel. Un
+    lien qui ne mène à aucune page — parce qu'il ouvre un panneau plutôt qu'un document — n'est pas
+    compté non plus.
+  </p>
+  <p>
+    La distinction qui compte est entre <em>absent</em> et <em>non mesuré</em>. Un signal est
+    déclaré absent uniquement lorsque la page a été lue et ne le porte pas. Lorsque la page n'a pas
+    pu être lue — site indisponible, réponse qui n'est pas une page, page qui exige un navigateur —
+    aucun signal n'est publié pour cette commune : la mesure porte alors un échec daté, jamais une
+    absence.
+  </p>
+  <p>
+    Trois en-têtes de sécurité sont relevés de la même façon : leur <strong>présence</strong>, et
+    rien de plus. Le relevé dit qu'une politique de sécurité de contenu est déclarée ; il ne juge
+    pas ce qu'elle protège. Enfin, l'outil de publication est identifié par ce que le site déclare
+    lui-même ou par les adresses de ses ressources — « non identifié » est une réponse possible et
+    fréquente, et ne signifie pas qu'il n'y en a pas.
+  </p>
+
   <h2>Ce qui n'est pas mesuré</h2>
   <ul>
     <li>
