@@ -42,10 +42,18 @@ export class PsiPayloadError extends Error {
  * Every audit of the report, in the three shapes anything downstream reads: a
  * score, a number, and a list whose *length* is an occurrence count.
  *
- * `items` is an array of `unknown` deliberately. An axe item carries a DOM
- * snippet, a bounding rectangle and an explanation — a node of somebody's site,
- * which §7 treats as hostile data and which nothing here has any business
- * looking inside. What we need from it is how many there are.
+ * `items` is `unknown`, and that is a correction the live API made to a first
+ * version of this schema that declared an array. **`details.items` is not
+ * always a list**: an audit of type `checklist` — `document-latency-insight` on
+ * the very same Paris payload — sends an *object* keyed by check name. Declaring
+ * an array there rejected the whole 700 kB report over an audit nothing reads,
+ * and the pruned fixture could not have said so because the pruning had dropped
+ * that audit (docs/journal.md 032). It is in `tests/fixtures/psi/` now.
+ *
+ * So the shape stays open here and the two readers ask for what they need. Both
+ * only ever want a count: an axe item carries a DOM snippet, a bounding
+ * rectangle and an explanation — a node of somebody's site, which §7 treats as
+ * hostile data and which nothing here has any business looking inside.
  */
 const auditSchema = z.object({
   id: z.string().min(1),
@@ -58,7 +66,8 @@ const auditSchema = z.object({
   details: z
     .object({
       type: z.string().optional(),
-      items: z.array(z.unknown()).optional(),
+      /** A list for a `table`, an object for a `checklist`. See above. */
+      items: z.unknown().optional(),
       /** Where Lighthouse puts the axe-core impact level (`core/audits/accessibility/axe-audit.js`). */
       debugData: z
         .object({

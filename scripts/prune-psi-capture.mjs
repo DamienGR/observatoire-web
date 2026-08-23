@@ -37,6 +37,17 @@ const METRIC_AUDITS = [
 /** Read for the status of the main document, and to prove the 404 case. */
 const DIAGNOSTIC_AUDITS = ['network-requests', 'http-status-code'];
 
+/**
+ * Kept although nothing reads it: it is the counter-example.
+ *
+ * `document-latency-insight` is of type `checklist` and its `details.items` is
+ * an **object**, not a list. A first version of the schema declared an array
+ * there and rejected every report because of it — and the first version of this
+ * script had pruned the audit away, so no unit test could have caught it. Only
+ * the live API did (docs/journal.md 032). It stays so that one can.
+ */
+const COUNTEREXAMPLE_AUDITS = ['document-latency-insight'];
+
 const [, , source, destination] = process.argv;
 
 if (source === undefined || destination === undefined) {
@@ -57,7 +68,12 @@ const lhr = capture.lighthouseResult;
 const accessibilityAudits = lhr.categories.accessibility.auditRefs.map((ref) => ref.id);
 
 const audits = {};
-for (const id of [...METRIC_AUDITS, ...DIAGNOSTIC_AUDITS, ...accessibilityAudits]) {
+for (const id of [
+  ...METRIC_AUDITS,
+  ...DIAGNOSTIC_AUDITS,
+  ...COUNTEREXAMPLE_AUDITS,
+  ...accessibilityAudits,
+]) {
   if (lhr.audits[id] !== undefined) audits[id] = lhr.audits[id];
 }
 

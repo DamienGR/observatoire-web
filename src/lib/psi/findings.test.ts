@@ -52,7 +52,7 @@ describe('extractFindings, against the frozen capture', () => {
 
     expect(audit?.scoreDisplayMode).toBe('informative');
     expect(audit?.score).toBe(1);
-    expect(audit?.details?.items?.length).toBe(5);
+    expect((audit?.details?.items as unknown[]).length).toBe(5);
     expect(audit?.details?.debugData?.impact).toBe('minor');
 
     expect(extractFindings(source).findings.map((finding) => finding.ruleId)).not.toContain(
@@ -168,6 +168,16 @@ describe('extractFindings, on the cases the capture does not contain', () => {
   it('counts one occurrence for a failure with an empty evidence table', () => {
     const result = extractFindings(
       withAudit({ details: { items: [], debugData: { impact: 'minor' } } }),
+    );
+
+    expect(result.findings[0]?.occurrences).toBe(1);
+  });
+
+  it('counts one occurrence when the evidence is not a list at all', () => {
+    const result = extractFindings(
+      withAudit({
+        details: { type: 'checklist', items: { a: 1, b: 2 }, debugData: { impact: 'minor' } },
+      }),
     );
 
     expect(result.findings[0]?.occurrences).toBe(1);

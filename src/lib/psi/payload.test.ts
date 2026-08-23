@@ -158,6 +158,25 @@ describe('parsePsiResponse, on what the API should never send', () => {
     expect(parsePsiResponse(payload).kind).toBe('report');
   });
 
+  /**
+   * The audit that broke the first version of this schema, and that the pruned
+   * fixture had thrown away before any test could see it. `details.items` is an
+   * object here, not a list — Lighthouse's `checklist` detail type.
+   */
+  it('accepts an audit whose items are an object rather than a list', () => {
+    const payload = readPsiFixture(PARIS) as {
+      lighthouseResult: {
+        audits: Record<string, { details?: { type?: string; items?: unknown } }>;
+      };
+    };
+    const checklist = payload.lighthouseResult.audits['document-latency-insight'];
+
+    expect(checklist?.details?.type).toBe('checklist');
+    expect(Array.isArray(checklist?.details?.items)).toBe(false);
+    expect(typeof checklist?.details?.items).toBe('object');
+    expect(parsePsiResponse(payload).kind).toBe('report');
+  });
+
   it('accepts a scoreDisplayMode it has never seen, because Lighthouse adds them', () => {
     const payload = readPsiFixture(PARIS) as {
       lighthouseResult: { audits: Record<string, { scoreDisplayMode: string }> };

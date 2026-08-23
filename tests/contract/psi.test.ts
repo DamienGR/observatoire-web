@@ -58,8 +58,16 @@ const apiKey = requireEnv(serverEnv(), 'PSI_API_KEY');
  *
  * A 400 is not retried: it is an answer, and for `UNREACHABLE` it is the answer
  * this suite is here to read.
+ *
+ * **The parse is deliberately outside the retry.** The first live run of this
+ * file put it inside, and a genuine schema drift — `details.items` arriving as
+ * an object — was retried three times and then reported as "the API did not
+ * answer", which is the precise confusion CLAUDE.md §5 asks this layer never to
+ * make. An availability failure is one where nothing arrived; anything that
+ * arrived and did not fit is a contract failure and must say so on the first
+ * attempt (docs/journal.md 032).
  */
-async function askPsi(url: string): Promise<Answer> {
+async function fetchPsi(url: string): Promise<{ status: number; body: unknown }> {
   let lastStatus = 0;
   let lastError = '';
 
@@ -81,7 +89,7 @@ async function askPsi(url: string): Promise<Answer> {
         continue;
       }
 
-      return { status: response.status, parsed: parsePsiResponse(body) };
+      return { status: response.status, body };
     } catch (error) {
       lastError = redactPsiKey(error instanceof Error ? error.message : 'transport error');
     }
@@ -93,6 +101,14 @@ async function askPsi(url: string): Promise<Answer> {
       'This is an availability failure, not a contract failure: the shape of the ' +
       'payload was never observed. Re-run before changing any schema.',
   );
+}
+
+async function askPsi(url: string): Promise<Answer> {
+  const { status, body } = await fetchPsi(url);
+
+  // Anything thrown here is a `PsiPayloadError` naming the field, and it is a
+  // contract failure: the payload arrived.
+  return { status, parsed: parsePsiResponse(body) };
 }
 
 describe('PageSpeed Insights still answers the way the fixtures say', () => {

@@ -243,6 +243,22 @@ describe('extractMeasurement, on the cases the capture does not contain', () => 
     expect(measurement.httpStatus).toBeNull();
   });
 
+  it('reports no status when the request audit sends something other than a list', () => {
+    const measurement = extractMeasurement({
+      ...base,
+      audits: {
+        'network-requests': {
+          id: 'network-requests',
+          score: 1,
+          scoreDisplayMode: 'informative',
+          details: { type: 'checklist', items: { serverResponseIsFast: { value: true } } },
+        },
+      },
+    });
+
+    expect(measurement.httpStatus).toBeNull();
+  });
+
   it('says the axe version is unknown rather than guessing, when the report omits it', () => {
     expect(extractMeasurement({ ...base, environment: {} }).axeCoreVersion).toBeNull();
   });

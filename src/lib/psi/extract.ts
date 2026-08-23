@@ -114,7 +114,11 @@ const documentRequestSchema = z.object({
  * statement about the commune. Only this number says so.
  */
 function mainDocumentStatus(report: PsiReport): number | null {
-  const items = report.audits['network-requests']?.details?.items ?? [];
+  // `details.items` is not always a list (`payload.ts`): an audit of type
+  // `checklist` sends an object. This one sends a table, and asking is cheaper
+  // than trusting it will go on doing so.
+  const raw = report.audits['network-requests']?.details?.items;
+  const items = Array.isArray(raw) ? raw : [];
 
   const documents = items
     .map((item) => documentRequestSchema.safeParse(item))

@@ -3947,6 +3947,49 @@ elles ne valent que ce que vaut le contrat hebdomadaire qui les confronte. `test
 assère par conséquent plus que « ça se parse » : les unités des six métriques, l'impact déclaré sur
 chaque règle échouée, et que la cible d'échec se lit toujours comme une panne transitoire.
 
+### Le contrat a attrapé, en une heure, ce que la fixture ne pouvait pas dire
+
+La section précédente affirme qu'une fixture élaguée par l'opinion du parseur ne pourrait jamais le
+contredire. C'était un argument. Une heure plus tard, c'était une panne.
+
+Premier passage réel de `tests/contract/psi.test.ts`, déclenché pour prouver qu'il passe :
+
+```
+lighthouseResult.audits.document-latency-insight.details.items:
+  Invalid input: expected array, received object
+```
+
+`details.items` **n'est pas toujours une liste.** L'audit `document-latency-insight` est de type
+`checklist` et rend un objet indexé par nom de contrôle. Le schéma déclarait un tableau, donc il
+refusait un rapport de 700 ko à cause d'un audit que **rien ne lit**.
+
+Ce qui rend la chose intéressante n'est pas l'erreur, c'est pourquoi les 146 tests unitaires ne
+pouvaient pas la voir : l'audit était dans la charge capturée à 13 h 56, et **l'élagage l'avait
+jeté** — il n'est ni une métrique, ni un diagnostic, ni dans la catégorie accessibilité. La fixture
+décrivait donc un monde où `items` est toujours un tableau, et tous les tests écrits contre elle
+étaient d'accord entre eux.
+
+Trois corrections, dans le même diff :
+
+- le schéma dit `unknown` et les **deux lecteurs demandent** — ils ne veulent qu'un compte, et un
+  audit qui enverrait autre chose vaut une occurrence plutôt qu'une mesure perdue ;
+- l'élagage garde désormais cet audit-là, nommé `COUNTEREXAMPLE_AUDITS`, précisément parce que
+  personne ne le lit : c'est le seul rôle qu'il ait ;
+- et un test unitaire l'assère sur la fixture, donc la prochaine régression sera rouge en 9
+  secondes au lieu d'attendre le lundi.
+
+**Et une deuxième panne, cachée dans la première.** Le message d'échec disait « l'API n'a pas
+répondu après 3 essais » — une panne de *disponibilité*. C'était faux : l'API avait répondu du
+premier coup, en 20 secondes, avec un rapport parfait. Le parse était **à l'intérieur** de la boucle
+de réessai, donc une dérive de contrat était rejouée trois fois puis rapportée comme une
+indisponibilité. C'est exactement la confusion que le §5 demande à cette couche de ne jamais faire,
+et le fichier qui la commet est celui dont le commentaire d'en-tête promet de la distinguer. Le
+parse est sorti de la boucle : ce qui n'arrive pas est une indisponibilité, ce qui arrive et ne
+colle pas est une dérive, et ça se dit au premier essai.
+
+Le §5 dit que la couche de contrat existe pour être crue quand elle rougit. Elle a rougi pour la
+bonne raison, avec le mauvais message, une heure après avoir été écrite.
+
 ### Un garde qu'on n'aurait pas écrit sans avoir vu le champ
 
 `numericValue` et `numericUnit` voyagent côte à côte. Un module qui ne lirait que le premier
@@ -3957,7 +4000,7 @@ pire qu'une mesure absente, et il n'y a rien à rattraper en aval.
 
 ### Chiffres, et ce que la mutation a encore trouvé
 
-146 tests unitaires, **100 % de branches** sur `src/lib/psi/`. Suite complète : 1 094 tests en 8,5 s
+149 tests unitaires, **100 % de branches** sur `src/lib/psi/`. Suite complète : 1 097 tests en 8,5 s
 pour un budget de 60.
 
 Stryker sur le seul module, hors du chemin des PR : **85,71 %** au premier passage, 371 mutants.

@@ -116,9 +116,19 @@ extraction ignores the ones it should.
 Removed: `fullPageScreenshot`, `i18n`, `timing`, `entities`, `categoryGroups`,
 `userAgent`, `loadingExperience` and `originLoadingExperience` (CrUX field data
 this project does not read), every audit outside the accessibility category but
-the eight that are read, and — the one reduction *inside* an audit — the
+the nine listed below, and — the one reduction *inside* an audit — the
 `network-requests` items that are not the document. Error payloads are kept
 byte for byte; they are under 700 bytes.
+
+The ninth audit is kept although **nothing reads it**, and it is the reason this
+section exists rather than being a footnote. `document-latency-insight` is of
+type `checklist`, so its `details.items` is an **object** where every other
+audit sends a list. The first version of the schema declared an array there and
+rejected every live report because of it — and the first version of the pruning
+had dropped that audit, so no unit test could have found out. The weekly
+contract test found it within the hour (docs/journal.md 032). It stays as the
+counter-example, which is the whole point of not pruning by what the parser
+happens to want.
 
 Being pruned is exactly why `tests/contract/psi.test.ts` matters more here than
 for the two sources below: these files are not what arrived, so only the live

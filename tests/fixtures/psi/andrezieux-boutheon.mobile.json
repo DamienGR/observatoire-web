@@ -1620,6 +1620,41 @@
         "score": 1,
         "scoreDisplayMode": "binary"
       },
+      "document-latency-insight": {
+        "id": "document-latency-insight",
+        "title": "Document request latency",
+        "description": "Your first network request is the most important. [Reduce its latency](https://developer.chrome.com/docs/performance/insights/document-latency) by avoiding redirects, ensuring a fast server response, and enabling text compression.",
+        "score": 1,
+        "scoreDisplayMode": "metricSavings",
+        "metricSavings": {
+          "LCP": 0,
+          "FCP": 0
+        },
+        "details": {
+          "debugData": {
+            "serverResponseTime": 214,
+            "type": "debugdata",
+            "redirectDuration": 0,
+            "uncompressedResponseBytes": 0,
+            "wastedBytes": 0
+          },
+          "items": {
+            "noRedirects": {
+              "value": true,
+              "label": "Avoids redirects"
+            },
+            "usesCompression": {
+              "value": true,
+              "label": "Applies text compression"
+            },
+            "serverResponseIsFast": {
+              "value": true,
+              "label": "Server responds quickly (observed 214 ms)"
+            }
+          },
+          "type": "checklist"
+        }
+      },
       "accesskeys": {
         "id": "accesskeys",
         "title": "`[accesskey]` values are unique",

@@ -61,9 +61,15 @@ function isFailure(audit: PsiAudit): boolean {
  * `> 0` CHECK, and a rule Lighthouse scored zero failed at least once whatever
  * its item list says. The alternative — dropping the finding — would hide a
  * violation because its evidence table was empty.
+ *
+ * The list is *asked* for rather than assumed, because `details.items` is not
+ * always one (`payload.ts`). An axe audit always sends a table; an audit that
+ * sent something else would be counted as the one failure we know about rather
+ * than crash a measurement.
  */
 function occurrencesOf(audit: PsiAudit): number {
-  return Math.max(1, audit.details?.items?.length ?? 0);
+  const items = audit.details?.items;
+  return Math.max(1, Array.isArray(items) ? items.length : 0);
 }
 
 export function extractFindings(report: PsiReport): AccessibilityFindings {

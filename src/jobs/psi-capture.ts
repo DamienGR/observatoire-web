@@ -77,7 +77,13 @@ function parseArguments(argv: readonly string[]): JobArguments {
     throw new Error(`Unknown strategy ${strategy}. Expected one of ${PSI_STRATEGIES.join(', ')}.`);
   }
 
-  const flagged = new Set([outIndex, outIndex + 1, strategyIndex, strategyIndex + 1]);
+  // Built only from the flags that were actually found: seeding it with `-1`
+  // would also mark index 0, and `psi-capture.js https://ville.fr/` would
+  // silently drop its only target and fall back to the default list.
+  const flagged = new Set<number>();
+  if (outIndex !== -1) flagged.add(outIndex).add(outIndex + 1);
+  if (strategyIndex !== -1) flagged.add(strategyIndex).add(strategyIndex + 1);
+
   const targets = argv.filter((value, index) => !flagged.has(index) && !value.startsWith('--'));
 
   return {
@@ -124,6 +130,15 @@ function outline(value: unknown, depth: number, path = ''): string[] {
     outline(child, depth - 1, path === '' ? key : `${path}.${key}`),
   );
 }
+
+/** We announce ourselves on every outgoing request (CLAUDE.md §7). */
+const USER_AGENT = 'observatoire-web PSI capture (+https://github.com/DamienGR/observatoire-web)';
+
+/** PSI takes tens of seconds on a heavy home page, and minutes on a bad one. */
+const REQUEST_TIMEOUT_MS = 150_000;
+
+/** The brief measures the real throughput at about one request a second (§4). */
+const PAUSE_BETWEEN_REQUESTS_MS = 2_000;
 
 interface CaptureResult {
   readonly target: string;
@@ -192,15 +207,6 @@ async function capture(
     file,
   };
 }
-
-/** We announce ourselves on every outgoing request (CLAUDE.md §7). */
-const USER_AGENT = 'observatoire-web PSI capture (+https://github.com/DamienGR/observatoire-web)';
-
-/** PSI takes tens of seconds on a heavy home page, and minutes on a bad one. */
-const REQUEST_TIMEOUT_MS = 150_000;
-
-/** The brief measures the real throughput at about one request a second (§4). */
-const PAUSE_BETWEEN_REQUESTS_MS = 2_000;
 
 const wait = (ms: number): Promise<void> =>
   new Promise((resolve) => {
