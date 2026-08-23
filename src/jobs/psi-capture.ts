@@ -181,14 +181,20 @@ async function capture(
   // Printed as lines rather than as a log field: an outline is read by a human
   // scrolling a workflow log, and NDJSON with three hundred keys in one field
   // is not read at all.
-  for (const line of outline(parsed, 5)) console.info(`  ${file} | ${line}`);
+  for (const line of outline(parsed, 5)) process.stdout.write(`  ${file} | ${line}\n`);
 
-  return { target, strategy: args.strategy, httpStatus: response.status, bytes: body.length, elapsedMs, file };
+  return {
+    target,
+    strategy: args.strategy,
+    httpStatus: response.status,
+    bytes: body.length,
+    elapsedMs,
+    file,
+  };
 }
 
 /** We announce ourselves on every outgoing request (CLAUDE.md §7). */
-const USER_AGENT =
-  'observatoire-web PSI capture (+https://github.com/DamienGR/observatoire-web)';
+const USER_AGENT = 'observatoire-web PSI capture (+https://github.com/DamienGR/observatoire-web)';
 
 /** PSI takes tens of seconds on a heavy home page, and minutes on a bad one. */
 const REQUEST_TIMEOUT_MS = 150_000;
@@ -204,7 +210,7 @@ const wait = (ms: number): Promise<void> =>
 async function main(): Promise<void> {
   const logger = createLogger({
     sink: (line) => {
-      console.info(line);
+      process.stdout.write(`${line}\n`);
     },
   });
 

@@ -3812,3 +3812,187 @@ C'est le deuxième ticket où la couche de mutation gagne son temps d'exécution
 premier), et cette fois-ci sans trouver de faille : elle a trouvé **deux lignes qui ne servaient à
 rien**. C'est une prise plus modeste et de même nature — un test de mutation dit ce que les tests ne
 vérifient pas, y compris quand la raison est que le code n'y est pour rien.
+
+---
+
+## 032 — Pour écrire un client d'API, il a d'abord fallu demander à la CI de regarder à ma place
+
+**23 août 2026** · jalon 2 · branche `claude/traite-j2-02-8g0um7`
+
+### Contexte
+
+J2-02, le client PageSpeed Insights : la moitié de la mesure que J2-03 ne donne pas. Le §5 dit
+comment on écrit ça — pour une API tierce, **on observe le comportement réel, puis on fige
+l'observation en fixture** — et l'entrée 027 avait déjà buté sur l'obstacle et l'avait nommé :
+observer demande une clé, la clé est un secret de dépôt, le mode sans clé de PSI a un quota **nul**.
+La tâche a donc été rangée derrière J2-01 avec une phrase de consigne : « J2-02 commencera par
+capturer sa fixture via un `workflow_dispatch` ».
+
+Cette entrée raconte ce que cette phrase coûte quand on l'exécute, et ce que la charge réelle a dit
+qu'aucune lecture de la documentation n'aurait donné.
+
+### La friction : un workflow qui n'est pas sur `main` n'est pas déclenchable
+
+Le plan était d'ajouter `.github/workflows/psi-capture.yml`, de le déclencher sur la branche de la
+PR, et de récupérer l'artefact. Il manque une marche au milieu : **GitHub ne propose au dispatch que
+les workflows présents sur la branche par défaut.** Le contournement de l'entrée 027 est exact — un
+workflow *déjà sur `main`* déclenché sur une autre référence s'exécute dans la version de cette
+branche-là, ce qui donne à une PR l'accès à un secret de dépôt sans rien élargir — mais il ne
+s'applique qu'aux workflows qui existent déjà. Un workflow neuf ne peut pas se déclencher lui-même
+en pré-merge.
+
+Deux sorties : livrer le workflow dans une PR séparée puis s'en servir dans une seconde (deux PR
+pour un ticket, ce que le §12 refuse), ou **greffer la capture sur un workflow déjà déclenchable**.
+C'est la seconde qui a été prise, et à l'écrire elle a cessé d'être un contournement : le workflow
+déjà en place est `contracts.yml`, dont le rôle est *de confronter les fixtures gelées à la
+réalité*. Capturer et vérifier sont les deux temps d'un même geste. La capture tourne donc sur
+`workflow_dispatch` uniquement — `if: github.event_name == 'workflow_dispatch'` —, le
+hebdomadaire ne dépense pas de quota pour un artefact que personne n'ouvre, et le chemin de
+rafraîchissement d'une fixture PSI est désormais écrit dans le dépôt au lieu d'être un savoir-faire
+de session.
+
+Le retour de l'artefact vers la session est l'autre moitié du chemin, et il marche : l'API GitHub
+rend une URL signée temporaire, la session la télécharge, la dézippe, et regarde enfin. **Quatre
+minutes de CI pour que six pages soient vues une fois.** C'est le prix, il est bas, et le noter
+sert la prochaine session plus qu'un commentaire dans le workflow.
+
+### Ce que la charge a dit, et qui n'était pas devinable
+
+Six communes réelles demandées, cinq gelées. Quatre choses en sont sorties, et trois d'entre elles
+ont changé le code.
+
+**1. PSI ne sait pas distinguer un site en panne d'un hôte disparu.** C'est la découverte qui a
+fait la conception du module. Deux cibles : une commune dont le CDN répondait 503, une commune dont
+l'hôte ne résout plus — deux situations que tout oppose. Les deux réponses :
+
+```
+HTTP 400  Lighthouse returned error: FAILED_DOCUMENT_REQUEST … (Details: net::ERR_FAILED)
+HTTP 400  Lighthouse returned error: FAILED_DOCUMENT_REQUEST … (Details: net::ERR_CONNECTION_FAILED)
+```
+
+Même statut, même code, même `"reason": "lighthouseUserError"`. Cinq mots de prose d'écart, dans
+un champ que rien ne documente comme stable. La question que J2-01 avait laissée ouverte —
+*quelles pannes sont transitoires ?* — n'a donc pas la réponse qu'on espérait, parce que **la
+source ne la connaît pas non plus**.
+
+D'où une taxonomie qui ne classe pas par pronostic mais **par responsabilité**, ce qui est
+décidable :
+
+- la panne est *la nôtre* — requête malformée, rapport illisible — et la répéter répète l'erreur :
+  **définitive** ;
+- la panne est *celle du site*, maintenant : **transitoire**, et c'est le budget d'essais de
+  `settleAttempt` qui finit par dire « on a essayé ». Déduire la permanence d'une chaîne `net::`
+  serait lire un symptôme ;
+- la panne est *celle de la plateforme* — quota, 500, clé révoquée : transitoire, parce que rien
+  n'est faux chez cette commune et que marquer sa ligne définitivement inmesurable publierait notre
+  panne comme son défaut. Ces cas-là portent un `fatalForRun` distinct : la commune suivante
+  échouera pareil, donc c'est le *run* qui doit s'arrêter, pas la ligne qui doit brûler son budget.
+
+Ce troisième cas n'existait pas dans le plan. Il vient de la question « et si la clé expire au
+milieu d'un scan de mille communes ? », à laquelle « définitif » répond par mille lignes qu'un
+opérateur devra réarmer à la main.
+
+**2. Une page 404 obtient 95 sur 100 en accessibilité.** Mesuré : `https://www.paris.fr/<page
+inexistante>` rend un rapport complet, sain, avec deux violations seulement. C'est un excellent
+score, et c'est une affirmation fausse sur le site de la commune. L'annuaire DILA distribue des URL
+périmées — le brief le mesure au §4 —, donc ce cas n'est pas théorique : c'est la forme que prendra
+une URL morte le jour du premier scan réel.
+
+Le statut du document principal n'est pas au premier niveau du rapport. Il se lit dans
+`audits["network-requests"]`, en cherchant la requête dont l'URL est `mainDocumentUrl` — pas la
+première de la liste, qui n'est le document que par chance, et pas la dernière, qui ne l'est qu'en
+l'absence de redirection. Une mesure sans ce nombre n'est jamais publiée.
+
+**3. Une violation se reconnaît à `binary` *et* zéro.** `image-redundant-alt` arrive sur
+Andrézieux-Bouthéon avec cinq occurrences, `debugData.impact: "minor"`, et un score de **1** : tout
+ce qui ressemble à une violation, sauf que son `scoreDisplayMode` vaut `informative` et que
+Lighthouse refuse délibérément de la compter. Un filtre écrit sur « a des occurrences » ou « porte
+un impact » aurait publié, à côté du nom d'une commune, cinq échecs que l'outil de mesure lui-même
+ne compte pas — exactement le §11.5.
+
+Sur les cinq pages : 173 audits `notApplicable`, 137 `binary` réussis, 50 `manual`, 6 `informative`,
+et **14 `binary` à zéro**. Ce sont ces quatorze-là, et tous portent un impact.
+
+**4. Mobile et desktop ne mesurent pas le même site.** La même page, la même minute :
+
+| | performance | accessibilité | LCP | TBT |
+|---|---|---|---|---|
+| mobile | **46** | **90** | 22 963 ms | 553 ms |
+| desktop | **72** | **97** | 3 902 ms | 75 ms |
+
+Vingt-six points de performance et sept d'accessibilité — l'écart d'accessibilité n'est pas du
+bruit, il vient de règles qui dépendent de la fenêtre (`target-size`, `aria-hidden-focus`). Le
+choix de la stratégie n'est donc pas un paramètre, c'est une décision de méthodologie : `mobile`,
+parce que c'est ce que la page publique de PSI montre en premier à la commune qui va lire son
+propre score, parce que c'est le plus sévère des deux et qu'une mesure publiée qui flatte est pire
+qu'une qui pique, et parce que c'est le trafic réel d'un site de mairie. Écrit à l'endroit où la
+prochaine session le lira — le `DEFAULT_PSI_STRATEGY` de `request.ts` — avec la conséquence : en
+changer relève du `methodology_version`, pas du réglage.
+
+### Une fixture élaguée, ce que le dépôt interdit partout ailleurs
+
+`tests/fixtures/README.md` est catégorique : une fixture est une capture *verbatim* que personne
+n'édite à la main. Un rapport PSI pèse 600 ko à 1,2 Mo, dont les trois quarts en capture d'écran
+base64, et le §11.1 dit déjà ce que ce projet pense de conserver un rapport Lighthouse brut.
+
+La sortie n'est pas d'assouplir la règle mais de déplacer ce qu'elle protège : la réduction est
+faite par un **script committé** (`scripts/prune-psi-capture.mjs`), donc mécanique, relisible et
+reproductible. Ce qu'il garde est une **liste fixe**, pas un filtre sur « ce que le parseur lit » —
+une fixture élaguée par l'opinion du parseur ne pourrait jamais le contredire. La catégorie
+accessibilité est conservée **entière**, ses 76 audits réussis compris, précisément pour qu'un test
+puisse prouver que l'extraction ignore ceux qu'elle doit ignorer.
+
+Conséquence assumée et écrite dans le README : ces fixtures-là ne sont pas ce qui est arrivé, donc
+elles ne valent que ce que vaut le contrat hebdomadaire qui les confronte. `tests/contract/psi.test.ts`
+assère par conséquent plus que « ça se parse » : les unités des six métriques, l'impact déclaré sur
+chaque règle échouée, et que la cible d'échec se lit toujours comme une panne transitoire.
+
+### Un garde qu'on n'aurait pas écrit sans avoir vu le champ
+
+`numericValue` et `numericUnit` voyagent côte à côte. Un module qui ne lirait que le premier
+stockerait `23` là où Lighthouse veut dire 23 000 le jour où LCP passerait en secondes, et le
+publierait comme un excellent résultat. C'est le seul endroit du module qui **refuse de produire un
+nombre** : unité inattendue, exception, mesure en échec définitif et bruyant. Une mesure fausse est
+pire qu'une mesure absente, et il n'y a rien à rattraper en aval.
+
+### Chiffres, et ce que la mutation a encore trouvé
+
+146 tests unitaires, **100 % de branches** sur `src/lib/psi/`. Suite complète : 1 094 tests en 8,5 s
+pour un budget de 60.
+
+Stryker sur le seul module, hors du chemin des PR : **85,71 %** au premier passage, 371 mutants.
+Trois survivants disaient quelque chose de réel, et un le disait fort :
+
+- `scoreDisplayMode === 'binary' && score === 0` survivait à la suppression de sa **première
+  moitié**, c'est-à-dire de la règle centrale du module. La raison est instructive : aucun audit du
+  corpus n'a un score de zéro sans être `binary`, donc la clause ne changeait rien *sur ces cinq
+  pages*. Le test qui manquait est synthétique par nécessité — un audit `informative` à zéro, que
+  la capture ne contient pas — et c'est le seul du module qui ne pouvait pas venir de l'observation.
+- La recherche du document principal survivait à `find(() => undefined)`, parce que tous les cas
+  testés avaient le document en dernière position et que le repli donnait la même réponse. Deux cas
+  ajoutés : le document au milieu d'une chaîne, et le document absent.
+- `fatalForRun: false` survivait à `true` sur trois chemins : personne n'assérait qu'un délai
+  dépassé sur une commune ne dit rien de la suivante.
+
+Et des survivants **inatteignables**, notés plutôt que poursuivis : `left.ruleId < right.ruleId`
+contre `<=` — indécidable puisque deux audits ne portent jamais le même identifiant —, et le
+`...(x === undefined ? {} : {x})` qu'`exactOptionalPropertyTypes` impose, dont les deux branches
+produisent le même appel à l'exécution. `src/lib/signals/collect.ts` porte le même, pour la même
+raison. Trois clauses ont été **supprimées** plutôt que testées, dans la ligne de l'entrée 019 :
+un `impact === undefined ||` qu'un `Set` répondait déjà, un `httpStatus >= 500` placé après la
+branche qui traite les 5xx, et le comparateur ternaire remplacé par `localeCompare`, qui n'a plus
+de branche à muter. Six mutants de moins à la fin qu'au début, pour trois lignes de code en moins.
+
+**93,97 %** après trois tours : 365 mutants, 343 tués, 22 survivants — dont **16 sont des chaînes
+de caractères**, c'est-à-dire de la prose de message d'erreur, et les 6 autres la famille des
+mutants équivalents décrite ci-dessus. Le point bas est `payload.ts` à 80 %, et ses dix survivants
+sont dix messages d'erreur ; `collect.ts`, qui décide, est à 99,07 %. On lit les scores par fichier
+et on ne court pas après le chiffre global (entrée 024).
+
+### Ce qui n'est pas dans ce ticket
+
+Rien de ce module n'écrit en base : `PsiMeasurement` porte les noms des colonnes de `measurement`
+et s'arrête là, comme `SiteSignals` à côté. C'est J2-04 qui les réunit — et c'est là que se posera
+la question que les deux moitiés laissent ouverte : une mesure a **un** `error_code`, et deux
+fetches peuvent échouer séparément. Les codes de PSI sont préfixés `psi-` pour que la réponse à
+cette question ne commence pas par une collision de vocabulaire.

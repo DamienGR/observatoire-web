@@ -225,11 +225,21 @@ sans que personne ne le remarque, et c'est ainsi qu'on se retrouve avec une CI d
 | Mutation, Lighthouse **complet**, contrats API réels | voir plus bas | non borné | Planifié |
 
 Les **contrats d'API** sont le projet Vitest `contract` (`tests/contract/`), le seul sans garde
-anti-I/O : il interroge `geo.api.gouv.fr` et l'annuaire DILA pour vérifier que les fixtures gelées
-de `tests/fixtures/` décrivent encore la réalité. Hebdomadaire, plus `workflow_dispatch`
-(`.github/workflows/contracts.yml`), **jamais sur une PR**. Il distingue explicitement une panne de
-disponibilité — l'API n'a pas répondu — d'une dérive de contrat, où la charge est arrivée et ne
-correspond plus : seule la seconde justifie de toucher un schéma.
+anti-I/O : il interroge `geo.api.gouv.fr`, l'annuaire DILA et PageSpeed Insights pour vérifier que
+les fixtures gelées de `tests/fixtures/` décrivent encore la réalité. Hebdomadaire, plus
+`workflow_dispatch` (`.github/workflows/contracts.yml`), **jamais sur une PR**. Il distingue
+explicitement une panne de disponibilité — l'API n'a pas répondu — d'une dérive de contrat, où la
+charge est arrivée et ne correspond plus : seule la seconde justifie de toucher un schéma.
+
+**Ce workflow porte aussi la seule façon de *voir* PageSpeed Insights.** Aucune session ne peut
+appeler l'API — le mode sans clé a un quota nul, mesuré, et `PSI_API_KEY` est un secret de dépôt —
+donc son déclenchement manuel capture des charges réelles et les publie en artefact
+(`src/jobs/psi-capture.ts`). C'est la porte d'entrée de `tests/fixtures/psi/`, et la seule :
+ces fixtures-là sont **élaguées** par un script committé (`scripts/prune-psi-capture.mjs`) parce
+qu'un rapport brut pèse jusqu'à 1,2 Mo dont les trois quarts en capture d'écran. Une fixture qui
+n'est pas ce qui est arrivé n'est tenue honnête que par le contrat hebdomadaire ; c'est pourquoi
+`tests/contract/psi.test.ts` assère les unités des métriques et l'impact de chaque règle échouée,
+et pas seulement que la charge se parse.
 
 **Cible globale : moins de 10 minutes** du push au verdict, alerte à 15. Les jobs unitaire et
 intégration tournent en parallèle ; l'E2E attend la preview. Le temps total est celui du plus
@@ -527,6 +537,18 @@ Règles de cette surface :
   §11.5 : un lien est retenu quand son libellé ou son chemin nomme la page **et rien d'autre**, et
   une page qu'on n'a pas pu lire produit un échec daté, jamais une absence. Le vocabulaire vient
   d'un relevé de 41 sites réels (journal 031) ; on l'élargit sur mesure, jamais sur intuition.
+- **La mesure PSI est achetée, pas devinée, et ce qu'elle refuse de dire est écrit.** Les règles
+  vivent dans `src/lib/psi/` : la requête et le rédacteur de la clé (`request`), les schémas Zod
+  écrits contre la capture (`payload`), ce qui compte comme violation (`findings`), les vingt
+  nombres qu'on garde d'un rapport de 700 ko (`extract`), et la taxonomie des pannes (`outcome`).
+  Trois faits mesurés le 23/8 la gouvernent. **PSI ne distingue pas un site en panne d'un hôte
+  disparu** — même 400, même `FAILED_DOCUMENT_REQUEST`, même `reason` — donc la taxonomie ne classe
+  pas par pronostic mais par responsabilité : ce qui est *notre* faute est définitif, ce qui est
+  celle du site est transitoire et c'est le budget d'essais qui finit par dire « on a essayé »,
+  ce qui est celle de la plateforme est transitoire **et** arrête le run. Une page **404 obtient 95
+  en accessibilité**, donc le statut du document principal est lu et une mesure n'est jamais publiée
+  sans lui. Et un audit *informatif* porte impact et occurrences en valant 1, donc une violation se
+  reconnaît à `binary` **et** zéro, jamais à la présence de preuves.
 - La résolution d'URL est un **processus à états** (`candidat → vérifié → invalide → à revoir`),
   pas une simple colonne. Ses règles vivent dans `src/lib/resolve/` en logique pure : ce qu'on
   peut requêter et dans quel ordre (`attempt`), ce que vaut une observation (`verdict`), quelles

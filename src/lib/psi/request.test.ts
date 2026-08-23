@@ -18,7 +18,8 @@ describe('buildPsiRequestUrl', () => {
   });
 
   it('carries the target, the key and the strategy', () => {
-    const params = new URL(buildPsiRequestUrl({ url: 'https://ville.fr/', apiKey: KEY })).searchParams;
+    const params = new URL(buildPsiRequestUrl({ url: 'https://ville.fr/', apiKey: KEY }))
+      .searchParams;
 
     expect(params.get('url')).toBe('https://ville.fr/');
     expect(params.get('key')).toBe(KEY);
@@ -26,7 +27,8 @@ describe('buildPsiRequestUrl', () => {
   });
 
   it('asks for the four categories the measurement stores, and no other', () => {
-    const params = new URL(buildPsiRequestUrl({ url: 'https://ville.fr/', apiKey: KEY })).searchParams;
+    const params = new URL(buildPsiRequestUrl({ url: 'https://ville.fr/', apiKey: KEY }))
+      .searchParams;
 
     expect(params.getAll('category')).toEqual([...DEFAULT_PSI_CATEGORIES]);
   });
@@ -80,15 +82,22 @@ describe('buildPsiRequestUrl', () => {
   });
 
   it('accepts an http target, which 4 957 directory records still carry', () => {
-    const params = new URL(
-      buildPsiRequestUrl({ url: 'http://ville.fr/', apiKey: KEY }),
-    ).searchParams;
+    const params = new URL(buildPsiRequestUrl({ url: 'http://ville.fr/', apiKey: KEY }))
+      .searchParams;
 
     expect(params.get('url')).toBe('http://ville.fr/');
   });
 
   it('refuses an empty key rather than sending a request that will 429', () => {
     expect(() => buildPsiRequestUrl({ url: 'https://ville.fr/', apiKey: '' })).toThrow(
+      InvalidPsiTargetError,
+    );
+  });
+
+  it('refuses a key that is nothing but whitespace, which is how an unset secret arrives', () => {
+    // GitHub Actions and Netlify both surface an unset variable as an empty
+    // string, and a YAML `key: " "` is the same accident one space along.
+    expect(() => buildPsiRequestUrl({ url: 'https://ville.fr/', apiKey: '   ' })).toThrow(
       InvalidPsiTargetError,
     );
   });
