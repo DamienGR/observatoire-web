@@ -15,6 +15,13 @@ name: Contracts
 # distinguishes an availability failure — the API did not answer after four
 # attempts — from a contract failure, where the payload arrived and no longer
 # matches. Only the second one justifies touching a schema.
+#
+# A manual dispatch does one more thing than the schedule: it **captures** raw
+# PageSpeed Insights payloads and uploads them. That is not a convenience, it is
+# the only way the PSI fixture can exist at all — no session can call PSI (the
+# keyless quota is zero, `PSI_API_KEY` is a repository secret), so CI observes
+# on the session's behalf (docs/journal.md 027 and 032). Refreshing
+# `tests/fixtures/psi/` starts by dispatching this workflow.
 on:
   schedule:
     # Mondays, 05:17 UTC. Not on the hour: GitHub's scheduler queues everything
@@ -59,4 +66,74 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check the source contracts
+        # §5: an unbounded layer, but not an unbounded *wait*. Below the job's
+        # own ceiling, so a stuck upstream is named rather than reported as
+        # `The operation was canceled` (docs/journal.md 026, 029 and 030).
+        timeout-minutes: 15
+        env:
+          # A repository secret, as §9 declares: it opens a quota and nothing
+          # else. The day the scan writes, it moves to the `production`
+          # environment with the rest.
+          PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
         run: pnpm test:contract
+
+  # Only on a manual dispatch. The weekly run asks whether the frozen payloads
+  # still describe reality; this one produces the payloads to freeze, and doing
+  # that every Monday would spend PSI quota on an artefact nobody opens.
+  capture:
+    name: capture (raw PageSpeed Insights payloads)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        timeout-minutes: 10
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the jobs
+        run: pnpm build:jobs
+
+      # Six real town halls, mobile — the strategy the measurement publishes.
+      - name: Capture the mobile payloads
+        timeout-minutes: 20
+        env:
+          PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
+        run: node dist-jobs/jobs/psi-capture.js --out captures --strategy mobile
+
+      # One of them again in desktop, and one only: the point is to be able to
+      # say what the strategy costs in published points, not to double a quota.
+      - name: Capture one desktop payload, for comparison
+        if: always()
+        timeout-minutes: 10
+        env:
+          PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
+        run: |
+          node dist-jobs/jobs/psi-capture.js \
+            --out captures --strategy desktop https://www.paris.fr/
+
+      # Uploaded whatever the verdict, like every other job here: from a
+      # cloud-only session an artefact is the only window on what ran
+      # (CLAUDE.md §1), and a capture that failed halfway is the interesting one.
+      - name: Upload the captures
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: psi-captures
+          path: captures/
+          retention-days: 7
+          if-no-files-found: warn
