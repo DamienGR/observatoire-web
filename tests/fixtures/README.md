@@ -73,6 +73,67 @@ case it illustrates — a value with no scheme — is covered by `Mairie - Bajus
 the parser is tested against a synthetic email in
 `src/lib/sources/annuaire.test.ts`.
 
+## `psi/*.json`
+
+PageSpeed Insights, `www.googleapis.com/pagespeedonline/v5` (docs/brief.md §4).
+
+    GET …/runPagespeed?url=<target>&strategy=mobile
+        &category=performance&category=accessibility
+        &category=best-practices&category=seo&key=<secret>
+
+Captured 23 August 2026 by a manual dispatch of the Contracts workflow, which
+is the only way any of this can be observed: **no session can call PSI.** The
+keyless mode is not a reduced quota but a quota of zero — measured, `HTTP 429,
+"quota_limit_value": "0"` — and `PSI_API_KEY` is a repository secret no
+container here holds (docs/journal.md 027 and 032).
+
+Six real town halls were requested, five kept. Each is here for a case the
+parser has to survive, and all of them are addresses of actual communes: a
+synthetic target would say what PSI does to a page nobody publishes.
+
+| File | Why it is here |
+|---|---|
+| `paris.mobile.json` | The ordinary case, and the largest commune of the perimeter. Three accessibility failures, all `serious` |
+| `andrezieux-boutheon.mobile.json` | The small end of the perimeter. Seven failures across three impact levels — **and** `image-redundant-alt`, an *informative* audit carrying five items and an impact while scoring 1. That one audit is why `findings.ts` tests the display mode and not only the score |
+| `paris-page-absente.mobile.json` | A URL that 404s on a site that works. PSI measures the error page and scores it **95 on accessibility** — a perfectly good number about a page that is not the commune's |
+| `erreur-document-indisponible.json` | `HTTP 400`, `FAILED_DOCUMENT_REQUEST`, `net::ERR_FAILED`: a commune whose CDN was answering 503 |
+| `erreur-hote-injoignable.json` | `HTTP 400`, the same code and the same reason, `net::ERR_CONNECTION_FAILED`: a directory URL whose host no longer resolves. **The whole difference between "down for a minute" and "gone for good" is those five words of prose**, which is what `src/lib/psi/outcome.ts` is built around |
+
+### These five are pruned, and the other fixtures are not
+
+A raw report is 600 kB to 1.2 MB, of which three quarters is a full-page
+screenshot in base64. Committing that would be absurd and CLAUDE.md §11.1
+already says what this project thinks of keeping raw Lighthouse reports.
+
+So the reduction is **mechanical, and done by a committed script** —
+`scripts/prune-psi-capture.mjs` — rather than by hand, which this file forbids
+everywhere else. What it keeps is a fixed list, not a filter over what the
+parser reads: a fixture pruned by the parser's own opinion could never
+contradict it. In particular the accessibility category is kept **whole**, all
+76 audits including the passing ones, precisely so a test can prove the
+extraction ignores the ones it should.
+
+Removed: `fullPageScreenshot`, `i18n`, `timing`, `entities`, `categoryGroups`,
+`userAgent`, `loadingExperience` and `originLoadingExperience` (CrUX field data
+this project does not read), every audit outside the accessibility category but
+the nine listed below, and — the one reduction *inside* an audit — the
+`network-requests` items that are not the document. Error payloads are kept
+byte for byte; they are under 700 bytes.
+
+The ninth audit is kept although **nothing reads it**, and it is the reason this
+section exists rather than being a footnote. `document-latency-insight` is of
+type `checklist`, so its `details.items` is an **object** where every other
+audit sends a list. The first version of the schema declared an array there and
+rejected every live report because of it — and the first version of the pruning
+had dropped that audit, so no unit test could have found out. The weekly
+contract test found it within the hour (docs/journal.md 032). It stays as the
+counter-example, which is the whole point of not pruning by what the parser
+happens to want.
+
+Being pruned is exactly why `tests/contract/psi.test.ts` matters more here than
+for the two sources below: these files are not what arrived, so only the live
+API can confirm they still describe it.
+
 ## Refreshing a fixture
 
 Don't, unless the upstream shape actually changed. A fixture updated to make a

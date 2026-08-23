@@ -30,7 +30,10 @@ import { scanHtml } from './html.js';
  * guess: which failures a fourth attempt would answer differently. Here that
  * decision is defensible because the failures are ours — the guard's own
  * refusals, and the status codes measured on 41 town hall sites on 23 August
- * 2026. The same decision for PageSpeed Insights waits for its fixture (J2-02).
+ * 2026. The same decision for PageSpeed Insights lives in
+ * `src/lib/psi/outcome.ts`, and answers the status question the same way on
+ * purpose: one measurement, two fetches, and a commune that is down must not be
+ * transient on one side and permanent on the other.
  */
 
 export const SIGNAL_ERROR_CODES = [

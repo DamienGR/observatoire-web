@@ -1,0 +1,2881 @@
+{
+  "captchaResult": "CAPTCHA_NOT_NEEDED",
+  "kind": "pagespeedonline#result",
+  "id": "https://www.paris.fr/",
+  "analysisUTCTimestamp": "2026-08-23T13:56:58.703Z",
+  "lighthouseResult": {
+    "requestedUrl": "https://www.paris.fr/",
+    "mainDocumentUrl": "https://www.paris.fr/",
+    "finalDisplayedUrl": "https://www.paris.fr/",
+    "lighthouseVersion": "13.4.1",
+    "fetchTime": "2026-08-23T13:56:58.703Z",
+    "runWarnings": [],
+    "environment": {
+      "networkUserAgent": "Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Mobile Safari/537.36",
+      "hostUserAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.71 Safari/537.36",
+      "benchmarkIndex": 406.5,
+      "credits": {
+        "axe-core": "4.12.1"
+      }
+    },
+    "configSettings": {
+      "emulatedFormFactor": "mobile",
+      "formFactor": "mobile",
+      "locale": "en-US",
+      "onlyCategories": [
+        "performance",
+        "accessibility",
+        "best-practices",
+        "seo"
+      ],
+      "channel": "lr"
+    },
+    "categories": {
+      "performance": {
+        "id": "performance",
+        "title": "Performance",
+        "score": 0.46,
+        "auditRefs": [
+          {
+            "id": "first-contentful-paint",
+            "weight": 10,
+            "group": "metrics",
+            "acronym": "FCP"
+          },
+          {
+            "id": "largest-contentful-paint",
+            "weight": 25,
+            "group": "metrics",
+            "acronym": "LCP"
+          },
+          {
+            "id": "total-blocking-time",
+            "weight": 30,
+            "group": "metrics",
+            "acronym": "TBT"
+          },
+          {
+            "id": "cumulative-layout-shift",
+            "weight": 25,
+            "group": "metrics",
+            "acronym": "CLS"
+          },
+          {
+            "id": "speed-index",
+            "weight": 10,
+            "group": "metrics",
+            "acronym": "SI"
+          },
+          {
+            "id": "cache-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "cls-culprits-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "document-latency-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "dom-size-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "duplicated-javascript-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "font-display-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "forced-reflow-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "image-delivery-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "inp-breakdown-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "lcp-breakdown-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "lcp-discovery-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "legacy-javascript-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "network-dependency-tree-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "render-blocking-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "third-parties-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "viewport-insight",
+            "weight": 0,
+            "group": "insights"
+          },
+          {
+            "id": "interactive",
+            "weight": 0,
+            "group": "hidden",
+            "acronym": "TTI"
+          },
+          {
+            "id": "max-potential-fid",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "unminified-css",
+            "weight": 0,
+            "group": "diagnostics"
+          },
+          {
+            "id": "unminified-javascript",
+            "weight": 0,
+            "group": "diagnostics"
+          },
+          {
+            "id": "unused-css-rules",
+            "weight": 0,
+            "group": "diagnostics"
+          },
+          {
+            "id": "unused-javascript",
+            "weight": 0,
+            "group": "diagnostics"
+          },
+          {
+            "id": "total-byte-weight",
+            "weight": 0,
+            "group": "diagnostics"
+          },
+          {
+            "id": "user-timings",
+            "weight": 0,
+            "group": "diagnostics"
+          },
+          {
+            "id": "bootup-time",
+            "weight": 0,
+            "group": "diagnostics"
+          },
+          {
+            "id": "mainthread-work-breakdown",
+            "weight": 0,
+            "group": "diagnostics"
+          },
+          {
+            "id": "long-tasks",
+            "weight": 0,
+            "group": "diagnostics"
+          },
+          {
+            "id": "non-composited-animations",
+            "weight": 0,
+            "group": "diagnostics"
+          },
+          {
+            "id": "unsized-images",
+            "weight": 0,
+            "group": "diagnostics"
+          },
+          {
+            "id": "network-requests",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "network-rtt",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "network-server-latency",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "main-thread-tasks",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "diagnostics",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "metrics",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "screenshot-thumbnails",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "final-screenshot",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "script-treemap-data",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "resource-summary",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "redirects",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "server-response-time",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "layout-shifts",
+            "weight": 0,
+            "group": "hidden"
+          }
+        ]
+      },
+      "accessibility": {
+        "id": "accessibility",
+        "title": "Accessibility",
+        "description": "These checks highlight opportunities to [improve the accessibility of your web app](https://developer.chrome.com/docs/lighthouse/accessibility/). Automatic detection can only detect a subset of issues and does not guarantee the accessibility of your web app, so [manual testing](https://web.dev/articles/how-to-review) is also encouraged.",
+        "score": 0.9,
+        "manualDescription": "These items address areas which an automated testing tool cannot cover. Learn more in our guide on [conducting an accessibility review](https://web.dev/articles/how-to-review).",
+        "auditRefs": [
+          {
+            "id": "accesskeys",
+            "weight": 0,
+            "group": "a11y-navigation"
+          },
+          {
+            "id": "aria-allowed-attr",
+            "weight": 10,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-command-name",
+            "weight": 0,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-conditional-attr",
+            "weight": 7,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-deprecated-role",
+            "weight": 1,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-dialog-name",
+            "weight": 0,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-hidden-body",
+            "weight": 10,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-hidden-focus",
+            "weight": 7,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-input-field-name",
+            "weight": 0,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-meter-name",
+            "weight": 0,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-progressbar-name",
+            "weight": 0,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-prohibited-attr",
+            "weight": 7,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-required-attr",
+            "weight": 10,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-required-children",
+            "weight": 0,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-required-parent",
+            "weight": 0,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-roles",
+            "weight": 10,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-text",
+            "weight": 0,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-toggle-field-name",
+            "weight": 0,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-tooltip-name",
+            "weight": 0,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-treeitem-name",
+            "weight": 0,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-valid-attr-value",
+            "weight": 10,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "aria-valid-attr",
+            "weight": 10,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "button-name",
+            "weight": 10,
+            "group": "a11y-names-labels"
+          },
+          {
+            "id": "bypass",
+            "weight": 0,
+            "group": "a11y-navigation"
+          },
+          {
+            "id": "color-contrast",
+            "weight": 7,
+            "group": "a11y-color-contrast"
+          },
+          {
+            "id": "definition-list",
+            "weight": 0,
+            "group": "a11y-tables-lists"
+          },
+          {
+            "id": "dlitem",
+            "weight": 0,
+            "group": "a11y-tables-lists"
+          },
+          {
+            "id": "document-title",
+            "weight": 7,
+            "group": "a11y-names-labels"
+          },
+          {
+            "id": "duplicate-id-aria",
+            "weight": 0,
+            "group": "a11y-aria"
+          },
+          {
+            "id": "form-field-multiple-labels",
+            "weight": 0,
+            "group": "a11y-names-labels"
+          },
+          {
+            "id": "frame-title",
+            "weight": 0,
+            "group": "a11y-names-labels"
+          },
+          {
+            "id": "heading-order",
+            "weight": 3,
+            "group": "a11y-navigation"
+          },
+          {
+            "id": "html-has-lang",
+            "weight": 7,
+            "group": "a11y-language"
+          },
+          {
+            "id": "html-lang-valid",
+            "weight": 7,
+            "group": "a11y-language"
+          },
+          {
+            "id": "html-xml-lang-mismatch",
+            "weight": 0,
+            "group": "a11y-language"
+          },
+          {
+            "id": "image-alt",
+            "weight": 10,
+            "group": "a11y-names-labels"
+          },
+          {
+            "id": "input-button-name",
+            "weight": 0,
+            "group": "a11y-names-labels"
+          },
+          {
+            "id": "input-image-alt",
+            "weight": 0,
+            "group": "a11y-names-labels"
+          },
+          {
+            "id": "label",
+            "weight": 10,
+            "group": "a11y-names-labels"
+          },
+          {
+            "id": "link-in-text-block",
+            "weight": 0,
+            "group": "a11y-color-contrast"
+          },
+          {
+            "id": "link-name",
+            "weight": 7,
+            "group": "a11y-names-labels"
+          },
+          {
+            "id": "list",
+            "weight": 7,
+            "group": "a11y-tables-lists"
+          },
+          {
+            "id": "listitem",
+            "weight": 7,
+            "group": "a11y-tables-lists"
+          },
+          {
+            "id": "meta-refresh",
+            "weight": 0,
+            "group": "a11y-best-practices"
+          },
+          {
+            "id": "meta-viewport",
+            "weight": 10,
+            "group": "a11y-best-practices"
+          },
+          {
+            "id": "object-alt",
+            "weight": 0,
+            "group": "a11y-names-labels"
+          },
+          {
+            "id": "select-name",
+            "weight": 10,
+            "group": "a11y-names-labels"
+          },
+          {
+            "id": "skip-link",
+            "weight": 3,
+            "group": "a11y-names-labels"
+          },
+          {
+            "id": "tabindex",
+            "weight": 7,
+            "group": "a11y-navigation"
+          },
+          {
+            "id": "target-size",
+            "weight": 7,
+            "group": "a11y-best-practices"
+          },
+          {
+            "id": "td-headers-attr",
+            "weight": 0,
+            "group": "a11y-tables-lists"
+          },
+          {
+            "id": "th-has-data-cells",
+            "weight": 0,
+            "group": "a11y-tables-lists"
+          },
+          {
+            "id": "valid-lang",
+            "weight": 0,
+            "group": "a11y-language"
+          },
+          {
+            "id": "video-caption",
+            "weight": 0,
+            "group": "a11y-audio-video"
+          },
+          {
+            "id": "landmark-one-main",
+            "weight": 3,
+            "group": "a11y-best-practices"
+          },
+          {
+            "id": "autocomplete-valid",
+            "weight": 1,
+            "group": "a11y-best-practices"
+          },
+          {
+            "id": "presentation-role-conflict",
+            "weight": 1,
+            "group": "a11y-best-practices"
+          },
+          {
+            "id": "svg-img-alt",
+            "weight": 1,
+            "group": "a11y-best-practices"
+          },
+          {
+            "id": "focusable-controls",
+            "weight": 0
+          },
+          {
+            "id": "interactive-element-affordance",
+            "weight": 0
+          },
+          {
+            "id": "logical-tab-order",
+            "weight": 0
+          },
+          {
+            "id": "visual-order-follows-dom",
+            "weight": 0
+          },
+          {
+            "id": "focus-traps",
+            "weight": 0
+          },
+          {
+            "id": "managed-focus",
+            "weight": 0
+          },
+          {
+            "id": "use-landmarks",
+            "weight": 0
+          },
+          {
+            "id": "offscreen-content-hidden",
+            "weight": 0
+          },
+          {
+            "id": "custom-controls-labels",
+            "weight": 0
+          },
+          {
+            "id": "custom-controls-roles",
+            "weight": 0
+          },
+          {
+            "id": "table-duplicate-name",
+            "weight": 0,
+            "group": "a11y-best-practices"
+          },
+          {
+            "id": "empty-heading",
+            "weight": 0,
+            "group": "a11y-best-practices"
+          },
+          {
+            "id": "aria-allowed-role",
+            "weight": 0,
+            "group": "a11y-best-practices"
+          },
+          {
+            "id": "image-redundant-alt",
+            "weight": 0,
+            "group": "a11y-names-labels"
+          },
+          {
+            "id": "identical-links-same-purpose",
+            "weight": 0,
+            "group": "a11y-best-practices"
+          },
+          {
+            "id": "label-content-name-mismatch",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "table-fake-caption",
+            "weight": 0,
+            "group": "hidden"
+          },
+          {
+            "id": "td-has-header",
+            "weight": 0,
+            "group": "hidden"
+          }
+        ]
+      },
+      "best-practices": {
+        "id": "best-practices",
+        "title": "Best Practices",
+        "score": 0.96,
+        "auditRefs": [
+          {
+            "id": "is-on-https",
+            "weight": 5,
+            "group": "best-practices-trust-safety"
+          },
+          {
+            "id": "redirects-http",
+            "weight": 0,
+            "group": "best-practices-trust-safety"
+          },
+          {
+            "id": "geolocation-on-start",
+            "weight": 1,
+            "group": "best-practices-trust-safety"
+          },
+          {
+            "id": "notification-on-start",
+            "weight": 1,
+            "group": "best-practices-trust-safety"
+          },
+          {
+            "id": "csp-xss",
+            "weight": 0,
+            "group": "best-practices-trust-safety"
+          },
+          {
+            "id": "has-hsts",
+            "weight": 0,
+            "group": "best-practices-trust-safety"
+          },
+          {
+            "id": "origin-isolation",
+            "weight": 0,
+            "group": "best-practices-trust-safety"
+          },
+          {
+            "id": "clickjacking-mitigation",
+            "weight": 0,
+            "group": "best-practices-trust-safety"
+          },
+          {
+            "id": "trusted-types-xss",
+            "weight": 0,
+            "group": "best-practices-trust-safety"
+          },
+          {
+            "id": "paste-preventing-inputs",
+            "weight": 3,
+            "group": "best-practices-ux"
+          },
+          {
+            "id": "image-aspect-ratio",
+            "weight": 1,
+            "group": "best-practices-ux"
+          },
+          {
+            "id": "image-size-responsive",
+            "weight": 1,
+            "group": "best-practices-ux"
+          },
+          {
+            "id": "doctype",
+            "weight": 1,
+            "group": "best-practices-browser-compat"
+          },
+          {
+            "id": "charset",
+            "weight": 1,
+            "group": "best-practices-browser-compat"
+          },
+          {
+            "id": "baseline",
+            "weight": 0,
+            "group": "best-practices-browser-compat"
+          },
+          {
+            "id": "js-libraries",
+            "weight": 0,
+            "group": "best-practices-general"
+          },
+          {
+            "id": "deprecations",
+            "weight": 5,
+            "group": "best-practices-general"
+          },
+          {
+            "id": "third-party-cookies",
+            "weight": 5,
+            "group": "best-practices-general"
+          },
+          {
+            "id": "errors-in-console",
+            "weight": 1,
+            "group": "best-practices-general"
+          },
+          {
+            "id": "valid-source-maps",
+            "weight": 0,
+            "group": "best-practices-general"
+          },
+          {
+            "id": "inspector-issues",
+            "weight": 1,
+            "group": "best-practices-general"
+          }
+        ]
+      },
+      "seo": {
+        "id": "seo",
+        "title": "SEO",
+        "description": "These checks ensure that your page is following basic search engine optimization advice. There are many additional factors Lighthouse does not score here that may affect your search ranking, including performance on [Core Web Vitals](https://web.dev/explore/vitals). [Learn more about Google Search Essentials](https://support.google.com/webmasters/answer/35769).",
+        "score": 0.92,
+        "manualDescription": "Run these additional validators on your site to check additional SEO best practices.",
+        "auditRefs": [
+          {
+            "id": "is-crawlable",
+            "weight": 4.043478260869565,
+            "group": "seo-crawl"
+          },
+          {
+            "id": "document-title",
+            "weight": 1,
+            "group": "seo-content"
+          },
+          {
+            "id": "meta-description",
+            "weight": 1,
+            "group": "seo-content"
+          },
+          {
+            "id": "http-status-code",
+            "weight": 1,
+            "group": "seo-crawl"
+          },
+          {
+            "id": "link-text",
+            "weight": 1,
+            "group": "seo-content"
+          },
+          {
+            "id": "crawlable-anchors",
+            "weight": 1,
+            "group": "seo-crawl"
+          },
+          {
+            "id": "robots-txt",
+            "weight": 1,
+            "group": "seo-crawl"
+          },
+          {
+            "id": "image-alt",
+            "weight": 1,
+            "group": "seo-content"
+          },
+          {
+            "id": "hreflang",
+            "weight": 1,
+            "group": "seo-content"
+          },
+          {
+            "id": "canonical",
+            "weight": 0,
+            "group": "seo-content"
+          },
+          {
+            "id": "structured-data",
+            "weight": 0
+          }
+        ]
+      }
+    },
+    "audits": {
+      "largest-contentful-paint": {
+        "id": "largest-contentful-paint",
+        "title": "Largest Contentful Paint",
+        "description": "Largest Contentful Paint marks the time at which the largest text or image is painted. [Learn more about the Largest Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/)",
+        "score": 0,
+        "scoreDisplayMode": "numeric",
+        "displayValue": "23.0 s",
+        "numericValue": 22963.11079840352,
+        "numericUnit": "millisecond"
+      },
+      "first-contentful-paint": {
+        "id": "first-contentful-paint",
+        "title": "First Contentful Paint",
+        "description": "First Contentful Paint marks the time at which the first text or image is painted. [Learn more about the First Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint/).",
+        "score": 0.28,
+        "scoreDisplayMode": "numeric",
+        "displayValue": "3.8 s",
+        "numericValue": 3751,
+        "numericUnit": "millisecond"
+      },
+      "speed-index": {
+        "id": "speed-index",
+        "title": "Speed Index",
+        "description": "Speed Index shows how quickly the contents of a page are visibly populated. [Learn more about the Speed Index metric](https://developer.chrome.com/docs/lighthouse/performance/speed-index/).",
+        "score": 0.38,
+        "scoreDisplayMode": "numeric",
+        "displayValue": "6.6 s",
+        "numericValue": 6578.226526314042,
+        "numericUnit": "millisecond"
+      },
+      "total-blocking-time": {
+        "id": "total-blocking-time",
+        "title": "Total Blocking Time",
+        "description": "Sum of all time periods between FCP and Time to Interactive, when task length exceeded 50ms, expressed in milliseconds. [Learn more about the Total Blocking Time metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time/).",
+        "score": 0.53,
+        "scoreDisplayMode": "numeric",
+        "displayValue": "550 ms",
+        "numericValue": 553,
+        "numericUnit": "millisecond"
+      },
+      "interactive": {
+        "id": "interactive",
+        "title": "Time to Interactive",
+        "description": "Time to Interactive is the amount of time it takes for the page to become fully interactive. [Learn more about the Time to Interactive metric](https://developer.chrome.com/docs/lighthouse/performance/interactive/).",
+        "score": 0.01,
+        "scoreDisplayMode": "numeric",
+        "displayValue": "23.7 s",
+        "numericValue": 23724.83848016123,
+        "numericUnit": "millisecond"
+      },
+      "cumulative-layout-shift": {
+        "id": "cumulative-layout-shift",
+        "title": "Cumulative Layout Shift",
+        "description": "Cumulative Layout Shift measures the movement of visible elements within the viewport. [Learn more about the Cumulative Layout Shift metric](https://web.dev/articles/cls).",
+        "score": 0.93,
+        "scoreDisplayMode": "numeric",
+        "displayValue": "0.088",
+        "details": {
+          "items": [
+            {
+              "newEngineResultDiffered": false,
+              "cumulativeLayoutShiftMainFrame": 0.08756928870607933,
+              "newEngineResult": {
+                "cumulativeLayoutShift": 0.08756928870607933,
+                "cumulativeLayoutShiftMainFrame": 0.08756928870607933
+              }
+            }
+          ],
+          "type": "debugdata"
+        },
+        "numericValue": 0.08756928870607933,
+        "numericUnit": "unitless"
+      },
+      "network-requests": {
+        "id": "network-requests",
+        "title": "Network Requests",
+        "description": "Lists the network requests that were made during page load.",
+        "score": 1,
+        "scoreDisplayMode": "informative",
+        "details": {
+          "items": [
+            {
+              "priority": "VeryHigh",
+              "networkRequestTime": 4.039999961853027,
+              "transferSize": 354014,
+              "resourceSize": 353144,
+              "statusCode": 200,
+              "mimeType": "text/html",
+              "resourceType": "Document",
+              "url": "https://www.paris.fr/",
+              "sessionTargetType": "page",
+              "protocol": "h2",
+              "cache": "none",
+              "experimentalFromMainFrame": true,
+              "rendererStartTime": 0,
+              "networkEndTime": 90.875,
+              "finished": true,
+              "entity": "paris.fr"
+            }
+          ],
+          "type": "table",
+          "headings": [
+            {
+              "key": "url",
+              "valueType": "url",
+              "label": "URL"
+            },
+            {
+              "valueType": "text",
+              "label": "Protocol",
+              "key": "protocol"
+            },
+            {
+              "key": "networkRequestTime",
+              "valueType": "ms",
+              "granularity": 1,
+              "label": "Network Request Time"
+            },
+            {
+              "key": "networkEndTime",
+              "valueType": "ms",
+              "granularity": 1,
+              "label": "Network End Time"
+            },
+            {
+              "granularity": 1,
+              "label": "Transfer Size",
+              "key": "transferSize",
+              "valueType": "bytes",
+              "displayUnit": "kb"
+            },
+            {
+              "granularity": 1,
+              "label": "Resource Size",
+              "key": "resourceSize",
+              "valueType": "bytes",
+              "displayUnit": "kb"
+            },
+            {
+              "key": "statusCode",
+              "valueType": "text",
+              "label": "Status Code"
+            },
+            {
+              "key": "mimeType",
+              "valueType": "text",
+              "label": "MIME Type"
+            },
+            {
+              "key": "resourceType",
+              "valueType": "text",
+              "label": "Resource Type"
+            }
+          ],
+          "debugData": {
+            "networkStartTimeTs": 4484285654559,
+            "type": "debugdata",
+            "initiators": [
+              {
+                "columnNumber": 168,
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 23
+              },
+              {
+                "url": "https://www.paris.fr/",
+                "lineNumber": 36,
+                "columnNumber": 146,
+                "type": "parser"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 394,
+                "columnNumber": 400
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 394,
+                "columnNumber": 818
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 394,
+                "columnNumber": 1254
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 394,
+                "columnNumber": 1911
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 394,
+                "columnNumber": 2751
+              },
+              {
+                "lineNumber": 394,
+                "columnNumber": 3190,
+                "type": "parser",
+                "url": "https://www.paris.fr/"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 394,
+                "columnNumber": 3617
+              },
+              {
+                "columnNumber": 4084,
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 394
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 394,
+                "columnNumber": 4532
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css"
+              },
+              {
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css",
+                "type": "parser"
+              },
+              {
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css",
+                "type": "parser"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css"
+              },
+              {
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css",
+                "type": "parser"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 1460,
+                "columnNumber": 1
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 1460,
+                "columnNumber": 1
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 1460,
+                "columnNumber": 1
+              },
+              {
+                "lineNumber": 1460,
+                "columnNumber": 1,
+                "type": "parser",
+                "url": "https://www.paris.fr/"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 1460,
+                "columnNumber": 1
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 1460,
+                "columnNumber": 1
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/",
+                "lineNumber": 1460,
+                "columnNumber": 1
+              },
+              {
+                "url": "https://www.paris.fr/",
+                "lineNumber": 1460,
+                "columnNumber": 1,
+                "type": "parser"
+              },
+              {
+                "lineNumber": 1460,
+                "columnNumber": 1,
+                "type": "parser",
+                "url": "https://www.paris.fr/"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css"
+              },
+              {
+                "type": "parser",
+                "url": "https://www.paris.fr/assets/application-2970d6aa6cbb752a4d0f3c3514f92798d3feb4760f111d4e314ddcd73ed4b132.css"
+              }
+            ]
+          }
+        }
+      },
+      "http-status-code": {
+        "id": "http-status-code",
+        "title": "Page has successful HTTP status code",
+        "description": "Pages with unsuccessful HTTP status codes may not be indexed properly. [Learn more about HTTP status codes](https://developer.chrome.com/docs/lighthouse/seo/http-status-code/).",
+        "score": 1,
+        "scoreDisplayMode": "binary"
+      },
+      "document-latency-insight": {
+        "id": "document-latency-insight",
+        "title": "Document request latency",
+        "description": "Your first network request is the most important. [Reduce its latency](https://developer.chrome.com/docs/performance/insights/document-latency) by avoiding redirects, ensuring a fast server response, and enabling text compression.",
+        "score": 0.5,
+        "scoreDisplayMode": "metricSavings",
+        "displayValue": "Est savings of 231 KiB",
+        "metricSavings": {
+          "LCP": 0,
+          "FCP": 0
+        },
+        "details": {
+          "debugData": {
+            "serverResponseTime": 25,
+            "uncompressedResponseBytes": 236606,
+            "type": "debugdata",
+            "wastedBytes": 236606,
+            "redirectDuration": 0
+          },
+          "type": "checklist",
+          "items": {
+            "serverResponseIsFast": {
+              "label": "Server responds quickly (observed 25 ms)",
+              "value": true
+            },
+            "usesCompression": {
+              "label": "No compression applied",
+              "value": false
+            },
+            "noRedirects": {
+              "value": true,
+              "label": "Avoids redirects"
+            }
+          }
+        }
+      },
+      "accesskeys": {
+        "id": "accesskeys",
+        "title": "`[accesskey]` values are unique",
+        "description": "Access keys let users quickly focus a part of the page. For proper navigation, each access key must be unique. [Learn more about access keys](https://dequeuniversity.com/rules/axe/4.12/accesskeys).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "aria-allowed-attr": {
+        "id": "aria-allowed-attr",
+        "title": "`[aria-*]` attributes match their roles",
+        "description": "Each ARIA `role` supports a specific subset of `aria-*` attributes. Mismatching these invalidates the `aria-*` attributes. [Learn how to match ARIA attributes to their roles](https://dequeuniversity.com/rules/axe/4.12/aria-allowed-attr).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "items": [],
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ],
+          "type": "table"
+        }
+      },
+      "aria-command-name": {
+        "id": "aria-command-name",
+        "title": "`button`, `link`, and `menuitem` elements have accessible names",
+        "description": "When an element doesn't have an accessible name, screen readers announce it with a generic name, making it unusable for users who rely on screen readers. [Learn how to make command elements more accessible](https://dequeuniversity.com/rules/axe/4.12/aria-command-name).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "aria-conditional-attr": {
+        "id": "aria-conditional-attr",
+        "title": "ARIA attributes are used as specified for the element's role",
+        "description": "Some ARIA attributes are only allowed on an element under certain conditions. [Learn more about conditional ARIA attributes](https://dequeuniversity.com/rules/axe/4.12/aria-conditional-attr).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "type": "table",
+          "items": [],
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ]
+        }
+      },
+      "aria-deprecated-role": {
+        "id": "aria-deprecated-role",
+        "title": "Deprecated ARIA roles were not used",
+        "description": "Deprecated ARIA roles may not be processed correctly by assistive technology. [Learn more about deprecated ARIA roles](https://dequeuniversity.com/rules/axe/4.12/aria-deprecated-role).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "type": "table",
+          "items": [],
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ]
+        }
+      },
+      "aria-dialog-name": {
+        "id": "aria-dialog-name",
+        "title": "Elements with `role=\"dialog\"` or `role=\"alertdialog\"` have accessible names.",
+        "description": "ARIA dialog elements without accessible names may prevent screen readers users from discerning the purpose of these elements. [Learn how to make ARIA dialog elements more accessible](https://dequeuniversity.com/rules/axe/4.12/aria-dialog-name).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "aria-hidden-body": {
+        "id": "aria-hidden-body",
+        "title": "`[aria-hidden=\"true\"]` is not present on the document `<body>`",
+        "description": "Assistive technologies, like screen readers, work inconsistently when `aria-hidden=\"true\"` is set on the document `<body>`. [Learn how `aria-hidden` affects the document body](https://dequeuniversity.com/rules/axe/4.12/aria-hidden-body).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "type": "table",
+          "headings": [
+            {
+              "label": "Failing Elements",
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              }
+            }
+          ],
+          "items": []
+        }
+      },
+      "aria-hidden-focus": {
+        "id": "aria-hidden-focus",
+        "title": "`[aria-hidden=\"true\"]` elements contain focusable descendents",
+        "description": "Focusable descendents within an `[aria-hidden=\"true\"]` element prevent those interactive elements from being available to users of assistive technologies like screen readers. [Learn how `aria-hidden` affects focusable elements](https://dequeuniversity.com/rules/axe/4.12/aria-hidden-focus).",
+        "score": 0,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "headings": [
+            {
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements",
+              "key": "node"
+            }
+          ],
+          "type": "table",
+          "debugData": {
+            "impact": "serious",
+            "tags": [
+              "cat.name-role-value",
+              "wcag2a",
+              "wcag412",
+              "TTv5",
+              "TT6.a",
+              "EN-301-549",
+              "EN-9.4.1.2",
+              "RGAAv4",
+              "RGAA-10.8.1"
+            ],
+            "type": "debugdata"
+          },
+          "items": [
+            {
+              "node": {
+                "lhId": "1-1-LI",
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,1,LI",
+                "selector": "ul.telex-items > div.flickity-viewport > div.flickity-slider > li",
+                "boundingRect": {
+                  "height": 406,
+                  "top": 1568,
+                  "bottom": 1974,
+                  "left": 288,
+                  "right": 577,
+                  "width": 288
+                },
+                "snippet": "<li data-telex-target=\"item\" role=\"group\" aria-roledescription=\"slide\" aria-label=\"2 sur 15\" aria-hidden=\"true\" style=\"position: absolute; left: 0px; transform: translateX(100%);\">",
+                "nodeLabel": "22/08 Le saviez-vous ? Paris est l'une des 5 villes « Compagnon de la Libératio…",
+                "explanation": "Fix all of the following:\n  Focusable content should have tabindex=\"-1\" or be removed from the DOM",
+                "type": "node"
+              },
+              "subItems": {
+                "type": "subitems",
+                "items": [
+                  {
+                    "relatedNode": {
+                      "nodeLabel": "EN SAVOIR +",
+                      "type": "node",
+                      "lhId": "1-2-A",
+                      "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,1,LI,0,DIV,1,DIV,1,A",
+                      "selector": "li > div#telex_19 > div.telex-item-content > a.is-small",
+                      "boundingRect": {
+                        "top": 1767,
+                        "bottom": 1796,
+                        "left": 338,
+                        "right": 441,
+                        "width": 103,
+                        "height": 29
+                      },
+                      "snippet": "<a class=\"is-small is-transparent has-uppercase-text has-red-text paris-button block\" href=\"https://www.paris.fr/pages/paris-l-une-des-cinq-communes-compagnon-de-la-l…\">"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "subItems": {
+                "type": "subitems",
+                "items": [
+                  {
+                    "relatedNode": {
+                      "type": "node",
+                      "lhId": "1-4-A",
+                      "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,4,LI,0,DIV,1,DIV,1,A",
+                      "selector": "li > div#telex_3336 > div.telex-item-content > a.is-small",
+                      "boundingRect": {
+                        "right": 1306,
+                        "width": 103,
+                        "height": 29,
+                        "top": 1787,
+                        "bottom": 1816,
+                        "left": 1204
+                      },
+                      "snippet": "<a class=\"is-small is-transparent has-uppercase-text has-red-text paris-button block\" href=\"https://www.paris.fr/lieux/theatre-du-chatelet-19182\">",
+                      "nodeLabel": "EN SAVOIR +"
+                    }
+                  }
+                ]
+              },
+              "node": {
+                "boundingRect": {
+                  "left": 1154,
+                  "right": 1442,
+                  "width": 288,
+                  "height": 406,
+                  "top": 1568,
+                  "bottom": 1974
+                },
+                "snippet": "<li data-telex-target=\"item\" role=\"group\" aria-roledescription=\"slide\" aria-label=\"5 sur 15\" aria-hidden=\"true\" style=\"position: absolute; left: 0px; transform: translateX(400%);\">",
+                "nodeLabel": "19/08 Le saviez-vous ? Le 19 août 1862, le Théâtre du Châtelet, construit à la …",
+                "explanation": "Fix all of the following:\n  Focusable content should have tabindex=\"-1\" or be removed from the DOM",
+                "type": "node",
+                "lhId": "1-3-LI",
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,4,LI",
+                "selector": "ul.telex-items > div.flickity-viewport > div.flickity-slider > li"
+              }
+            },
+            {
+              "node": {
+                "nodeLabel": "18/08 📎Fournitures scolaires. Feutres, ardoise, crayons, paire de ciseaux… pour…",
+                "explanation": "Fix all of the following:\n  Focusable content should have tabindex=\"-1\" or be removed from the DOM",
+                "type": "node",
+                "lhId": "1-5-LI",
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,5,LI",
+                "selector": "ul.telex-items > div.flickity-viewport > div.flickity-slider > li",
+                "boundingRect": {
+                  "top": 1568,
+                  "bottom": 1974,
+                  "left": 1442,
+                  "right": 1730,
+                  "width": 288,
+                  "height": 406
+                },
+                "snippet": "<li data-telex-target=\"item\" role=\"group\" aria-roledescription=\"slide\" aria-label=\"6 sur 15\" aria-hidden=\"true\" style=\"position: absolute; left: 0px; transform: translateX(500%);\">"
+              },
+              "subItems": {
+                "type": "subitems",
+                "items": [
+                  {
+                    "relatedNode": {
+                      "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,5,LI,0,DIV,1,DIV,1,A",
+                      "selector": "li > div#telex_12109 > div.telex-item-content > a.is-small",
+                      "boundingRect": {
+                        "top": 1707,
+                        "bottom": 1736,
+                        "left": 1492,
+                        "right": 1594,
+                        "width": 103,
+                        "height": 29
+                      },
+                      "snippet": "<a class=\"is-small is-transparent has-uppercase-text has-red-text paris-button block\" href=\"https://www.paris.fr/pages/rentree-scolaire-un-kit-de-fournitures-gratuite…\">",
+                      "nodeLabel": "EN SAVOIR +",
+                      "type": "node",
+                      "lhId": "1-6-A"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "node": {
+                "explanation": "Fix all of the following:\n  Focusable content should have tabindex=\"-1\" or be removed from the DOM",
+                "type": "node",
+                "lhId": "1-7-LI",
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,6,LI",
+                "selector": "ul.telex-items > div.flickity-viewport > div.flickity-slider > li",
+                "boundingRect": {
+                  "bottom": 1974,
+                  "left": 1730,
+                  "right": 2019,
+                  "width": 288,
+                  "height": 406,
+                  "top": 1568
+                },
+                "snippet": "<li data-telex-target=\"item\" role=\"group\" aria-roledescription=\"slide\" aria-label=\"7 sur 15\" aria-hidden=\"true\" style=\"position: absolute; left: 0px; transform: translateX(600%);\">",
+                "nodeLabel": "17/08\n+ 2,9 %\n\nde touristes français ont choisi Paris comme destination en juil…"
+              },
+              "subItems": {
+                "type": "subitems",
+                "items": [
+                  {
+                    "relatedNode": {
+                      "nodeLabel": "EN SAVOIR +",
+                      "type": "node",
+                      "lhId": "1-8-A",
+                      "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,6,LI,0,DIV,1,DIV,3,A",
+                      "selector": "li > div#telex_12137 > div.telex-item-content > a.is-small",
+                      "boundingRect": {
+                        "left": 1780,
+                        "right": 1883,
+                        "width": 103,
+                        "height": 29,
+                        "top": 1746,
+                        "bottom": 1775
+                      },
+                      "snippet": "<a class=\"is-small is-transparent has-uppercase-text has-red-text paris-button block\" href=\"https://www.paris.fr/pages/un-panorama-du-tourisme-parisien-29122\">"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "node": {
+                "boundingRect": {
+                  "width": 288,
+                  "height": 406,
+                  "top": 1568,
+                  "bottom": 1974,
+                  "left": 2019,
+                  "right": 2307
+                },
+                "snippet": "<li data-telex-target=\"item\" role=\"group\" aria-roledescription=\"slide\" aria-label=\"8 sur 15\" aria-hidden=\"true\" style=\"position: absolute; left: 0px; transform: translateX(700%);\">",
+                "nodeLabel": "17/08 Cours d'adultes de Paris. Les inscriptions pour 2026/2027 sont ouvertes !…",
+                "explanation": "Fix all of the following:\n  Focusable content should have tabindex=\"-1\" or be removed from the DOM",
+                "type": "node",
+                "lhId": "1-9-LI",
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,7,LI",
+                "selector": "ul.telex-items > div.flickity-viewport > div.flickity-slider > li"
+              },
+              "subItems": {
+                "items": [
+                  {
+                    "relatedNode": {
+                      "type": "node",
+                      "lhId": "1-10-A",
+                      "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,7,LI,0,DIV,1,DIV,1,A",
+                      "selector": "li > div#telex_12080 > div.telex-item-content > a.is-small",
+                      "boundingRect": {
+                        "top": 1787,
+                        "bottom": 1816,
+                        "left": 2069,
+                        "right": 2171,
+                        "width": 103,
+                        "height": 29
+                      },
+                      "snippet": "<a class=\"is-small is-transparent has-uppercase-text has-red-text paris-button block\" href=\"https://www.paris.fr/pages/cours-municipaux-d-adultes-205\">",
+                      "nodeLabel": "EN SAVOIR +"
+                    }
+                  }
+                ],
+                "type": "subitems"
+              }
+            },
+            {
+              "node": {
+                "boundingRect": {
+                  "top": 1568,
+                  "bottom": 1974,
+                  "left": 2307,
+                  "right": 2596,
+                  "width": 288,
+                  "height": 406
+                },
+                "snippet": "<li data-telex-target=\"item\" role=\"group\" aria-roledescription=\"slide\" aria-label=\"9 sur 15\" aria-hidden=\"true\" style=\"position: absolute; left: 0px; transform: translateX(800%);\">",
+                "nodeLabel": "17/08 Le saviez-vous ? Le 17 août 1908, le tout premier dessin animé cinématogr…",
+                "explanation": "Fix all of the following:\n  Focusable content should have tabindex=\"-1\" or be removed from the DOM",
+                "type": "node",
+                "lhId": "1-11-LI",
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,8,LI",
+                "selector": "ul.telex-items > div.flickity-viewport > div.flickity-slider > li"
+              },
+              "subItems": {
+                "type": "subitems",
+                "items": [
+                  {
+                    "relatedNode": {
+                      "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,8,LI,0,DIV,1,DIV,1,A",
+                      "selector": "li > div#telex_3334 > div.telex-item-content > a.is-small",
+                      "boundingRect": {
+                        "height": 29,
+                        "top": 1787,
+                        "bottom": 1816,
+                        "left": 2357,
+                        "right": 2460,
+                        "width": 103
+                      },
+                      "snippet": "<a class=\"is-small is-transparent has-uppercase-text has-red-text paris-button block\" href=\"https://www.paris.fr/pages/les-actions-de-paris-pour-le-cinema-2313#le-fon…\">",
+                      "nodeLabel": "EN SAVOIR +",
+                      "type": "node",
+                      "lhId": "1-12-A"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "subItems": {
+                "type": "subitems",
+                "items": [
+                  {
+                    "relatedNode": {
+                      "boundingRect": {
+                        "left": 2646,
+                        "right": 2748,
+                        "width": 103,
+                        "height": 29,
+                        "top": 1787,
+                        "bottom": 1816
+                      },
+                      "snippet": "<a class=\"is-small is-transparent has-uppercase-text has-red-text paris-button block\" href=\"https://www.paris.fr/pages/les-150-ans-de-la-commune-les-lieux-emblematiqu…\">",
+                      "nodeLabel": "EN SAVOIR +",
+                      "type": "node",
+                      "lhId": "1-14-A",
+                      "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,9,LI,0,DIV,1,DIV,1,A",
+                      "selector": "li > div#telex_3332 > div.telex-item-content > a.is-small"
+                    }
+                  }
+                ]
+              },
+              "node": {
+                "nodeLabel": "15/08 Le saviez-vous ? Le 15 août 1810, la colonne Vendôme est inaugurée à Pari…",
+                "explanation": "Fix all of the following:\n  Focusable content should have tabindex=\"-1\" or be removed from the DOM",
+                "type": "node",
+                "lhId": "1-13-LI",
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,9,LI",
+                "selector": "ul.telex-items > div.flickity-viewport > div.flickity-slider > li",
+                "boundingRect": {
+                  "right": 2884,
+                  "width": 288,
+                  "height": 406,
+                  "top": 1568,
+                  "bottom": 1974,
+                  "left": 2596
+                },
+                "snippet": "<li data-telex-target=\"item\" role=\"group\" aria-roledescription=\"slide\" aria-label=\"10 sur 15\" aria-hidden=\"true\" style=\"position: absolute; left: 0px; transform: translateX(900%);\">"
+              }
+            },
+            {
+              "node": {
+                "type": "node",
+                "lhId": "1-15-LI",
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,10,LI",
+                "selector": "ul.telex-items > div.flickity-viewport > div.flickity-slider > li",
+                "boundingRect": {
+                  "width": 288,
+                  "height": 406,
+                  "top": 1568,
+                  "bottom": 1974,
+                  "left": 2884,
+                  "right": 3172
+                },
+                "snippet": "<li data-telex-target=\"item\" role=\"group\" aria-roledescription=\"slide\" aria-label=\"11 sur 15\" aria-hidden=\"true\" style=\"position: absolute; left: 0px; transform: translateX(1000%);\">",
+                "nodeLabel": "14/08 A titre exceptionnel, certaines cours oasis seront gratuitement ouvertes …",
+                "explanation": "Fix all of the following:\n  Focusable content should have tabindex=\"-1\" or be removed from the DOM"
+              },
+              "subItems": {
+                "type": "subitems",
+                "items": [
+                  {
+                    "relatedNode": {
+                      "selector": "li > div#telex_12135 > div.telex-item-content > a.is-small",
+                      "boundingRect": {
+                        "width": 103,
+                        "height": 29,
+                        "top": 1687,
+                        "bottom": 1716,
+                        "left": 2934,
+                        "right": 3036
+                      },
+                      "snippet": "<a class=\"is-small is-transparent has-uppercase-text has-red-text paris-button block\" href=\"https://www.paris.fr/pages/paris-active-le-plan-canicule-de-niveau-3-6921#…\">",
+                      "nodeLabel": "EN SAVOIR +",
+                      "type": "node",
+                      "lhId": "1-16-A",
+                      "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,10,LI,0,DIV,1,DIV,1,A"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "node": {
+                "type": "node",
+                "lhId": "1-17-LI",
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,11,LI",
+                "selector": "ul.telex-items > div.flickity-viewport > div.flickity-slider > li",
+                "boundingRect": {
+                  "right": 3461,
+                  "width": 288,
+                  "height": 406,
+                  "top": 1568,
+                  "bottom": 1974,
+                  "left": 3172
+                },
+                "snippet": "<li data-telex-target=\"item\" role=\"group\" aria-roledescription=\"slide\" aria-label=\"12 sur 15\" aria-hidden=\"true\" style=\"position: absolute; left: 0px; transform: translateX(1100%);\">",
+                "nodeLabel": "14/08 Tour Eiffel. En raison de la canicule, le sommet du monument est fermé au…",
+                "explanation": "Fix all of the following:\n  Focusable content should have tabindex=\"-1\" or be removed from the DOM"
+              },
+              "subItems": {
+                "type": "subitems",
+                "items": [
+                  {
+                    "relatedNode": {
+                      "selector": "li > div#telex_12134 > div.telex-item-content > a.is-small",
+                      "boundingRect": {
+                        "bottom": 1736,
+                        "left": 3222,
+                        "right": 3325,
+                        "width": 103,
+                        "height": 29,
+                        "top": 1707
+                      },
+                      "snippet": "<a class=\"is-small is-transparent has-uppercase-text has-red-text paris-button block\" href=\"https://www.paris.fr/pages/a-chacun-sa-tour-eiffel-32881\">",
+                      "nodeLabel": "EN SAVOIR +",
+                      "type": "node",
+                      "lhId": "1-18-A",
+                      "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,11,LI,0,DIV,1,DIV,1,A"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "node": {
+                "boundingRect": {
+                  "bottom": 1974,
+                  "left": 3461,
+                  "right": 3749,
+                  "width": 288,
+                  "height": 406,
+                  "top": 1568
+                },
+                "snippet": "<li data-telex-target=\"item\" role=\"group\" aria-roledescription=\"slide\" aria-label=\"13 sur 15\" aria-hidden=\"true\" style=\"position: absolute; left: 0px; transform: translateX(1200%);\">",
+                "nodeLabel": "13/08 Pollution. En raison de la mauvaise qualité de l'air, le stationnement ré…",
+                "explanation": "Fix all of the following:\n  Focusable content should have tabindex=\"-1\" or be removed from the DOM",
+                "type": "node",
+                "lhId": "1-19-LI",
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,12,LI",
+                "selector": "ul.telex-items > div.flickity-viewport > div.flickity-slider > li"
+              },
+              "subItems": {
+                "type": "subitems",
+                "items": [
+                  {
+                    "relatedNode": {
+                      "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,12,LI,0,DIV,1,DIV,1,A",
+                      "selector": "li > div#telex_12133 > div.telex-item-content > a.is-small",
+                      "boundingRect": {
+                        "right": 3613,
+                        "width": 103,
+                        "height": 29,
+                        "top": 1667,
+                        "bottom": 1696,
+                        "left": 3511
+                      },
+                      "snippet": "<a class=\"is-small is-transparent has-uppercase-text has-red-text paris-button block\" href=\"https://www.paris.fr/pages/pollution-gratuite-du-stationnement-residentiel…\">",
+                      "nodeLabel": "EN SAVOIR +",
+                      "type": "node",
+                      "lhId": "1-20-A"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "node": {
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,13,LI",
+                "selector": "ul.telex-items > div.flickity-viewport > div.flickity-slider > li",
+                "boundingRect": {
+                  "left": 3749,
+                  "right": 4037,
+                  "width": 288,
+                  "height": 406,
+                  "top": 1568,
+                  "bottom": 1974
+                },
+                "snippet": "<li data-telex-target=\"item\" role=\"group\" aria-roledescription=\"slide\" aria-label=\"14 sur 15\" aria-hidden=\"true\" style=\"position: absolute; left: 0px; transform: translateX(1300%);\">",
+                "nodeLabel": "12/08 Parcs et jardins ouverts de nuit. 140 parcs et jardins sont ouverts 24h s…",
+                "explanation": "Fix all of the following:\n  Focusable content should have tabindex=\"-1\" or be removed from the DOM",
+                "type": "node",
+                "lhId": "1-21-LI"
+              },
+              "subItems": {
+                "items": [
+                  {
+                    "relatedNode": {
+                      "snippet": "<a class=\"is-small is-transparent has-uppercase-text has-red-text paris-button block\" href=\"https://www.paris.fr/pages/se-rafraichir-a-paris-24280\">",
+                      "nodeLabel": "EN SAVOIR +",
+                      "type": "node",
+                      "lhId": "1-22-A",
+                      "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,13,LI,0,DIV,1,DIV,1,A",
+                      "selector": "li > div#telex_12130 > div.telex-item-content > a.is-small",
+                      "boundingRect": {
+                        "height": 29,
+                        "top": 1747,
+                        "bottom": 1776,
+                        "left": 3799,
+                        "right": 3902,
+                        "width": 103
+                      }
+                    }
+                  }
+                ],
+                "type": "subitems"
+              }
+            },
+            {
+              "node": {
+                "boundingRect": {
+                  "top": 1568,
+                  "bottom": 1974,
+                  "left": 4037,
+                  "right": 4326,
+                  "width": 288,
+                  "height": 406
+                },
+                "snippet": "<li data-telex-target=\"item\" role=\"group\" aria-roledescription=\"slide\" aria-label=\"15 sur 15\" aria-hidden=\"true\" style=\"position: absolute; left: 0px; transform: translateX(1400%);\">",
+                "nodeLabel": "12/08 Canicule : niveau 3 activé face aux fortes chaleurs. Ce mercredi 12 août,…",
+                "explanation": "Fix all of the following:\n  Focusable content should have tabindex=\"-1\" or be removed from the DOM",
+                "type": "node",
+                "lhId": "1-23-LI",
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,14,LI",
+                "selector": "ul.telex-items > div.flickity-viewport > div.flickity-slider > li"
+              },
+              "subItems": {
+                "type": "subitems",
+                "items": [
+                  {
+                    "relatedNode": {
+                      "boundingRect": {
+                        "width": 103,
+                        "height": 29,
+                        "top": 1727,
+                        "bottom": 1756,
+                        "left": 4087,
+                        "right": 4190
+                      },
+                      "snippet": "<a class=\"is-small is-transparent has-uppercase-text has-red-text paris-button block\" href=\"https://www.paris.fr/pages/paris-active-le-plan-canicule-de-niveau-3-6921\">",
+                      "nodeLabel": "EN SAVOIR +",
+                      "type": "node",
+                      "lhId": "1-24-A",
+                      "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,14,LI,0,DIV,1,DIV,1,A",
+                      "selector": "li > div#telex_12127 > div.telex-item-content > a.is-small"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "aria-input-field-name": {
+        "id": "aria-input-field-name",
+        "title": "ARIA input fields have accessible names",
+        "description": "When an input field doesn't have an accessible name, screen readers announce it with a generic name, making it unusable for users who rely on screen readers. [Learn more about input field labels](https://dequeuniversity.com/rules/axe/4.12/aria-input-field-name).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "aria-meter-name": {
+        "id": "aria-meter-name",
+        "title": "ARIA `meter` elements have accessible names",
+        "description": "When a meter element doesn't have an accessible name, screen readers announce it with a generic name, making it unusable for users who rely on screen readers. [Learn how to name `meter` elements](https://dequeuniversity.com/rules/axe/4.12/aria-meter-name).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "aria-progressbar-name": {
+        "id": "aria-progressbar-name",
+        "title": "ARIA `progressbar` elements have accessible names",
+        "description": "When a `progressbar` element doesn't have an accessible name, screen readers announce it with a generic name, making it unusable for users who rely on screen readers. [Learn how to label `progressbar` elements](https://dequeuniversity.com/rules/axe/4.12/aria-progressbar-name).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "aria-prohibited-attr": {
+        "id": "aria-prohibited-attr",
+        "title": "Elements use only permitted ARIA attributes",
+        "description": "Using ARIA attributes in roles where they are prohibited can mean that important information is not communicated to users of assistive technologies. [Learn more about prohibited ARIA roles](https://dequeuniversity.com/rules/axe/4.12/aria-prohibited-attr).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "items": [],
+          "type": "table",
+          "headings": [
+            {
+              "label": "Failing Elements",
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              }
+            }
+          ]
+        }
+      },
+      "aria-required-attr": {
+        "id": "aria-required-attr",
+        "title": "`[role]`s have all required `[aria-*]` attributes",
+        "description": "Some ARIA roles have required attributes that describe the state of the element to screen readers. [Learn more about roles and required attributes](https://dequeuniversity.com/rules/axe/4.12/aria-required-attr).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "type": "table",
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ],
+          "items": []
+        }
+      },
+      "aria-required-children": {
+        "id": "aria-required-children",
+        "title": "Elements with an ARIA `[role]` that require children to contain a specific `[role]` have all required children.",
+        "description": "Some ARIA parent roles must contain specific child roles to perform their intended accessibility functions. [Learn more about roles and required children elements](https://dequeuniversity.com/rules/axe/4.12/aria-required-children).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "aria-required-parent": {
+        "id": "aria-required-parent",
+        "title": "`[role]`s are contained by their required parent element",
+        "description": "Some ARIA child roles must be contained by specific parent roles to properly perform their intended accessibility functions. [Learn more about ARIA roles and required parent element](https://dequeuniversity.com/rules/axe/4.12/aria-required-parent).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "aria-roles": {
+        "id": "aria-roles",
+        "title": "`[role]` values are valid",
+        "description": "ARIA roles must have valid values in order to perform their intended accessibility functions. [Learn more about valid ARIA roles](https://dequeuniversity.com/rules/axe/4.12/aria-roles).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "items": [],
+          "headings": [
+            {
+              "label": "Failing Elements",
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              }
+            }
+          ],
+          "type": "table"
+        }
+      },
+      "aria-text": {
+        "id": "aria-text",
+        "title": "Elements with the `role=text` attribute do not have focusable descendents.",
+        "description": "Adding `role=text` around a text node split by markup enables VoiceOver to treat it as one phrase, but the element's focusable descendents will not be announced. [Learn more about the `role=text` attribute](https://dequeuniversity.com/rules/axe/4.12/aria-text).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "aria-toggle-field-name": {
+        "id": "aria-toggle-field-name",
+        "title": "ARIA toggle fields have accessible names",
+        "description": "When a toggle field doesn't have an accessible name, screen readers announce it with a generic name, making it unusable for users who rely on screen readers. [Learn more about toggle fields](https://dequeuniversity.com/rules/axe/4.12/aria-toggle-field-name).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "aria-tooltip-name": {
+        "id": "aria-tooltip-name",
+        "title": "ARIA `tooltip` elements have accessible names",
+        "description": "When a tooltip element doesn't have an accessible name, screen readers announce it with a generic name, making it unusable for users who rely on screen readers. [Learn how to name `tooltip` elements](https://dequeuniversity.com/rules/axe/4.12/aria-tooltip-name).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "aria-treeitem-name": {
+        "id": "aria-treeitem-name",
+        "title": "ARIA `treeitem` elements have accessible names",
+        "description": "When a `treeitem` element doesn't have an accessible name, screen readers announce it with a generic name, making it unusable for users who rely on screen readers. [Learn more about labeling `treeitem` elements](https://dequeuniversity.com/rules/axe/4.12/aria-treeitem-name).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "aria-valid-attr-value": {
+        "id": "aria-valid-attr-value",
+        "title": "`[aria-*]` attributes have valid values",
+        "description": "Assistive technologies, like screen readers, can't interpret ARIA attributes with invalid values. [Learn more about valid values for ARIA attributes](https://dequeuniversity.com/rules/axe/4.12/aria-valid-attr-value).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ],
+          "items": [],
+          "type": "table"
+        }
+      },
+      "aria-valid-attr": {
+        "id": "aria-valid-attr",
+        "title": "`[aria-*]` attributes are valid and not misspelled",
+        "description": "Assistive technologies, like screen readers, can't interpret ARIA attributes with invalid names. [Learn more about valid ARIA attributes](https://dequeuniversity.com/rules/axe/4.12/aria-valid-attr).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "type": "table",
+          "items": [],
+          "headings": [
+            {
+              "label": "Failing Elements",
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              }
+            }
+          ]
+        }
+      },
+      "button-name": {
+        "id": "button-name",
+        "title": "Buttons have an accessible name",
+        "description": "When a button doesn't have an accessible name, screen readers announce it as \"button\", making it unusable for users who rely on screen readers. [Learn how to make buttons more accessible](https://dequeuniversity.com/rules/axe/4.12/button-name).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "headings": [
+            {
+              "valueType": "node",
+              "subItemsHeading": {
+                "valueType": "node",
+                "key": "relatedNode"
+              },
+              "label": "Failing Elements",
+              "key": "node"
+            }
+          ],
+          "type": "table",
+          "items": []
+        }
+      },
+      "bypass": {
+        "id": "bypass",
+        "title": "The page contains a heading, skip link, or landmark region",
+        "description": "Adding ways to bypass repetitive content lets keyboard users navigate the page more efficiently. [Learn more about bypass blocks](https://dequeuniversity.com/rules/axe/4.12/bypass).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "color-contrast": {
+        "id": "color-contrast",
+        "title": "Background and foreground colors have a sufficient contrast ratio",
+        "description": "Low-contrast text is difficult or impossible for many users to read. [Learn how to provide sufficient color contrast](https://dequeuniversity.com/rules/axe/4.12/color-contrast).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "type": "table",
+          "items": [],
+          "headings": [
+            {
+              "label": "Failing Elements",
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              }
+            }
+          ]
+        }
+      },
+      "definition-list": {
+        "id": "definition-list",
+        "title": "`<dl>`'s contain only properly-ordered `<dt>` and `<dd>` groups, `<script>`, `<template>` or `<div>` elements.",
+        "description": "When definition lists are not properly marked up, screen readers may produce confusing or inaccurate output. [Learn how to structure definition lists correctly](https://dequeuniversity.com/rules/axe/4.12/definition-list).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "dlitem": {
+        "id": "dlitem",
+        "title": "Definition list items are wrapped in `<dl>` elements",
+        "description": "Definition list items (`<dt>` and `<dd>`) must be wrapped in a parent `<dl>` element to ensure that screen readers can properly announce them. [Learn how to structure definition lists correctly](https://dequeuniversity.com/rules/axe/4.12/dlitem).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "document-title": {
+        "id": "document-title",
+        "title": "Document has a `<title>` element",
+        "description": "The title gives screen reader users an overview of the page, and search engine users rely on it heavily to determine if a page is relevant to their search. [Learn more about document titles](https://dequeuniversity.com/rules/axe/4.12/document-title).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ],
+          "type": "table",
+          "items": []
+        }
+      },
+      "duplicate-id-aria": {
+        "id": "duplicate-id-aria",
+        "title": "ARIA IDs are unique",
+        "description": "The value of an ARIA ID must be unique to prevent other instances from being overlooked by assistive technologies. [Learn how to fix duplicate ARIA IDs](https://dequeuniversity.com/rules/axe/4.12/duplicate-id-aria).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "form-field-multiple-labels": {
+        "id": "form-field-multiple-labels",
+        "title": "No form fields have multiple labels",
+        "description": "Form fields with multiple labels can be confusingly announced by assistive technologies like screen readers which use either the first, the last, or all of the labels. [Learn how to use form labels](https://dequeuniversity.com/rules/axe/4.12/form-field-multiple-labels).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "frame-title": {
+        "id": "frame-title",
+        "title": "`<frame>` or `<iframe>` elements have a title",
+        "description": "Screen reader users rely on frame titles to describe the contents of frames. [Learn more about frame titles](https://dequeuniversity.com/rules/axe/4.12/frame-title).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "heading-order": {
+        "id": "heading-order",
+        "title": "Heading elements appear in a sequentially-descending order",
+        "description": "Properly ordered headings that do not skip levels convey the semantic structure of the page, making it easier to navigate and understand when using assistive technologies. [Learn more about heading order](https://dequeuniversity.com/rules/axe/4.12/heading-order).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "items": [],
+          "type": "table",
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ]
+        }
+      },
+      "html-has-lang": {
+        "id": "html-has-lang",
+        "title": "`<html>` element has a `[lang]` attribute",
+        "description": "If a page doesn't specify a `lang` attribute, a screen reader assumes that the page is in the default language that the user chose when setting up the screen reader. If the page isn't actually in the default language, then the screen reader might not announce the page's text correctly. [Learn more about the `lang` attribute](https://dequeuniversity.com/rules/axe/4.12/html-has-lang).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "headings": [
+            {
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements",
+              "key": "node",
+              "valueType": "node"
+            }
+          ],
+          "type": "table",
+          "items": []
+        }
+      },
+      "html-lang-valid": {
+        "id": "html-lang-valid",
+        "title": "`<html>` element has a valid value for its `[lang]` attribute",
+        "description": "Specifying a valid [BCP 47 language](https://www.w3.org/International/questions/qa-choosing-language-tags#question) helps screen readers announce text properly. [Learn how to use the `lang` attribute](https://dequeuniversity.com/rules/axe/4.12/html-lang-valid).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "headings": [
+            {
+              "valueType": "node",
+              "subItemsHeading": {
+                "valueType": "node",
+                "key": "relatedNode"
+              },
+              "label": "Failing Elements",
+              "key": "node"
+            }
+          ],
+          "type": "table",
+          "items": []
+        }
+      },
+      "html-xml-lang-mismatch": {
+        "id": "html-xml-lang-mismatch",
+        "title": "`<html>` element has an `[xml:lang]` attribute with the same base language as the `[lang]` attribute.",
+        "description": "If the webpage does not specify a consistent language, then the screen reader might not announce the page's text correctly. [Learn more about the `lang` attribute](https://dequeuniversity.com/rules/axe/4.12/html-xml-lang-mismatch).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "image-alt": {
+        "id": "image-alt",
+        "title": "Image elements have `[alt]` attributes",
+        "description": "Informative elements should aim for short, descriptive alternate text. Decorative elements can be ignored with an empty alt attribute. [Learn more about the `alt` attribute](https://dequeuniversity.com/rules/axe/4.12/image-alt).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "items": [],
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ],
+          "type": "table"
+        }
+      },
+      "input-button-name": {
+        "id": "input-button-name",
+        "title": "Input buttons have discernible text.",
+        "description": "Adding discernable and accessible text to input buttons may help screen reader users understand the purpose of the input button. [Learn more about input buttons](https://dequeuniversity.com/rules/axe/4.12/input-button-name).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "input-image-alt": {
+        "id": "input-image-alt",
+        "title": "`<input type=\"image\">` elements have `[alt]` text",
+        "description": "When an image is being used as an `<input>` button, providing alternative text can help screen reader users understand the purpose of the button. [Learn about input image alt text](https://dequeuniversity.com/rules/axe/4.12/input-image-alt).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "label": {
+        "id": "label",
+        "title": "Form elements have associated labels",
+        "description": "Labels ensure that form controls are announced properly by assistive technologies, like screen readers. [Learn more about form element labels](https://dequeuniversity.com/rules/axe/4.12/label).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "type": "table",
+          "items": [],
+          "headings": [
+            {
+              "valueType": "node",
+              "subItemsHeading": {
+                "valueType": "node",
+                "key": "relatedNode"
+              },
+              "label": "Failing Elements",
+              "key": "node"
+            }
+          ]
+        }
+      },
+      "link-in-text-block": {
+        "id": "link-in-text-block",
+        "title": "Links are distinguishable without relying on color.",
+        "description": "Low-contrast text is difficult or impossible for many users to read. Link text that is discernible improves the experience for users with low vision. [Learn how to make links distinguishable](https://dequeuniversity.com/rules/axe/4.12/link-in-text-block).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "link-name": {
+        "id": "link-name",
+        "title": "Links do not have a discernible name",
+        "description": "Link text (and alternate text for images, when used as links) that is discernible, unique, and focusable improves the navigation experience for screen reader users. [Learn how to make links accessible](https://dequeuniversity.com/rules/axe/4.12/link-name).",
+        "score": 0,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "debugData": {
+            "type": "debugdata",
+            "impact": "serious",
+            "tags": [
+              "cat.name-role-value",
+              "wcag2a",
+              "wcag244",
+              "wcag412",
+              "section508",
+              "section508.22.a",
+              "TTv5",
+              "TT6.a",
+              "EN-301-549",
+              "EN-9.2.4.4",
+              "EN-9.4.1.2",
+              "ACT",
+              "RGAAv4",
+              "RGAA-6.2.1"
+            ]
+          },
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ],
+          "type": "table",
+          "items": [
+            {
+              "node": {
+                "selector": "div.banner > div.banner-container > div.img-container > a#home_mobile_banner_link",
+                "boundingRect": {
+                  "top": 132,
+                  "bottom": 151,
+                  "left": 0,
+                  "right": 412,
+                  "width": 412,
+                  "height": 19
+                },
+                "snippet": "<a id=\"home_mobile_banner_link\" target=\"_blank\" href=\"https://www.paris.fr/paris-en-seine-2026\">",
+                "nodeLabel": "div.banner > div.banner-container > div.img-container > a#home_mobile_banner_link",
+                "explanation": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute",
+                "type": "node",
+                "lhId": "1-25-A",
+                "path": "1,HTML,1,BODY,1,DIV,1,DIV,0,DIV,0,DIV,0,DIV,0,A"
+              }
+            },
+            {
+              "node": {
+                "explanation": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute",
+                "type": "node",
+                "lhId": "1-26-A",
+                "path": "1,HTML,1,BODY,1,DIV,3,FOOTER,0,DIV,0,DIV,1,DIV,0,DIV,2,A",
+                "selector": "div.paris-footer-extra-list > div.paris-footer-extra-list-container > div.paris-footer-newsletter > a.paris-footer-newsletter-link",
+                "boundingRect": {
+                  "width": 0,
+                  "height": 19,
+                  "top": 7340,
+                  "bottom": 7359,
+                  "left": 166,
+                  "right": 166
+                },
+                "snippet": "<a class=\"paris-footer-newsletter-link\" href=\"/newsletter\">",
+                "nodeLabel": "div.paris-footer-extra-list > div.paris-footer-extra-list-container > div.paris-footer-newsletter > a.paris-footer-newsletter-link"
+              }
+            }
+          ]
+        }
+      },
+      "list": {
+        "id": "list",
+        "title": "Lists do not contain only `<li>` elements and script supporting elements (`<script>` and `<template>`).",
+        "description": "Screen readers have a specific way of announcing lists. Ensuring proper list structure aids screen reader output. [Learn more about proper list structure](https://dequeuniversity.com/rules/axe/4.12/list).",
+        "score": 0,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "type": "table",
+          "debugData": {
+            "type": "debugdata",
+            "impact": "serious",
+            "tags": [
+              "cat.structure",
+              "wcag2a",
+              "wcag131",
+              "EN-301-549",
+              "EN-9.1.3.1",
+              "RGAAv4",
+              "RGAA-9.3.1"
+            ]
+          },
+          "items": [
+            {
+              "node": {
+                "lhId": "1-27-UL",
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL",
+                "selector": "div.paris-container > div.paris-container-column > section#home-telex > ul.telex-items",
+                "boundingRect": {
+                  "top": 1568,
+                  "bottom": 1974,
+                  "left": 0,
+                  "right": 412,
+                  "width": 412,
+                  "height": 406
+                },
+                "snippet": "<ul class=\"telex-items flickity-enabled is-draggable\" data-telex-target=\"content\" tabindex=\"0\">",
+                "nodeLabel": "22/08 La tour Eiffel aux couleurs de l'Ukraine. La Dame de fer sera éclairée ce…",
+                "explanation": "Fix all of the following:\n  List element has direct children that are not allowed: div",
+                "type": "node"
+              },
+              "subItems": {
+                "type": "subitems",
+                "items": [
+                  {
+                    "relatedNode": {
+                      "lhId": "1-28-DIV",
+                      "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV",
+                      "selector": "div.paris-container-column > section#home-telex > ul.telex-items > div.flickity-viewport",
+                      "boundingRect": {
+                        "right": 412,
+                        "width": 412,
+                        "height": 406,
+                        "top": 1568,
+                        "bottom": 1974,
+                        "left": 0
+                      },
+                      "snippet": "<div class=\"flickity-viewport\" style=\"height: 405.875px; touch-action: pan-y;\">",
+                      "nodeLabel": "22/08 La tour Eiffel aux couleurs de l'Ukraine. La Dame de fer sera éclairée ce…",
+                      "type": "node"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ]
+        }
+      },
+      "listitem": {
+        "id": "listitem",
+        "title": "List items (`<li>`) are contained within `<ul>`, `<ol>` or `<menu>` parent elements",
+        "description": "Screen readers require list items (`<li>`) to be contained within a parent `<ul>`, `<ol>` or `<menu>` to be announced properly. [Learn more about proper list structure](https://dequeuniversity.com/rules/axe/4.12/listitem).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ],
+          "items": [],
+          "type": "table"
+        }
+      },
+      "meta-refresh": {
+        "id": "meta-refresh",
+        "title": "The document does not use `<meta http-equiv=\"refresh\">`",
+        "description": "Users do not expect a page to refresh automatically, and doing so will move focus back to the top of the page. This may create a frustrating or confusing experience. [Learn more about the refresh meta tag](https://dequeuniversity.com/rules/axe/4.12/meta-refresh).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "meta-viewport": {
+        "id": "meta-viewport",
+        "title": "`[user-scalable=\"no\"]` is not used in the `<meta name=\"viewport\">` element and the `[maximum-scale]` attribute is not less than 5.",
+        "description": "Disabling zooming is problematic for users with low vision who rely on screen magnification to properly see the contents of a web page. [Learn more about the viewport meta tag](https://dequeuniversity.com/rules/axe/4.12/meta-viewport).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "items": [],
+          "type": "table",
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ]
+        }
+      },
+      "object-alt": {
+        "id": "object-alt",
+        "title": "`<object>` elements have alternate text",
+        "description": "Screen readers cannot translate non-text content. Adding alternate text to `<object>` elements helps screen readers convey meaning to users. [Learn more about alt text for `object` elements](https://dequeuniversity.com/rules/axe/4.12/object-alt).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "select-name": {
+        "id": "select-name",
+        "title": "Select elements have associated label elements.",
+        "description": "Form elements without effective labels can create frustrating experiences for screen reader users. [Learn more about the `select` element](https://dequeuniversity.com/rules/axe/4.12/select-name).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "items": [],
+          "type": "table",
+          "headings": [
+            {
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements",
+              "key": "node"
+            }
+          ]
+        }
+      },
+      "skip-link": {
+        "id": "skip-link",
+        "title": "Skip links are focusable.",
+        "description": "Including a skip link can help users skip to the main content to save time. [Learn more about skip links](https://dequeuniversity.com/rules/axe/4.12/skip-link).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ],
+          "type": "table",
+          "items": []
+        }
+      },
+      "tabindex": {
+        "id": "tabindex",
+        "title": "No element has a `[tabindex]` value greater than 0",
+        "description": "A value greater than 0 implies an explicit navigation ordering. Although technically valid, this often creates frustrating experiences for users who rely on assistive technologies. [Learn more about the `tabindex` attribute](https://dequeuniversity.com/rules/axe/4.12/tabindex).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "headings": [
+            {
+              "valueType": "node",
+              "subItemsHeading": {
+                "valueType": "node",
+                "key": "relatedNode"
+              },
+              "label": "Failing Elements",
+              "key": "node"
+            }
+          ],
+          "type": "table",
+          "items": []
+        }
+      },
+      "target-size": {
+        "id": "target-size",
+        "title": "Touch targets have sufficient size and spacing.",
+        "description": "Touch targets with sufficient size and spacing help users who may have difficulty targeting small controls to activate the targets. [Learn more about touch targets](https://dequeuniversity.com/rules/axe/4.12/target-size).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "type": "table",
+          "items": [],
+          "headings": [
+            {
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements",
+              "key": "node",
+              "valueType": "node"
+            }
+          ]
+        }
+      },
+      "td-headers-attr": {
+        "id": "td-headers-attr",
+        "title": "Cells in a `<table>` element that use the `[headers]` attribute refer to table cells within the same table.",
+        "description": "Screen readers have features to make navigating tables easier. Ensuring `<td>` cells using the `[headers]` attribute only refer to other cells in the same table may improve the experience for screen reader users. [Learn more about the `headers` attribute](https://dequeuniversity.com/rules/axe/4.12/td-headers-attr).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "th-has-data-cells": {
+        "id": "th-has-data-cells",
+        "title": "`<th>` elements and elements with `[role=\"columnheader\"/\"rowheader\"]` have data cells they describe.",
+        "description": "Screen readers have features to make navigating tables easier. Ensuring table headers always refer to some set of cells may improve the experience for screen reader users. [Learn more about table headers](https://dequeuniversity.com/rules/axe/4.12/th-has-data-cells).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "valid-lang": {
+        "id": "valid-lang",
+        "title": "`[lang]` attributes have a valid value",
+        "description": "Specifying a valid [BCP 47 language](https://www.w3.org/International/questions/qa-choosing-language-tags#question) on elements helps ensure that text is pronounced correctly by a screen reader. [Learn how to use the `lang` attribute](https://dequeuniversity.com/rules/axe/4.12/valid-lang).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "video-caption": {
+        "id": "video-caption",
+        "title": "`<video>` elements contain a `<track>` element with `[kind=\"captions\"]`",
+        "description": "When a video provides a caption it is easier for deaf and hearing impaired users to access its information. [Learn more about video captions](https://dequeuniversity.com/rules/axe/4.12/video-caption).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "landmark-one-main": {
+        "id": "landmark-one-main",
+        "title": "Document has a main landmark.",
+        "description": "One main landmark helps screen reader users navigate a web page. [Learn more about landmarks](https://dequeuniversity.com/rules/axe/4.12/landmark-one-main).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "valueType": "node",
+                "key": "relatedNode"
+              },
+              "label": "Failing Elements"
+            }
+          ],
+          "type": "table",
+          "items": []
+        }
+      },
+      "autocomplete-valid": {
+        "id": "autocomplete-valid",
+        "title": "`autocomplete` attributes are used correctly",
+        "description": "The `autocomplete` attribute values must be valid and correctly applied for screen readers to function correctly. [Learn more about valid autocomplete values](https://dequeuniversity.com/rules/axe/4.12/autocomplete-valid).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "items": [],
+          "type": "table",
+          "headings": [
+            {
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements",
+              "key": "node"
+            }
+          ]
+        }
+      },
+      "presentation-role-conflict": {
+        "id": "presentation-role-conflict",
+        "title": "Elements with `role=\"none\"` or `role=\"presentation\"` do not have conflicts",
+        "description": "There are certain cases where the semantic role of an element with `role=\"none\"` or `role=\"presentation\"` does not resolve to none or presentation. To ensure the element remains removed from the accessibility tree, you should not add any global ARIA attributes to the element or make it focusable. [Learn more about presentation role conflict](https://dequeuniversity.com/rules/axe/4.12/presentation-role-conflict).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "items": [],
+          "headings": [
+            {
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements",
+              "key": "node"
+            }
+          ],
+          "type": "table"
+        }
+      },
+      "svg-img-alt": {
+        "id": "svg-img-alt",
+        "title": "SVG elements with an `img` role have an accessible text alternative",
+        "description": "Ensures SVG elements with an `img`, `graphics-document` or `graphics-symbol` role have an accessible text alternative. [Learn more about SVG alt text](https://dequeuniversity.com/rules/axe/4.12/svg-img-alt).",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "details": {
+          "items": [],
+          "type": "table",
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "key": "relatedNode",
+                "valueType": "node"
+              },
+              "label": "Failing Elements"
+            }
+          ]
+        }
+      },
+      "focusable-controls": {
+        "id": "focusable-controls",
+        "title": "Interactive controls are keyboard focusable",
+        "description": "Custom interactive controls are keyboard focusable and display a focus indicator. [Learn how to make custom controls focusable](https://developer.chrome.com/docs/lighthouse/accessibility/focusable-controls/).",
+        "score": null,
+        "scoreDisplayMode": "manual"
+      },
+      "interactive-element-affordance": {
+        "id": "interactive-element-affordance",
+        "title": "Interactive elements indicate their purpose and state",
+        "description": "Interactive elements, such as links and buttons, should indicate their state and be distinguishable from non-interactive elements. [Learn how to decorate interactive elements with affordance hints](https://developer.chrome.com/docs/lighthouse/accessibility/interactive-element-affordance/).",
+        "score": null,
+        "scoreDisplayMode": "manual"
+      },
+      "logical-tab-order": {
+        "id": "logical-tab-order",
+        "title": "The page has a logical tab order",
+        "description": "Tabbing through the page follows the visual layout. Users cannot focus elements that are offscreen. [Learn more about logical tab ordering](https://developer.chrome.com/docs/lighthouse/accessibility/logical-tab-order/).",
+        "score": null,
+        "scoreDisplayMode": "manual"
+      },
+      "visual-order-follows-dom": {
+        "id": "visual-order-follows-dom",
+        "title": "Visual order on the page follows DOM order",
+        "description": "DOM order matches the visual order, improving navigation for assistive technology. [Learn more about DOM and visual ordering](https://developer.chrome.com/docs/lighthouse/accessibility/visual-order-follows-dom/).",
+        "score": null,
+        "scoreDisplayMode": "manual"
+      },
+      "focus-traps": {
+        "id": "focus-traps",
+        "title": "User focus is not accidentally trapped in a region",
+        "description": "A user can tab into and out of any control or region without accidentally trapping their focus. [Learn how to avoid focus traps](https://developer.chrome.com/docs/lighthouse/accessibility/focus-traps/).",
+        "score": null,
+        "scoreDisplayMode": "manual"
+      },
+      "managed-focus": {
+        "id": "managed-focus",
+        "title": "The user's focus is directed to new content added to the page",
+        "description": "If new content, such as a dialog, is added to the page, the user's focus is directed to it. [Learn how to direct focus to new content](https://developer.chrome.com/docs/lighthouse/accessibility/managed-focus/).",
+        "score": null,
+        "scoreDisplayMode": "manual"
+      },
+      "use-landmarks": {
+        "id": "use-landmarks",
+        "title": "HTML5 landmark elements are used to improve navigation",
+        "description": "Landmark elements (`<main>`, `<nav>`, etc.) are used to improve the keyboard navigation of the page for assistive technology. [Learn more about landmark elements](https://developer.chrome.com/docs/lighthouse/accessibility/use-landmarks/).",
+        "score": null,
+        "scoreDisplayMode": "manual"
+      },
+      "offscreen-content-hidden": {
+        "id": "offscreen-content-hidden",
+        "title": "Offscreen content is hidden from assistive technology",
+        "description": "Offscreen content is hidden with display: none or aria-hidden=true. [Learn how to properly hide offscreen content](https://developer.chrome.com/docs/lighthouse/accessibility/offscreen-content-hidden/).",
+        "score": null,
+        "scoreDisplayMode": "manual"
+      },
+      "custom-controls-labels": {
+        "id": "custom-controls-labels",
+        "title": "Custom controls have associated labels",
+        "description": "Custom interactive controls have associated labels, provided by aria-label or aria-labelledby. [Learn more about custom controls and labels](https://developer.chrome.com/docs/lighthouse/accessibility/custom-controls-labels/).",
+        "score": null,
+        "scoreDisplayMode": "manual"
+      },
+      "custom-controls-roles": {
+        "id": "custom-controls-roles",
+        "title": "Custom controls have ARIA roles",
+        "description": "Custom interactive controls have appropriate ARIA roles. [Learn how to add roles to custom controls](https://developer.chrome.com/docs/lighthouse/accessibility/custom-control-roles/).",
+        "score": null,
+        "scoreDisplayMode": "manual"
+      },
+      "table-duplicate-name": {
+        "id": "table-duplicate-name",
+        "title": "Tables have different content in the summary attribute and `<caption>`.",
+        "description": "The summary attribute should describe the table structure, while `<caption>` should have the onscreen title. Accurate table mark-up helps users of screen readers. [Learn more about summary and caption](https://dequeuniversity.com/rules/axe/4.12/table-duplicate-name).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "empty-heading": {
+        "id": "empty-heading",
+        "title": "All heading elements contain content.",
+        "description": "A heading with no content or inaccessible text prevent screen reader users from accessing information on the page's structure. [Learn more about headings](https://dequeuniversity.com/rules/axe/4.12/empty-heading).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "aria-allowed-role": {
+        "id": "aria-allowed-role",
+        "title": "Uses ARIA roles only on compatible elements",
+        "description": "Many HTML elements can only be assigned certain ARIA roles. Using ARIA roles where they are not allowed can interfere with the accessibility of the web page. [Learn more about ARIA roles](https://dequeuniversity.com/rules/axe/4.12/aria-allowed-role).",
+        "score": 1,
+        "scoreDisplayMode": "informative",
+        "details": {
+          "headings": [
+            {
+              "key": "node",
+              "valueType": "node",
+              "subItemsHeading": {
+                "valueType": "node",
+                "key": "relatedNode"
+              },
+              "label": "Failing Elements"
+            }
+          ],
+          "debugData": {
+            "tags": [
+              "cat.aria",
+              "best-practice"
+            ],
+            "impact": "minor",
+            "type": "debugdata"
+          },
+          "type": "table",
+          "items": [
+            {
+              "node": {
+                "type": "node",
+                "lhId": "1-0-LI",
+                "path": "1,HTML,1,BODY,1,DIV,2,MAIN,0,DIV,1,DIV,3,SECTION,1,UL,0,DIV,0,DIV,0,LI",
+                "selector": "ul.telex-items > div.flickity-viewport > div.flickity-slider > li.is-selected",
+                "boundingRect": {
+                  "left": 0,
+                  "right": 288,
+                  "width": 288,
+                  "height": 406,
+                  "top": 1568,
+                  "bottom": 1974
+                },
+                "snippet": "<li data-telex-target=\"item\" role=\"group\" aria-roledescription=\"slide\" aria-label=\"1 sur 15\" class=\"is-selected\" style=\"position: absolute; left: 0px; transform: translateX(0%);\">",
+                "nodeLabel": "22/08 La tour Eiffel aux couleurs de l'Ukraine. La Dame de fer sera éclairée ce…",
+                "explanation": "Fix any of the following:\n  ARIA role group is not allowed for given element"
+              }
+            }
+          ]
+        }
+      },
+      "image-redundant-alt": {
+        "id": "image-redundant-alt",
+        "title": "Image elements do not have `[alt]` attributes that are redundant text.",
+        "description": "Informative elements should aim for short, descriptive alternative text. Alternative text that is exactly the same as the text adjacent to the link or image is potentially confusing for screen reader users, because the text will be read twice. [Learn more about the `alt` attribute](https://dequeuniversity.com/rules/axe/4.12/image-redundant-alt).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "identical-links-same-purpose": {
+        "id": "identical-links-same-purpose",
+        "title": "Identical links have the same purpose.",
+        "description": "Links with the same destination should have the same description, to help users understand the link's purpose and decide whether to follow it. [Learn more about identical links](https://dequeuniversity.com/rules/axe/4.12/identical-links-same-purpose).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "label-content-name-mismatch": {
+        "id": "label-content-name-mismatch",
+        "title": "Elements with visible text labels have matching accessible names.",
+        "description": "Visible text labels that do not match the accessible name can result in a confusing experience for screen reader users. [Learn more about accessible names](https://dequeuniversity.com/rules/axe/4.12/label-content-name-mismatch).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "table-fake-caption": {
+        "id": "table-fake-caption",
+        "title": "Tables use `<caption>` instead of cells with the `[colspan]` attribute to indicate a caption.",
+        "description": "Screen readers have features to make navigating tables easier. Ensuring that tables use the actual caption element instead of cells with the `[colspan]` attribute may improve the experience for screen reader users. [Learn more about captions](https://dequeuniversity.com/rules/axe/4.12/table-fake-caption).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      },
+      "td-has-header": {
+        "id": "td-has-header",
+        "title": "`<td>` elements in a large `<table>` have one or more table headers.",
+        "description": "Screen readers have features to make navigating tables easier. Ensuring that `<td>` elements in a large table (3 or more cells in width and height) have an associated table header may improve the experience for screen reader users. [Learn more about table headers](https://dequeuniversity.com/rules/axe/4.12/td-has-header).",
+        "score": null,
+        "scoreDisplayMode": "notApplicable"
+      }
+    }
+  }
+}

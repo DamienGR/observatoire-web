@@ -11,11 +11,15 @@ import type { ScanProgress } from './worklist.js';
  * job trivial — dispatch, settle, write — and what lets an interrupted run be
  * exercised in a unit test rather than by killing a real job and hoping.
  *
- * What is deliberately *not* here: which PSI failures are transient. That
- * mapping needs the real payloads, and the frozen fixture does not exist yet
- * (J2-02). Inventing it now would mean writing down a guess in the one place
- * the project treats as observed fact, so this module takes the verdict as an
- * input and stays honest about who decides it.
+ * What is deliberately *not* here: which failures are transient. That mapping
+ * needs the real payloads, and when this was written the frozen capture did not
+ * exist — inventing it would have meant writing down a guess in the one place
+ * the project treats as observed fact. So this module takes the verdict as an
+ * input and stays honest about who decides it. The two deciders now exist and
+ * are the two halves of a measurement: `src/lib/signals/collect.ts` for the
+ * page we fetch ourselves, `src/lib/psi/outcome.ts` for the one we buy — and
+ * the second says, from the capture, that PageSpeed Insights cannot tell a site
+ * that is down from a host that is gone (docs/journal.md 032).
  */
 
 /**
